@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Menu: anyone can read (kiosk and online ordering), only signed-in staff can change it.
+    match /menu/{doc=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    // Everything else: signed-in staff only. Tightened to per-role rules as features land.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -1,0 +1,27 @@
+name: Deploy Firebase
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firestore.indexes.json
+      - firebase.json
+      - functions/**
+      - .github/workflows/deploy-firebase.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/85570970040/locations/global/workloadIdentityPools/github/providers/proofpos
+          service_account: github-deployer@proofpos-90500.iam.gserviceaccount.com
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx -y firebase-tools@latest deploy --only firestore --project proofpos-90500 --non-interactive
