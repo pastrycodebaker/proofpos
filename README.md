@@ -66,3 +66,7 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - Order numbers count up from 101 each day (`counters/orders-YYYY-MM-DD`). An order rung in while offline gets a temporary number starting with T.
 - Timing color thresholds are shared in `settings/kds`.
 - "Test register" rings in orders from the real menu until the real register is built.
+- Completed items show a gray check (no strikethrough). Modifiers stack one per line, in the order set on the item in the menu editor.
+- "Show done" shows tickets finished in the last 30 minutes, each with a "Bring back" button; tap again to hide them.
+- "86" lets any station 86 an item or bring it back. It comes off the register, kiosk and online right away (`menu/main/items/{id}.eightySixed`).
+- "Weekend reroute" (shared, `settings/kds.reroute`) sends drinks marked in the menu editor (all versions or iced only) to the runner instead of the espresso bar, with a banner on the espresso and runner screens. It applies to orders rung in while it's on.

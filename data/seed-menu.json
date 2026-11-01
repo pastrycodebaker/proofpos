@@ -51,7 +51,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 15
+   "octQtySold": 15,
+   "reroute": "none"
   },
   {
    "id": "drip-coffee",
@@ -93,7 +94,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 811
+   "octQtySold": 811,
+   "reroute": "none"
   },
   {
    "id": "cappuccino",
@@ -125,7 +127,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 165
+   "octQtySold": 165,
+   "reroute": "none"
   },
   {
    "id": "macchiato",
@@ -157,7 +160,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 8
+   "octQtySold": 8,
+   "reroute": "none"
   },
   {
    "id": "cortado",
@@ -189,7 +193,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 39
+   "octQtySold": 39,
+   "reroute": "none"
   },
   {
    "id": "latte",
@@ -231,7 +236,8 @@
     "source": "website menu, Aug 2026",
     "note": "Hot price looks high next to iced; the website PDF had scrambled columns."
    },
-   "octQtySold": 2231
+   "octQtySold": 2231,
+   "reroute": "none"
   },
   {
    "id": "mocha",
@@ -268,7 +274,8 @@
     "source": "website menu, Aug 2026",
     "note": "Hot vs iced gap looks off; check both."
    },
-   "octQtySold": 119
+   "octQtySold": 119,
+   "reroute": "none"
   },
   {
    "id": "americano",
@@ -305,7 +312,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 198
+   "octQtySold": 198,
+   "reroute": "none"
   },
   {
    "id": "red-eye",
@@ -347,7 +355,8 @@
     "source": "website menu, Aug 2026",
     "note": "Iced looks high next to hot; check both."
    },
-   "octQtySold": 29
+   "octQtySold": 29,
+   "reroute": "none"
   },
   {
    "id": "honeybee-coffee",
@@ -384,7 +393,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 145
+   "octQtySold": 145,
+   "reroute": "all"
   },
   {
    "id": "cold-brew",
@@ -421,7 +431,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 447
+   "octQtySold": 447,
+   "reroute": "all"
   },
   {
    "id": "hot-chocolate",
@@ -449,7 +460,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 106
+   "octQtySold": 106,
+   "reroute": "none"
   },
   {
    "id": "lemonade",
@@ -477,7 +489,8 @@
     "source": "website menu, Aug 2026",
     "note": "Website listed one price with no size; set as iced 16 oz."
    },
-   "octQtySold": 117
+   "octQtySold": 117,
+   "reroute": "all"
   },
   {
    "id": "chai-latte",
@@ -519,7 +532,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 416
+   "octQtySold": 416,
+   "reroute": "iced"
   },
   {
    "id": "london-fog-mist",
@@ -561,7 +575,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 120
+   "octQtySold": 120,
+   "reroute": "none"
   },
   {
    "id": "matcha",
@@ -598,7 +613,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 192
+   "octQtySold": 192,
+   "reroute": "none"
   },
   {
    "id": "tea",
@@ -636,7 +652,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 168
+   "octQtySold": 168,
+   "reroute": "iced"
   },
   {
    "id": "kombucha-on-tap",
@@ -664,7 +681,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 35
+   "octQtySold": 35,
+   "reroute": "all"
   },
   {
    "id": "beertree-ipa",
@@ -692,7 +710,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.41."
    },
-   "octQtySold": 3
+   "octQtySold": 3,
+   "reroute": "none"
   },
   {
    "id": "grow-camplight",
@@ -720,7 +739,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.56."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   },
   {
    "id": "flosa-mimosa",
@@ -748,7 +768,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $11.12."
    },
-   "octQtySold": 14
+   "octQtySold": 14,
+   "reroute": "none"
   },
   {
    "id": "bloody-mary",
@@ -776,7 +797,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $12.04."
    },
-   "octQtySold": 9
+   "octQtySold": 9,
+   "reroute": "none"
   },
   {
    "id": "sandy-cove-sauv-blanc",
@@ -804,7 +826,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $11.12."
    },
-   "octQtySold": 4
+   "octQtySold": 4,
+   "reroute": "none"
   },
   {
    "id": "bacchus-chardonnay",
@@ -832,7 +855,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $9.26."
    },
-   "octQtySold": 2
+   "octQtySold": 2,
+   "reroute": "none"
   },
   {
    "id": "cora-rose",
@@ -860,7 +884,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.40."
    },
-   "octQtySold": 2
+   "octQtySold": 2,
+   "reroute": "none"
   },
   {
    "id": "clovis-blend-red",
@@ -888,7 +913,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $9.26."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   },
   {
    "id": "anahata-cab-sauv",
@@ -916,7 +942,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $9.26."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   },
   {
    "id": "sparkling-prosecco",
@@ -944,7 +971,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $0.00."
    },
-   "octQtySold": 0
+   "octQtySold": 0,
+   "reroute": "none"
   },
   {
    "id": "single-bagel",
@@ -972,7 +1000,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.59."
    },
-   "octQtySold": 223
+   "octQtySold": 223,
+   "reroute": "none"
   },
   {
    "id": "half-dozen-bagels",
@@ -1000,7 +1029,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $9.32."
    },
-   "octQtySold": 94
+   "octQtySold": 94,
+   "reroute": "none"
   },
   {
    "id": "one-dozen-bagels",
@@ -1028,7 +1058,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $18.65."
    },
-   "octQtySold": 64
+   "octQtySold": 64,
+   "reroute": "none"
   },
   {
    "id": "gluten-free-bagel-single",
@@ -1056,7 +1087,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.50."
    },
-   "octQtySold": 36
+   "octQtySold": 36,
+   "reroute": "none"
   },
   {
    "id": "day-old-bagel-bag",
@@ -1084,7 +1116,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.50."
    },
-   "octQtySold": 33
+   "octQtySold": 33,
+   "reroute": "none"
   },
   {
    "id": "kombucha",
@@ -1112,7 +1145,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $0.00."
    },
-   "octQtySold": 0
+   "octQtySold": 0,
+   "reroute": "none"
   },
   {
    "id": "chaider",
@@ -1140,7 +1174,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.34."
    },
-   "octQtySold": 385
+   "octQtySold": 385,
+   "reroute": "none"
   },
   {
    "id": "salted-maple-matcha",
@@ -1168,7 +1203,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.98."
    },
-   "octQtySold": 162
+   "octQtySold": 162,
+   "reroute": "none"
   },
   {
    "id": "cider",
@@ -1196,7 +1232,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.84."
    },
-   "octQtySold": 49
+   "octQtySold": 49,
+   "reroute": "none"
   },
   {
    "id": "doctor-s-orders",
@@ -1224,7 +1261,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.04."
    },
-   "octQtySold": 23
+   "octQtySold": 23,
+   "reroute": "none"
   },
   {
    "id": "cafe-au-lait",
@@ -1252,7 +1290,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.14."
    },
-   "octQtySold": 21
+   "octQtySold": 21,
+   "reroute": "none"
   },
   {
    "id": "florentine-the-brooks",
@@ -1280,7 +1319,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.90."
    },
-   "octQtySold": 10
+   "octQtySold": 10,
+   "reroute": "none"
   },
   {
    "id": "steamer",
@@ -1308,7 +1348,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.09."
    },
-   "octQtySold": 8
+   "octQtySold": 8,
+   "reroute": "none"
   },
   {
    "id": "matcha-lemonade",
@@ -1336,7 +1377,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.54."
    },
-   "octQtySold": 4
+   "octQtySold": 4,
+   "reroute": "none"
   },
   {
    "id": "whole-milk-8-oz",
@@ -1364,7 +1406,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.27."
    },
-   "octQtySold": 4
+   "octQtySold": 4,
+   "reroute": "none"
   },
   {
    "id": "16-oz-hot-chocolate-chai",
@@ -1392,7 +1435,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.02."
    },
-   "octQtySold": 3
+   "octQtySold": 3,
+   "reroute": "none"
   },
   {
    "id": "ice-water-16-oz",
@@ -1420,7 +1464,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $0.70."
    },
-   "octQtySold": 3
+   "octQtySold": 3,
+   "reroute": "none"
   },
   {
    "id": "iced-chocolate-chai",
@@ -1448,7 +1493,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.02."
    },
-   "octQtySold": 2
+   "octQtySold": 2,
+   "reroute": "none"
   },
   {
    "id": "house-sourdough",
@@ -1476,7 +1522,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $8.00."
    },
-   "octQtySold": 207
+   "octQtySold": 207,
+   "reroute": "none"
   },
   {
    "id": "red-wheat-sourdough",
@@ -1504,7 +1551,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $9.00."
    },
-   "octQtySold": 31
+   "octQtySold": 31,
+   "reroute": "none"
   },
   {
    "id": "day-old-bread",
@@ -1532,7 +1580,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.29."
    },
-   "octQtySold": 14
+   "octQtySold": 14,
+   "reroute": "none"
   },
   {
    "id": "brioche-sandwich-rolls-half-dozen",
@@ -1560,7 +1609,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.50."
    },
-   "octQtySold": 13
+   "octQtySold": 13,
+   "reroute": "none"
   },
   {
    "id": "vegan-chocolate-chip-cookie",
@@ -1588,7 +1638,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.75."
    },
-   "octQtySold": 896
+   "octQtySold": 896,
+   "reroute": "none"
   },
   {
    "id": "cinnamon-bun",
@@ -1616,7 +1667,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.50."
    },
-   "octQtySold": 664
+   "octQtySold": 664,
+   "reroute": "none"
   },
   {
    "id": "muffin-seasonal",
@@ -1644,7 +1696,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.25."
    },
-   "octQtySold": 316
+   "octQtySold": 316,
+   "reroute": "none"
   },
   {
    "id": "chocolate-croissant",
@@ -1672,7 +1725,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.25."
    },
-   "octQtySold": 313
+   "octQtySold": 313,
+   "reroute": "none"
   },
   {
    "id": "candied-ginger-molasses-cookie",
@@ -1700,7 +1754,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.75."
    },
-   "octQtySold": 295
+   "octQtySold": 295,
+   "reroute": "none"
   },
   {
    "id": "danish-seasonal-sweet",
@@ -1728,7 +1783,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.50."
    },
-   "octQtySold": 291
+   "octQtySold": 291,
+   "reroute": "none"
   },
   {
    "id": "rugelach",
@@ -1756,7 +1812,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.25."
    },
-   "octQtySold": 277
+   "octQtySold": 277,
+   "reroute": "none"
   },
   {
    "id": "morning-bun",
@@ -1784,7 +1841,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.25."
    },
-   "octQtySold": 267
+   "octQtySold": 267,
+   "reroute": "none"
   },
   {
    "id": "kouign-amann",
@@ -1812,7 +1870,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.25."
    },
-   "octQtySold": 244
+   "octQtySold": 244,
+   "reroute": "none"
   },
   {
    "id": "scone-seasonal",
@@ -1840,7 +1899,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.00."
    },
-   "octQtySold": 229
+   "octQtySold": 229,
+   "reroute": "none"
   },
   {
    "id": "gf-df-quickbread-slice",
@@ -1868,7 +1928,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.00."
    },
-   "octQtySold": 225
+   "octQtySold": 225,
+   "reroute": "none"
   },
   {
    "id": "seasonal-twice-baked-croissant",
@@ -1896,7 +1957,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.70."
    },
-   "octQtySold": 220
+   "octQtySold": 220,
+   "reroute": "none"
   },
   {
    "id": "twist-seasonal",
@@ -1924,7 +1986,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.25."
    },
-   "octQtySold": 211
+   "octQtySold": 211,
+   "reroute": "none"
   },
   {
    "id": "plain-croissant",
@@ -1952,7 +2015,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.00."
    },
-   "octQtySold": 207
+   "octQtySold": 207,
+   "reroute": "none"
   },
   {
    "id": "oat-bar-seasonal",
@@ -1980,7 +2044,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.50."
    },
-   "octQtySold": 184
+   "octQtySold": 184,
+   "reroute": "none"
   },
   {
    "id": "donut",
@@ -2008,7 +2073,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.02."
    },
-   "octQtySold": 155
+   "octQtySold": 155,
+   "reroute": "none"
   },
   {
    "id": "savory-tile",
@@ -2036,7 +2102,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.50."
    },
-   "octQtySold": 131
+   "octQtySold": 131,
+   "reroute": "none"
   },
   {
    "id": "almond-biscotti",
@@ -2064,7 +2131,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.75."
    },
-   "octQtySold": 74
+   "octQtySold": 74,
+   "reroute": "none"
   },
   {
    "id": "gf-oatmeal-cream-pie",
@@ -2092,7 +2160,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.25."
    },
-   "octQtySold": 59
+   "octQtySold": 59,
+   "reroute": "none"
   },
   {
    "id": "pie-slice",
@@ -2120,7 +2189,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.00."
    },
-   "octQtySold": 24
+   "octQtySold": 24,
+   "reroute": "none"
   },
   {
    "id": "baked-good-day-old-bag",
@@ -2148,7 +2218,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.00."
    },
-   "octQtySold": 18
+   "octQtySold": 18,
+   "reroute": "none"
   },
   {
    "id": "bloom",
@@ -2176,7 +2247,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.70."
    },
-   "octQtySold": 177
+   "octQtySold": 177,
+   "reroute": "none"
   },
   {
    "id": "collins-farm-chocolate-milk",
@@ -2204,7 +2276,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.50."
    },
-   "octQtySold": 176
+   "octQtySold": 176,
+   "reroute": "none"
   },
   {
    "id": "orange-juice",
@@ -2232,7 +2305,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.25."
    },
-   "octQtySold": 118
+   "octQtySold": 118,
+   "reroute": "none"
   },
   {
    "id": "liquid-death-still-water",
@@ -2260,7 +2334,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.00."
    },
-   "octQtySold": 81
+   "octQtySold": 81,
+   "reroute": "none"
   },
   {
    "id": "yerba-mate",
@@ -2288,7 +2363,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.51."
    },
-   "octQtySold": 65
+   "octQtySold": 65,
+   "reroute": "none"
   },
   {
    "id": "harney-sons",
@@ -2316,7 +2392,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.14."
    },
-   "octQtySold": 64
+   "octQtySold": 64,
+   "reroute": "none"
   },
   {
    "id": "bai",
@@ -2344,7 +2421,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.01."
    },
-   "octQtySold": 61
+   "octQtySold": 61,
+   "reroute": "none"
   },
   {
    "id": "sparkling-water",
@@ -2372,7 +2450,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.00."
    },
-   "octQtySold": 58
+   "octQtySold": 58,
+   "reroute": "none"
   },
   {
    "id": "yogurt-parfait",
@@ -2400,7 +2479,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.50."
    },
-   "octQtySold": 57
+   "octQtySold": 57,
+   "reroute": "none"
   },
   {
    "id": "coconut-water",
@@ -2428,7 +2508,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.00."
    },
-   "octQtySold": 53
+   "octQtySold": 53,
+   "reroute": "none"
   },
   {
    "id": "still-water",
@@ -2456,7 +2537,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.00."
    },
-   "octQtySold": 51
+   "octQtySold": 51,
+   "reroute": "none"
   },
   {
    "id": "adirondack-soda",
@@ -2484,7 +2566,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.76."
    },
-   "octQtySold": 32
+   "octQtySold": 32,
+   "reroute": "none"
   },
   {
    "id": "casamara-club",
@@ -2512,7 +2595,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.56."
    },
-   "octQtySold": 7
+   "octQtySold": 7,
+   "reroute": "none"
   },
   {
    "id": "daypack-lemon-lime",
@@ -2540,7 +2624,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.16."
    },
-   "octQtySold": 2
+   "octQtySold": 2,
+   "reroute": "none"
   },
   {
    "id": "athletic-lemon-radler",
@@ -2568,7 +2653,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $4.64."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   },
   {
    "id": "black-and-white-ceramic-mug",
@@ -2596,7 +2682,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $15.00."
    },
-   "octQtySold": 9
+   "octQtySold": 9,
+   "reroute": "none"
   },
   {
    "id": "adult-shirt",
@@ -2624,7 +2711,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $13.88."
    },
-   "octQtySold": 3
+   "octQtySold": 3,
+   "reroute": "none"
   },
   {
    "id": "bagel-token",
@@ -2652,7 +2740,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.50."
    },
-   "octQtySold": 221
+   "octQtySold": 221,
+   "reroute": "none"
   },
   {
    "id": "pastry-token",
@@ -2680,7 +2769,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.00."
    },
-   "octQtySold": 95
+   "octQtySold": 95,
+   "reroute": "none"
   },
   {
    "id": "peaks-coffee",
@@ -2708,7 +2798,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $16.73."
    },
-   "octQtySold": 22
+   "octQtySold": 22,
+   "reroute": "none"
   },
   {
    "id": "cranberry-apricot-granola",
@@ -2736,7 +2827,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $12.50."
    },
-   "octQtySold": 17
+   "octQtySold": 17,
+   "reroute": "none"
   },
   {
    "id": "jff-plain-creme-cheese-8-oz",
@@ -2764,7 +2856,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $5.00."
    },
-   "octQtySold": 50
+   "octQtySold": 50,
+   "reroute": "none"
   },
   {
    "id": "scallion-cream-cheese-8-oz",
@@ -2792,7 +2885,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.50."
    },
-   "octQtySold": 18
+   "octQtySold": 18,
+   "reroute": "none"
   },
   {
    "id": "roasted-garlic-cream-cheese-8-oz",
@@ -2820,7 +2914,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.50."
    },
-   "octQtySold": 7
+   "octQtySold": 7,
+   "reroute": "none"
   },
   {
    "id": "the-freddy",
@@ -2850,7 +2945,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $9.51."
    },
-   "octQtySold": 22
+   "octQtySold": 22,
+   "reroute": "none"
   },
   {
    "id": "say-uncle",
@@ -2880,7 +2976,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.50."
    },
-   "octQtySold": 4
+   "octQtySold": 4,
+   "reroute": "none"
   },
   {
    "id": "the-brittany",
@@ -2910,7 +3007,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 3
+   "octQtySold": 3,
+   "reroute": "none"
   },
   {
    "id": "the-zimmer",
@@ -2940,7 +3038,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $8.93."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   },
   {
    "id": "build-your-own-sandwich",
@@ -2976,7 +3075,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.47."
    },
-   "octQtySold": 3970
+   "octQtySold": 3970,
+   "reroute": "none"
   },
   {
    "id": "the-colgate",
@@ -3006,7 +3106,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 1398
+   "octQtySold": 1398,
+   "reroute": "none"
   },
   {
    "id": "the-chipotle-potato",
@@ -3036,7 +3137,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $7.43."
    },
-   "octQtySold": 565
+   "octQtySold": 565,
+   "reroute": "none"
   },
   {
    "id": "maple-new-day",
@@ -3066,7 +3168,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 430
+   "octQtySold": 430,
+   "reroute": "none"
   },
   {
    "id": "the-big-al",
@@ -3096,7 +3199,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 335
+   "octQtySold": 335,
+   "reroute": "none"
   },
   {
    "id": "flosa-club",
@@ -3126,7 +3230,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $13.63."
    },
-   "octQtySold": 176
+   "octQtySold": 176,
+   "reroute": "none"
   },
   {
    "id": "the-works",
@@ -3156,7 +3261,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $11.34."
    },
-   "octQtySold": 161
+   "octQtySold": 161,
+   "reroute": "none"
   },
   {
    "id": "blt",
@@ -3186,7 +3292,8 @@
     "source": "website menu, Aug 2026",
     "note": null
    },
-   "octQtySold": 66
+   "octQtySold": 66,
+   "reroute": "none"
   },
   {
    "id": "pimento-mori",
@@ -3216,7 +3323,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $10.49."
    },
-   "octQtySold": 60
+   "octQtySold": 60,
+   "reroute": "none"
   },
   {
    "id": "the-hamilton",
@@ -3246,7 +3354,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $13.37."
    },
-   "octQtySold": 50
+   "octQtySold": 50,
+   "reroute": "none"
   },
   {
    "id": "tofu-kan",
@@ -3276,7 +3385,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $11.25."
    },
-   "octQtySold": 29
+   "octQtySold": 29,
+   "reroute": "none"
   },
   {
    "id": "in-the-know",
@@ -3306,7 +3416,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $6.42."
    },
-   "octQtySold": 11
+   "octQtySold": 11,
+   "reroute": "none"
   },
   {
    "id": "joshua",
@@ -3336,7 +3447,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $11.12."
    },
-   "octQtySold": 8
+   "octQtySold": 8,
+   "reroute": "none"
   },
   {
    "id": "two-hash-browns",
@@ -3364,7 +3476,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $3.01."
    },
-   "octQtySold": 111
+   "octQtySold": 111,
+   "reroute": "none"
   },
   {
    "id": "side-of-bacon",
@@ -3392,7 +3505,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.99."
    },
-   "octQtySold": 28
+   "octQtySold": 28,
+   "reroute": "none"
   },
   {
    "id": "side-of-sausage",
@@ -3420,7 +3534,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $1.99."
    },
-   "octQtySold": 10
+   "octQtySold": 10,
+   "reroute": "none"
   },
   {
    "id": "side-of-cream-cheese",
@@ -3448,7 +3563,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $2.50."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   },
   {
    "id": "side-of-butter",
@@ -3476,7 +3592,8 @@
     "source": "Toast Oct 2026 average (includes add-ons)",
     "note": "No base price yet. Toast average was $0.64."
    },
-   "octQtySold": 1
+   "octQtySold": 1,
+   "reroute": "none"
   }
  ],
  "modifierGroups": [

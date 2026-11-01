@@ -42,12 +42,19 @@
   ul.items{list-style:none;margin:0;padding:4px 0 6px}
   li.item{padding:8px 12px;border-top:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
   li.item .box{width:22px;height:22px;border:2px solid var(--quiet);border-radius:6px;flex:none;margin-top:1px;display:grid;place-items:center;font-size:14px}
-  li.item.done{opacity:.45}
+  li.item.done{opacity:.4}
   li.item.done .box{background:var(--good);border-color:var(--good);color:#0e1a12}
-  li.item.done .iname{text-decoration:line-through}
   li.item .iname{font-weight:600;font-size:16px}
   li.item .ver{color:var(--accent);font-weight:600}
-  li.item .mods{color:var(--quiet);font-size:14px}
+  li.item .mods{color:var(--quiet);font-size:14px;line-height:1.35;margin-top:2px}
+  .ticket.past{opacity:.55}
+  .pasthead{grid-column:1/-1;color:var(--quiet);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 0;border-top:1px solid var(--line);padding-top:10px}
+  .banner{background:#3a2a10;color:var(--accent);padding:8px 14px;font-weight:600;border-bottom:1px solid var(--line)}
+  .eightysix{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+  .eightysix.out b{color:#ffb3a8}
+  button.x86{min-width:96px}
+  button.x86.out{background:var(--crit);border-color:var(--crit);color:#fff;font-weight:700}
+  label.sw{display:flex;gap:6px;align-items:center;color:var(--quiet);font-size:14px;cursor:pointer}
   li.item .where{font-size:11px;color:var(--quiet);text-transform:uppercase;letter-spacing:.05em}
   li.item.changed{background:rgba(88,166,255,.14)}
   li.item.removed{background:rgba(224,87,74,.16);cursor:default}
@@ -115,11 +122,15 @@
   <nav id="stations"></nav>
   <div class="tools">
     <span class="net" id="net">Online</span>
+    <label class="sw"><input type="checkbox" id="reroute"> Weekend reroute</label>
+    <button id="btnDone">Show done</button>
+    <button id="btn86">86</button>
     <button class="primary" id="btnRegister">Test register</button>
     <button id="btnRecall">Recall</button>
     <button id="btnTiming">Timing</button>
   </div>
 </header>
+<div class="banner hidden" id="rerouteBanner"></div>
 <section id="counts"></section>
 <main id="board"></main>
 </div>
@@ -148,6 +159,13 @@
   <ul class="rlist" id="recallList"></ul>
   <div style="margin-top:12px"><button id="recallClose">Close</button></div>
 </div>
+<div class="modal" id="modal86">
+  <h2>86 an item</h2>
+  <div class="muted" style="margin-bottom:8px">Tap to 86. It comes off the register, kiosk and online right away. Tap again to bring it back.</div>
+  <input id="search86" placeholder="Search items" style="width:100%;margin-bottom:6px">
+  <div id="list86"></div>
+  <div style="margin-top:12px"><button id="close86">Done</button></div>
+</div>
 <div class="modal" id="timingModal">
   <h2>Ticket timing colors</h2>
   <div class="muted" style="margin-bottom:10px">Minutes on screen before a ticket turns yellow, then red. Shared by every screen.</div>
@@ -174,15 +192,17 @@ const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String
 
 // ---------- Stores ----------
 function demoStore(){
-  let orders = [], subs = [], next = 101, settings = {thresholds: DEFAULT_T};
+  let orders = [], subs = [], next = 101, settings = {thresholds: DEFAULT_T, reroute: false}, menu = {items:[], groups:[]}, menuSubs = [], setSubs = [];
   const emit = () => subs.forEach(cb => cb(structuredClone(orders)));
   return {
-    async loadMenu(){ const s = await (await fetch('../data/seed-menu.json')).json(); return {items:s.items, groups:s.modifierGroups}; },
+    async watchMenu(cb){ const s = await (await fetch('../data/seed-menu.json')).json(); menu = {items:s.items, groups:s.modifierGroups}; menuSubs.push(cb); cb(structuredClone(menu)); },
+    async set86(id, val){ const it = menu.items.find(i => i.id === id); if (it){ it.eightySixed = val; menuSubs.forEach(cb => cb(structuredClone(menu))); } },
+    watchSettings(cb){ setSubs.push(cb); cb(structuredClone(settings)); },
     subscribe(cb){ subs.push(cb); cb(structuredClone(orders)); },
     async createOrder(o){ orders.push({...o, id:uid(), num:next++}); emit(); },
     async mutate(id, fn){ const o = orders.find(x => x.id === id); if (o){ fn(o); emit(); } },
     async getSettings(){ return structuredClone(settings); },
-    async saveSettings(s){ settings = structuredClone(s); },
+    async saveSettings(s){ settings = structuredClone(s); setSubs.forEach(cb => cb(structuredClone(settings))); },
     onNet(){},
   };
 }
@@ -193,10 +213,13 @@ async function firebaseStore(app){
   catch (e){ db = F.getFirestore(app); }
   const orders = F.collection(db, 'orders');
   return {
-    async loadMenu(){
-      const [i, g] = await Promise.all([F.getDocs(F.collection(db,'menu','main','items')), F.getDocs(F.collection(db,'menu','main','modifierGroups'))]);
-      return {items: i.docs.map(d => d.data()), groups: g.docs.map(d => d.data())};
+    watchMenu(cb){
+      const m = {items:[], groups:[]};
+      F.onSnapshot(F.collection(db,'menu','main','items'), s => { m.items = s.docs.map(d => d.data()); cb({...m}); });
+      F.onSnapshot(F.collection(db,'menu','main','modifierGroups'), s => { m.groups = s.docs.map(d => d.data()); cb({...m}); });
     },
+    set86: (id, val) => F.updateDoc(F.doc(db,'menu','main','items',id), {eightySixed: val}),
+    watchSettings(cb){ F.onSnapshot(F.doc(db,'settings','kds'), s => cb(s.exists() ? s.data() : {thresholds: DEFAULT_T, reroute:false})); },
     subscribe(cb){
       return F.onSnapshot(F.query(orders, F.where('createdAtMs', '>=', startOfDay())), {includeMetadataChanges:true}, snap => {
         cb(snap.docs.map(d => { const o = d.data(); return {...o, id:d.id, lines:Object.values(o.lines || {}).sort((a, b) => a.pos - b.pos)}; }));
@@ -247,9 +270,16 @@ function buildLine(itemId, versionIdx, mods, lid){
   const counts = {};
   for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
   for (const m of mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0); }
-  return {lid: lid || uid(), itemId, name: it.name, station: it.station || 'none', versionIdx, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods, counts, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
+  const rr = settings.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
+  return {lid: lid || uid(), itemId, name: it.name, station: rr ? 'none' : (it.station || 'none'), rerouted: !!rr, versionIdx, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods, counts, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
 }
 const live = l => !l.removed;
+function sortedMods(l){
+  const it = itemById(l.itemId); const order = (it && it.modifierGroupIds) || [];
+  const gi = g => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
+  const oi = m => { const g = groupById(m.g); const i = g ? g.options.findIndex(o => o.name === m.o) : -1; return i < 0 ? 999 : i; };
+  return l.mods.slice().sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
+}
 const linesFor = (o, v) => v.shows === 'all' ? o.lines : o.lines.filter(l => l.station === v.shows);
 
 // ---------- Rendering ----------
@@ -268,23 +298,27 @@ function renderCounts(v, orders){
   const keys = Object.keys(tot).filter(k => tot[k] > 0).sort();
   $('#counts').innerHTML = `<span class="lbl">Needed now</span>` + (keys.length ? keys.map(k => `<span class="chip"><b>${tot[k]}</b>${esc(k)}</span>`).join('') : `<span class="muted">${MENU.items.some(i => (i.counts || []).length) || MENU.groups.some(g => g.options.some(o => (o.counts || []).length)) ? 'Nothing open' : 'Set production counts in the menu editor to see totals here'}</span>`);
 }
-function ticketHtml(o, v){
+const DONE_MIN = 30;
+let showDone = false;
+function stationDoneAt(o, v){ if (v.shows === 'all') return o.cleared ? o.clearedAt : 0; const ls = linesFor(o, v).filter(live); return ls.length && ls.every(l => l.done) ? Math.max(...ls.map(l => l.doneAt || 0)) : 0; }
+function recentDone(v){ const cut = Date.now() - DONE_MIN * 60000; return ORDERS.filter(o => { const t = stationDoneAt(o, v); return t && t >= cut; }).sort((a, b) => stationDoneAt(b, v) - stationDoneAt(a, v)); }
+function ticketHtml(o, v, past){
   const now = Date.now();
   const lines = linesFor(o, v).filter(l => live(l) || now - l.changedAt < 90000);
   const items = lines.map(l => {
     const fresh = l.changed && now - l.changedAt < 90000;
     const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : ''].join(' ');
     const tag = l.removed ? '<span class="tag rem">REMOVED</span>' : fresh ? `<span class="tag new">${l.changed === 'added' ? 'NEW' : 'CHANGED'}</span>` : '';
-    const where = v.shows === 'all' ? `<div class="where">${l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
-    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${l.mods.length ? `<div class="mods">${l.mods.map(m => esc(m.o)).join(' · ')}</div>` : ''}${where}</div></li>`;
+    const where = v.shows === 'all' ? `<div class="where">${l.rerouted ? 'rerouted to runner' : l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
+    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${l.mods.length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc(m.o)}</div>`).join('')}</div>` : ''}${where}</div></li>`;
   }).join('');
   const edited = o.lines.some(l => l.changed && now - l.changedAt < 90000);
   const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
   const allDone = o.lines.filter(live).every(l => l.done);
-  const foot = v.id === 'runner'
+  const foot = past ? `<div class="tfoot"><button data-act="bringback" data-o="${o.id}">Bring back</button></div>` : v.id === 'runner'
     ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
     : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
-  return `<div class="ticket ${colorClass(o, v)} ${o.rush ? 'rush' : ''}" data-oid="${o.id}"><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - o.createdAtMs)}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
+  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - o.createdAtMs)}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
 }
 let lastFull = 0, pressing = false;
 document.addEventListener('pointerdown', () => { pressing = true; });
@@ -292,10 +326,18 @@ document.addEventListener('pointerup', () => setTimeout(() => { pressing = false
 function render(){
   lastFull = Date.now();
   const v = view();
+  const n86 = MENU.items.filter(i => i.eightySixed).length; $('#btn86').textContent = n86 ? `86 (${n86} out)` : '86';
   $('#stations').innerHTML = VIEWS.map(s => `<button class="${s.id === v.id ? 'on' : ''}" data-view="${s.id}">${s.label} (${visibleOrders(s).length})</button>`).join('');
   const orders = visibleOrders(v);
   renderCounts(v, orders);
-  $('#board').innerHTML = orders.length ? `<div class="${v.layout}">${orders.map(o => ticketHtml(o, v)).join('')}</div>` : `<div class="empty">No open tickets for ${v.label}</div>`;
+  const past = showDone ? recentDone(v) : [];
+  $('#btnDone').classList.toggle('on', showDone);
+  const pastHtml = past.length ? `<div class="pasthead">Recently done · last ${DONE_MIN} minutes</div>` + past.map(o => ticketHtml(o, v, true)).join('') : (showDone ? `<div class="pasthead">Nothing done in the last ${DONE_MIN} minutes</div>` : '');
+  $('#board').innerHTML = (orders.length || showDone) ? `<div class="${v.layout}">${orders.map(o => ticketHtml(o, v)).join('')}${pastHtml}</div>` : `<div class="empty">No open tickets for ${v.label}</div>`;
+  const rrOn = settings.reroute && (v.shows === 'espresso' || v.shows === 'all');
+  $('#rerouteBanner').classList.toggle('hidden', !rrOn);
+  if (rrOn) $('#rerouteBanner').textContent = 'Weekend reroute is on: ' + (MENU.items.filter(i => i.reroute && i.reroute !== 'none').map(i => (i.reroute === 'iced' ? 'iced ' : '') + i.name.toLowerCase()).join(', ') || 'no drinks are set to reroute') + (v.shows === 'all' ? ' come to the runner.' : ' go to the runner.');
+  $('#reroute').checked = !!settings.reroute;
   if (drawerOpen) renderOpenList();
 }
 function tick(){
@@ -323,10 +365,11 @@ $('#board').addEventListener('click', e => {
       if (a === 'rush') o.rush = !o.rush;
       if (a === 'clear'){ o.cleared = true; o.clearedAt = Date.now(); }
       if (a === 'bumpall') for (const l of linesFor(o, v)) if (live(l) && !l.done){ l.done = true; l.doneAt = Date.now(); }
+      if (a === 'bringback'){ if (v.shows === 'all') o.cleared = false; else for (const l of linesFor(o, v)){ l.done = false; l.doneAt = 0; } }
     }));
     return;
   }
-  const li = e.target.closest('li.item'); if (!li || li.classList.contains('removed')) return;
+  const li = e.target.closest('li.item'); if (!li || li.classList.contains('removed') || li.closest('.ticket.past')) return;
   li.classList.toggle('done');
   act(store.mutate(li.dataset.o, o => { const l = o.lines.find(x => x.lid === li.dataset.l); if (l){ l.done = !l.done; l.doneAt = l.done ? Date.now() : 0; } }));
 });
@@ -352,6 +395,20 @@ $('#recallList').addEventListener('click', e => {
   closeAll();
 });
 $('#recallClose').addEventListener('click', closeAll);
+
+// ---------- Show done, 86, reroute ----------
+$('#btnDone').addEventListener('click', () => { showDone = !showDone; render(); });
+$('#reroute').addEventListener('change', e => { settings = {...settings, reroute: e.target.checked}; act(store.saveSettings(settings)); render(); });
+function render86(){
+  const v = view(); const q = ($('#search86').value || '').toLowerCase();
+  const list = MENU.items.filter(i => (v.shows === 'all' || i.station === v.shows || i.eightySixed) && (!q || i.name.toLowerCase().includes(q)))
+    .sort((a, b) => (b.eightySixed - a.eightySixed) || a.name.localeCompare(b.name));
+  $('#list86').innerHTML = list.map(i => `<div class="eightysix ${i.eightySixed ? 'out' : ''}"><b>${esc(i.name)}</b><button class="x86 ${i.eightySixed ? 'out' : ''}" data-86="${esc(i.id)}">${i.eightySixed ? "86'd" : '86 it'}</button></div>`).join('') || '<p class="muted">No items for this station.</p>';
+}
+$('#btn86').addEventListener('click', () => { $('#search86').value = ''; render86(); openModal('modal86'); });
+$('#search86').addEventListener('input', render86);
+$('#list86').addEventListener('click', e => { const b = e.target.closest('button[data-86]'); if (!b) return; const it = itemById(b.dataset['86']); act(store.set86(it.id, !it.eightySixed)); it.eightySixed = !it.eightySixed; render86(); });
+$('#close86').addEventListener('click', closeAll);
 
 // ---------- Timing ----------
 $('#btnTiming').addEventListener('click', () => {
@@ -453,7 +510,8 @@ function setNet(){ const el = $('#net'); el.textContent = navigator.onLine ? 'On
 addEventListener('online', setNet); addEventListener('offline', setNet); setNet();
 async function boot(){
   $('#appView').classList.remove('hidden'); $('#loginView').classList.add('hidden');
-  MENU = await store.loadMenu(); settings = await store.getSettings().catch(() => settings);
+  await new Promise(res => { let first = true; store.watchMenu(m => { MENU = m; if (first){ first = false; res(); } else { render(); if ($('#modal86').classList.contains('open')) render86(); if (drawerOpen) renderMenuBtns(); } }); });
+  store.watchSettings(s => { settings = {thresholds: DEFAULT_T, reroute:false, ...s}; render(); });
   store.subscribe(onOrders); render(); setInterval(tick, 500);
 }
 if (DEMO){
