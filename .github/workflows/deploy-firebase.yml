@@ -6,6 +6,7 @@ on:
       - firestore.rules
       - firestore.indexes.json
       - firebase.json
+      - scripts/deploy-rules.sh
       - functions/**
       - .github/workflows/deploy-firebase.yml
   workflow_dispatch:
@@ -17,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
+          token_format: access_token
           workload_identity_provider: projects/85570970040/locations/global/workloadIdentityPools/github/providers/proofpos
           service_account: github-deployer@proofpos-90500.iam.gserviceaccount.com
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npx -y firebase-tools@latest deploy --only firestore --project proofpos-90500 --non-interactive
+      - name: Deploy Firestore rules
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: ./scripts/deploy-rules.sh
