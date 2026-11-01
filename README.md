@@ -56,3 +56,13 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - Modifier groups: each option is a flat price or priced by size, and can add to a production count.
 - Settings: sizes, credit card surcharge rate, category order, and the starter menu (`data/seed-menu.json`).
 - Data lives in Firestore under `menu/main` (settings), `menu/main/items`, `menu/main/modifierGroups`.
+
+## Live KDS
+
+`kds/index.html` — sign in once per screen; it stays signed in. Pick the station (Espresso bar, Kitchen 1, Kitchen 2, Runner); each screen remembers its choice. Add `?demo` to try it without signing in.
+
+- Reads the real menu from the menu editor: stations, sizes (shown as "Iced 20 oz Latte"), modifiers and production counts.
+- Tickets live in Firestore `orders/{id}`, shared by every screen. Each item is stored under `lines.<id>` and updated field by field, so bumps work offline (they sync when wifi returns) and two stations never overwrite each other.
+- Order numbers count up from 101 each day (`counters/orders-YYYY-MM-DD`). An order rung in while offline gets a temporary number starting with T.
+- Timing color thresholds are shared in `settings/kds`.
+- "Test register" rings in orders from the real menu until the real register is built.

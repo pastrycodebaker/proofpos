@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof POS · KDS</title>
+<style>
+  :root{--bg:#15130f;--panel:#201d18;--card:#2a2620;--line:#3a352d;--ink:#f3ede2;--quiet:#a89f90;--accent:#e2a24a;--good:#5fb37a;--warn:#e6c14a;--crit:#e0574a;--rush:#ff5a3c;--new:#58a6ff}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+  button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--accent);color:#1b140a;border-color:var(--accent);font-weight:600}
+  button.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+  input,select{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;-webkit-user-select:text;user-select:text}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .brand{font-weight:700}
+  .brand small{display:block;font-weight:400;color:var(--quiet);font-size:12px}
+  #stations{display:flex;gap:6px;flex-wrap:wrap}
+  .tools{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+  .net{font-size:12px;border-radius:999px;padding:3px 10px;background:#24382a;color:var(--good)}
+  .net.off{background:#45211c;color:#ffb3a8}
+  #counts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);min-height:46px}
+  #counts .lbl{color:var(--quiet);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+  .chip{display:inline-flex;gap:6px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  .chip b{font-size:20px}
+  main{padding:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start}
+  .empty{color:var(--quiet);text-align:center;padding:60px 0}
+  .ticket{background:var(--card);border:2px solid var(--line);border-radius:12px;overflow:hidden}
+  .ticket.rush{border-color:var(--rush);box-shadow:0 0 0 2px var(--rush) inset}
+  .thead{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;gap:8px}
+  .thead .name{font-weight:700;font-size:18px}
+  .thead .num{color:var(--quiet);font-size:12px}
+  .timer{font-variant-numeric:tabular-nums;font-weight:700;border-radius:6px;padding:2px 8px}
+  .t-ok .thead{background:#24382a}.t-ok .timer{background:var(--good);color:#0e1a12}
+  .t-warn .thead{background:#40381c}.t-warn .timer{background:var(--warn);color:#1c1708}
+  .t-crit .thead{background:#45211c}.t-crit .timer{background:var(--crit);color:#fff}
+  .badges{display:flex;gap:6px;padding:0 12px 4px;flex-wrap:wrap}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 6px}
+  .b-rush{background:var(--rush);color:#fff}.b-src{background:#3d3527;color:var(--accent)}.b-edit{background:var(--new);color:#08131f}
+  ul.items{list-style:none;margin:0;padding:4px 0 6px}
+  li.item{padding:8px 12px;border-top:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+  li.item .box{width:22px;height:22px;border:2px solid var(--quiet);border-radius:6px;flex:none;margin-top:1px;display:grid;place-items:center;font-size:14px}
+  li.item.done{opacity:.45}
+  li.item.done .box{background:var(--good);border-color:var(--good);color:#0e1a12}
+  li.item.done .iname{text-decoration:line-through}
+  li.item .iname{font-weight:600;font-size:16px}
+  li.item .ver{color:var(--accent);font-weight:600}
+  li.item .mods{color:var(--quiet);font-size:14px}
+  li.item .where{font-size:11px;color:var(--quiet);text-transform:uppercase;letter-spacing:.05em}
+  li.item.changed{background:rgba(88,166,255,.14)}
+  li.item.removed{background:rgba(224,87,74,.16);cursor:default}
+  li.item.removed .iname{text-decoration:line-through}
+  .tag{font-size:11px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px}
+  .tag.new{background:var(--new);color:#08131f}.tag.rem{background:var(--crit);color:#fff}
+  .tfoot{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line)}
+  .tfoot button{flex:1}
+  .tfoot button.clear.ready{background:var(--good);border-color:var(--good);color:#0e1a12;font-weight:700}
+  .rail{display:flex;flex-direction:column;gap:8px}
+  .rail .ticket{display:grid;grid-template-columns:170px 1fr}
+  .rail .thead{flex-direction:column;align-items:flex-start;height:100%}
+  .rail ul.items{display:flex;flex-wrap:wrap;gap:8px;padding:8px}
+  .rail li.item{border:1px solid var(--line);border-radius:8px;min-width:180px;flex:1 1 200px}
+  .rail .badges{padding:0}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:20}
+  .scrim.open{display:block}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:21;transform:translateX(100%);transition:transform .2s;display:flex;flex-direction:column}
+  .drawer.open{transform:none}
+  .dhead{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .dhead h2{margin:0;font-size:18px;flex:1}
+  .dbody{flex:1;overflow:auto;padding:12px 14px}
+  .dfoot{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
+  .dfoot button{flex:1}
+  .row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .row > *{flex:1}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--quiet);margin:14px 0 6px}
+  .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+  .menu button{text-align:left;padding:8px;font-size:13px;min-height:44px}
+  .cart{list-style:none;margin:0;padding:0}
+  .cart li{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px}
+  .cart .top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
+  .cart .top button{padding:2px 10px}
+  .modg{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .modg span{font-size:11px;color:var(--quiet);width:100%}
+  .modg button{padding:3px 8px;font-size:12px;border-radius:999px}
+  .openlist li{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,94%);max-height:80vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:22;display:none;padding:14px}
+  .modal.open{display:block}
+  .modal h2{margin:0 0 10px;font-size:18px}
+  .rlist{list-style:none;margin:0;padding:0}
+  .rlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+  .muted{color:var(--quiet);font-size:13px}
+  .thresh{display:grid;grid-template-columns:1fr 90px 90px;gap:6px;align-items:center}
+  .thresh input{width:100%}
+  .login{max-width:360px;margin:14vh auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .login input{width:100%;margin-bottom:10px}
+  .hidden{display:none !important}
+  .err{color:#ffb3a8}
+</style>
+</head>
+<body>
+<div class="login hidden" id="loginView">
+  <h2 style="margin-top:0">Proof POS · KDS</h2>
+  <p class="muted">Sign in once on this screen. It stays signed in.</p>
+  <input id="email" type="email" placeholder="Email" autocomplete="username">
+  <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="primary" id="signIn" style="width:100%">Sign in</button>
+  <p class="muted err" id="loginMsg"></p>
+</div>
+
+<div id="appView" class="hidden">
+<header>
+  <div class="brand">Proof POS · KDS<small id="modeLabel">Live</small></div>
+  <nav id="stations"></nav>
+  <div class="tools">
+    <span class="net" id="net">Online</span>
+    <button class="primary" id="btnRegister">Test register</button>
+    <button id="btnRecall">Recall</button>
+    <button id="btnTiming">Timing</button>
+  </div>
+</header>
+<section id="counts"></section>
+<main id="board"></main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="dhead"><h2 id="dTitle">New order</h2><button id="dClose">Close</button></div>
+  <div class="dbody">
+    <div class="row">
+      <input type="text" id="custName" placeholder="Customer name">
+      <select id="source"><option value="register">Register</option><option value="kiosk">Kiosk</option><option value="online">Online</option><option value="phone">Phone</option></select>
+    </div>
+    <h3>This order</h3>
+    <ul class="cart" id="cart"></ul>
+    <div class="muted" id="cartEmpty">Tap menu items below to add them.</div>
+    <h3>Menu</h3>
+    <div id="menuBtns"></div>
+    <h3>Open tickets</h3>
+    <ul class="cart openlist" id="openList"></ul>
+  </div>
+  <div class="dfoot"><button id="dRush">Rush: off</button><button class="primary" id="dSend">Send to kitchen</button></div>
+</aside>
+<div class="modal" id="recallModal">
+  <h2 id="recallTitle">Recall</h2>
+  <div class="muted">Bring back a ticket that was bumped or cleared by mistake.</div>
+  <ul class="rlist" id="recallList"></ul>
+  <div style="margin-top:12px"><button id="recallClose">Close</button></div>
+</div>
+<div class="modal" id="timingModal">
+  <h2>Ticket timing colors</h2>
+  <div class="muted" style="margin-bottom:10px">Minutes on screen before a ticket turns yellow, then red. Shared by every screen.</div>
+  <div class="thresh" id="threshRows"></div>
+  <div style="margin-top:12px"><button class="primary" id="timingSave">Save</button> <button id="timingClose">Close</button></div>
+</div>
+
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const VIEWS = [
+  {id:'espresso', label:'Espresso bar', shows:'espresso', layout:'grid'},
+  {id:'kitchen1', label:'Kitchen 1', shows:'kitchen', layout:'grid'},
+  {id:'kitchen2', label:'Kitchen 2', shows:'kitchen', layout:'rail'},
+  {id:'runner', label:'Runner', shows:'all', layout:'grid'},
+];
+const SOURCES = {register:'Register', kiosk:'Kiosk', online:'Online', phone:'Phone'};
+const DEFAULT_T = {espresso:{y:4,r:7}, kitchen:{y:6,r:10}, all:{y:8,r:12}};
+const startOfDay = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
+const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+// ---------- Stores ----------
+function demoStore(){
+  let orders = [], subs = [], next = 101, settings = {thresholds: DEFAULT_T};
+  const emit = () => subs.forEach(cb => cb(structuredClone(orders)));
+  return {
+    async loadMenu(){ const s = await (await fetch('../data/seed-menu.json')).json(); return {items:s.items, groups:s.modifierGroups}; },
+    subscribe(cb){ subs.push(cb); cb(structuredClone(orders)); },
+    async createOrder(o){ orders.push({...o, id:uid(), num:next++}); emit(); },
+    async mutate(id, fn){ const o = orders.find(x => x.id === id); if (o){ fn(o); emit(); } },
+    async getSettings(){ return structuredClone(settings); },
+    async saveSettings(s){ settings = structuredClone(s); },
+    onNet(){},
+  };
+}
+async function firebaseStore(app){
+  const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  let db;
+  try { db = F.initializeFirestore(app, {localCache: F.persistentLocalCache({tabManager: F.persistentMultipleTabManager()})}); }
+  catch (e){ db = F.getFirestore(app); }
+  const orders = F.collection(db, 'orders');
+  return {
+    async loadMenu(){
+      const [i, g] = await Promise.all([F.getDocs(F.collection(db,'menu','main','items')), F.getDocs(F.collection(db,'menu','main','modifierGroups'))]);
+      return {items: i.docs.map(d => d.data()), groups: g.docs.map(d => d.data())};
+    },
+    subscribe(cb){
+      return F.onSnapshot(F.query(orders, F.where('createdAtMs', '>=', startOfDay())), {includeMetadataChanges:true}, snap => {
+        cb(snap.docs.map(d => { const o = d.data(); return {...o, id:d.id, lines:Object.values(o.lines || {}).sort((a, b) => a.pos - b.pos)}; }));
+      });
+    },
+    async createOrder(o){
+      const ref = F.doc(orders);
+      const lines = Object.fromEntries(o.lines.map((l, i) => [l.lid, {...l, pos:i}]));
+      const data = {...o, lines, createdAt: F.serverTimestamp()};
+      if (!navigator.onLine){ await F.setDoc(ref, {...data, num: 'T' + ref.id.slice(0, 3).toUpperCase()}); return; }
+      const counter = F.doc(db, 'counters', 'orders-' + dayKey());
+      await F.runTransaction(db, async tx => {
+        const c = await tx.get(counter);
+        const num = c.exists() ? c.data().next : 101;
+        tx.set(counter, {next: num + 1});
+        tx.set(ref, {...data, num});
+      });
+    },
+    // Field-level updates: work offline (queued) and never overwrite another station's bump.
+    async mutate(id, fn){
+      const cur = ORDERS.find(o => o.id === id); if (!cur) return;
+      const before = structuredClone(cur), after = structuredClone(cur); fn(after);
+      const upd = {}; let pos = Math.max(-1, ...before.lines.map(l => l.pos ?? 0));
+      for (const k of ['rush', 'cleared', 'clearedAt', 'name']) if (before[k] !== after[k]) upd[k] = after[k] ?? null;
+      for (const l of after.lines){
+        const b = before.lines.find(x => x.lid === l.lid);
+        if (!b) l.pos = ++pos;
+        if (!b || JSON.stringify(b) !== JSON.stringify(l)) upd['lines.' + l.lid] = l;
+      }
+      if (Object.keys(upd).length) await F.updateDoc(F.doc(orders, id), upd);
+    },
+    async getSettings(){ const s = await F.getDoc(F.doc(db,'settings','kds')); return s.exists() ? s.data() : {thresholds: DEFAULT_T}; },
+    saveSettings: s => F.setDoc(F.doc(db,'settings','kds'), s),
+  };
+}
+
+// ---------- State ----------
+let store, MENU = {items:[], groups:[]}, ORDERS = [], settings = {thresholds: DEFAULT_T};
+let viewId = (() => { try { return localStorage.getItem('kds-view') || 'kitchen1'; } catch(e){ return 'kitchen1'; } })();
+const view = () => VIEWS.find(v => v.id === viewId) || VIEWS[1];
+const itemById = id => MENU.items.find(i => i.id === id);
+const groupById = id => MENU.groups.find(g => g.id === id);
+
+// ---------- Lines ----------
+function versionLabel(v){ if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); }
+function buildLine(itemId, versionIdx, mods, lid){
+  const it = itemById(itemId); const v = (it.versions || [])[versionIdx] || {};
+  const counts = {};
+  for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
+  for (const m of mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0); }
+  return {lid: lid || uid(), itemId, name: it.name, station: it.station || 'none', versionIdx, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods, counts, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
+}
+const live = l => !l.removed;
+const linesFor = (o, v) => v.shows === 'all' ? o.lines : o.lines.filter(l => l.station === v.shows);
+
+// ---------- Rendering ----------
+const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function visibleOrders(v){
+  return ORDERS.filter(o => !o.cleared && (v.shows === 'all' ? o.lines.some(live) : linesFor(o, v).some(l => live(l) && !l.done)))
+    .sort((a, b) => (b.rush - a.rush) || (a.createdAtMs - b.createdAtMs));
+}
+function colorClass(o, v){
+  const t = (settings.thresholds || DEFAULT_T)[v.shows] || DEFAULT_T.all; const min = (Date.now() - o.createdAtMs) / 60000;
+  return min >= t.r ? 't-crit' : min >= t.y ? 't-warn' : 't-ok';
+}
+function renderCounts(v, orders){
+  const tot = {};
+  for (const o of orders) for (const l of linesFor(o, v)) if (live(l) && !l.done) for (const k in l.counts || {}) tot[k] = (tot[k] || 0) + l.counts[k];
+  const keys = Object.keys(tot).filter(k => tot[k] > 0).sort();
+  $('#counts').innerHTML = `<span class="lbl">Needed now</span>` + (keys.length ? keys.map(k => `<span class="chip"><b>${tot[k]}</b>${esc(k)}</span>`).join('') : `<span class="muted">${MENU.items.some(i => (i.counts || []).length) || MENU.groups.some(g => g.options.some(o => (o.counts || []).length)) ? 'Nothing open' : 'Set production counts in the menu editor to see totals here'}</span>`);
+}
+function ticketHtml(o, v){
+  const now = Date.now();
+  const lines = linesFor(o, v).filter(l => live(l) || now - l.changedAt < 90000);
+  const items = lines.map(l => {
+    const fresh = l.changed && now - l.changedAt < 90000;
+    const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : ''].join(' ');
+    const tag = l.removed ? '<span class="tag rem">REMOVED</span>' : fresh ? `<span class="tag new">${l.changed === 'added' ? 'NEW' : 'CHANGED'}</span>` : '';
+    const where = v.shows === 'all' ? `<div class="where">${l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
+    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${l.mods.length ? `<div class="mods">${l.mods.map(m => esc(m.o)).join(' · ')}</div>` : ''}${where}</div></li>`;
+  }).join('');
+  const edited = o.lines.some(l => l.changed && now - l.changedAt < 90000);
+  const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
+  const allDone = o.lines.filter(live).every(l => l.done);
+  const foot = v.id === 'runner'
+    ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
+    : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
+  return `<div class="ticket ${colorClass(o, v)} ${o.rush ? 'rush' : ''}" data-oid="${o.id}"><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - o.createdAtMs)}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
+}
+let lastFull = 0, pressing = false;
+document.addEventListener('pointerdown', () => { pressing = true; });
+document.addEventListener('pointerup', () => setTimeout(() => { pressing = false; }, 150));
+function render(){
+  lastFull = Date.now();
+  const v = view();
+  $('#stations').innerHTML = VIEWS.map(s => `<button class="${s.id === v.id ? 'on' : ''}" data-view="${s.id}">${s.label} (${visibleOrders(s).length})</button>`).join('');
+  const orders = visibleOrders(v);
+  renderCounts(v, orders);
+  $('#board').innerHTML = orders.length ? `<div class="${v.layout}">${orders.map(o => ticketHtml(o, v)).join('')}</div>` : `<div class="empty">No open tickets for ${v.label}</div>`;
+  if (drawerOpen) renderOpenList();
+}
+function tick(){
+  if (Date.now() - lastFull > 5000 && !pressing) return render();
+  const v = view();
+  document.querySelectorAll('.ticket[data-oid]').forEach(el => {
+    const o = ORDERS.find(x => x.id === el.dataset.oid); if (!o) return;
+    el.querySelector('.timer').textContent = fmt(Date.now() - o.createdAtMs);
+    const c = colorClass(o, v); if (!el.classList.contains(c)){ el.classList.remove('t-ok','t-warn','t-crit'); el.classList.add(c); }
+  });
+}
+let pendingRender = false;
+function onOrders(list){ ORDERS = list; if (pressing){ if (!pendingRender){ pendingRender = true; setTimeout(() => { pendingRender = false; render(); }, 200); } } else render(); }
+
+// ---------- Board actions ----------
+$('#stations').addEventListener('click', e => { const b = e.target.closest('button[data-view]'); if (!b) return; viewId = b.dataset.view; try { localStorage.setItem('kds-view', viewId); } catch(err){} render(); });
+function act(p){ p.catch(err => { console.error(err); alertBar('Could not save that change: ' + (err.message || err)); }); }
+function alertBar(msg){ $('#counts').insertAdjacentHTML('afterbegin', `<span class="chip err">${esc(msg)}</span>`); }
+$('#board').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (btn){
+    const id = btn.dataset.o, v = view(), a = btn.dataset.act;
+    if (a === 'edit') return openDrawer(ORDERS.find(o => o.id === id));
+    act(store.mutate(id, o => {
+      if (a === 'rush') o.rush = !o.rush;
+      if (a === 'clear'){ o.cleared = true; o.clearedAt = Date.now(); }
+      if (a === 'bumpall') for (const l of linesFor(o, v)) if (live(l) && !l.done){ l.done = true; l.doneAt = Date.now(); }
+    }));
+    return;
+  }
+  const li = e.target.closest('li.item'); if (!li || li.classList.contains('removed')) return;
+  li.classList.toggle('done');
+  act(store.mutate(li.dataset.o, o => { const l = o.lines.find(x => x.lid === li.dataset.l); if (l){ l.done = !l.done; l.doneAt = l.done ? Date.now() : 0; } }));
+});
+
+// ---------- Recall ----------
+const scrim = $('#scrim');
+function openModal(id){ $('#' + id).classList.add('open'); scrim.classList.add('open'); }
+function closeAll(){ document.querySelectorAll('.modal').forEach(m => m.classList.remove('open')); scrim.classList.remove('open'); closeDrawer(); }
+scrim.addEventListener('click', closeAll);
+$('#btnRecall').addEventListener('click', () => {
+  const v = view(); let list;
+  const lastDone = o => Math.max(0, ...linesFor(o, v).map(l => l.doneAt || 0));
+  if (v.shows === 'all') list = ORDERS.filter(o => o.cleared).sort((a, b) => b.clearedAt - a.clearedAt);
+  else list = ORDERS.filter(o => !o.cleared && linesFor(o, v).some(live) && linesFor(o, v).filter(live).every(l => l.done)).sort((a, b) => lastDone(b) - lastDone(a));
+  list = list.slice(0, 12);
+  $('#recallTitle').textContent = 'Recall · ' + v.label;
+  $('#recallList').innerHTML = list.length ? list.map(o => `<li><div><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${linesFor(o, v).filter(live).map(l => esc(l.name)).join(', ')}</span></div><button data-recall="${o.id}">Bring back</button></li>`).join('') : '<li class="muted">Nothing to recall yet.</li>';
+  openModal('recallModal');
+});
+$('#recallList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-recall]'); if (!b) return; const v = view();
+  act(store.mutate(b.dataset.recall, o => { if (v.shows === 'all') o.cleared = false; else for (const l of linesFor(o, v)){ l.done = false; l.doneAt = 0; } }));
+  closeAll();
+});
+$('#recallClose').addEventListener('click', closeAll);
+
+// ---------- Timing ----------
+$('#btnTiming').addEventListener('click', () => {
+  const t = settings.thresholds || DEFAULT_T; const labels = {espresso:'Espresso bar', kitchen:'Kitchen', all:'Runner'};
+  $('#threshRows').innerHTML = '<div class="muted">Station</div><div class="muted">Yellow at</div><div class="muted">Red at</div>' +
+    Object.keys(DEFAULT_T).map(k => `<div>${labels[k]}</div><input type="number" min="1" data-k="${k}" data-f="y" value="${t[k]?.y ?? DEFAULT_T[k].y}"><input type="number" min="1" data-k="${k}" data-f="r" value="${t[k]?.r ?? DEFAULT_T[k].r}">`).join('');
+  openModal('timingModal');
+});
+$('#timingSave').addEventListener('click', () => {
+  const t = structuredClone(settings.thresholds || DEFAULT_T);
+  document.querySelectorAll('#threshRows input').forEach(i => { const n = Number(i.value); if (n > 0){ t[i.dataset.k] = t[i.dataset.k] || {}; t[i.dataset.k][i.dataset.f] = n; } });
+  settings = {...settings, thresholds: t}; act(store.saveSettings(settings)); closeAll(); render();
+});
+$('#timingClose').addEventListener('click', closeAll);
+
+// ---------- Test register ----------
+const drawer = $('#drawer');
+let drawerOpen = false, editing = null, cart = [], rush = false;
+function openDrawer(order){
+  editing = order || null;
+  cart = order ? order.lines.filter(live).map(l => structuredClone(l)) : [];
+  rush = order ? order.rush : false;
+  $('#dTitle').textContent = order ? `Edit #${order.num} · ${order.name}` : 'New order';
+  $('#custName').value = order ? order.name : '';
+  $('#source').value = order ? order.source : 'register'; $('#source').disabled = !!order;
+  $('#dSend').textContent = order ? 'Save changes' : 'Send to kitchen';
+  drawerOpen = true; drawer.classList.add('open'); scrim.classList.add('open');
+  renderMenuBtns(); renderCart(); renderOpenList();
+}
+function closeDrawer(){ drawerOpen = false; drawer.classList.remove('open'); }
+function renderMenuBtns(){
+  const usable = MENU.items.filter(i => i.visible?.register !== false && !i.eightySixed);
+  const cats = [...new Set(usable.map(i => i.category || 'Other'))];
+  $('#menuBtns').innerHTML = cats.map(c => `<div class="muted" style="margin:8px 0 4px">${esc(c)}</div><div class="menu">${usable.filter(i => (i.category || 'Other') === c).sort((a,b) => a.name.localeCompare(b.name)).map(i => `<button data-add="${esc(i.id)}">${esc(i.name)}</button>`).join('')}</div>`).join('') || '<p class="muted">No menu items yet. Load the starter menu in the menu editor.</p>';
+}
+function renderCart(){
+  $('#cartEmpty').style.display = cart.length ? 'none' : 'block';
+  $('#cart').innerHTML = cart.map((l, i) => {
+    const it = itemById(l.itemId); if (!it) return `<li><div class="top"><span>${esc(l.name)}</span><button data-del="${i}">Remove</button></div></li>`;
+    const vers = it.versions || [];
+    const verRow = vers.length > 1 ? `<div class="modg"><span>Version</span>${vers.map((v, vi) => `<button class="${l.versionIdx === vi ? 'on' : ''}" data-i="${i}" data-ver="${vi}">${esc(versionLabel(v))}</button>`).join('')}</div>` : '';
+    const groups = (it.modifierGroupIds || []).map(groupById).filter(Boolean).map(g => `<div class="modg"><span>${esc(g.name)}${g.max === 1 ? ' (pick one)' : ''}</span>${g.options.map(o => `<button class="${l.mods.some(m => m.g === g.id && m.o === o.name) ? 'on' : ''}" data-i="${i}" data-g="${esc(g.id)}" data-mod="${esc(o.name)}">${esc(o.name)}</button>`).join('')}</div>`).join('');
+    return `<li><div class="top"><span>${esc(it.name)}</span><button data-del="${i}">Remove</button></div>${verRow}${groups}</li>`;
+  }).join('');
+  $('#dRush').textContent = 'Rush: ' + (rush ? 'on' : 'off'); $('#dRush').className = rush ? 'on' : '';
+}
+function renderOpenList(){
+  const open = ORDERS.filter(o => !o.cleared).sort((a, b) => a.createdAtMs - b.createdAtMs);
+  $('#openList').innerHTML = open.length ? open.map(o => `<li><span><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${fmt(Date.now() - o.createdAtMs)}${o.rush ? ' · RUSH' : ''}</span></span><span style="display:flex;gap:6px"><button data-orush="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-oedit="${o.id}">Edit</button></span></li>`).join('') : '<li class="muted">No open tickets.</li>';
+}
+$('#btnRegister').addEventListener('click', () => openDrawer(null));
+$('#dClose').addEventListener('click', closeAll);
+$('#dRush').addEventListener('click', () => { rush = !rush; renderCart(); });
+$('#menuBtns').addEventListener('click', e => {
+  const b = e.target.closest('button[data-add]'); if (!b) return;
+  const it = itemById(b.dataset.add); const mods = [];
+  for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (g.min >= 1 && g.options[0]) mods.push({g: g.id, o: g.options[0].name});
+  cart.push(buildLine(it.id, 0, mods)); renderCart();
+});
+$('#cart').addEventListener('click', e => {
+  const del = e.target.closest('button[data-del]'); if (del){ cart.splice(Number(del.dataset.del), 1); renderCart(); return; }
+  const vb = e.target.closest('button[data-ver]');
+  if (vb){ const i = Number(vb.dataset.i); const l = cart[i]; cart[i] = {...buildLine(l.itemId, Number(vb.dataset.ver), l.mods, l.lid), done:l.done, changed:l.changed, changedAt:l.changedAt}; renderCart(); return; }
+  const b = e.target.closest('button[data-mod]'); if (!b) return;
+  const i = Number(b.dataset.i); const l = cart[i]; const g = groupById(b.dataset.g); const name = b.dataset.mod;
+  let mods = l.mods.slice();
+  if (mods.some(m => m.g === g.id && m.o === name)) mods = mods.filter(m => !(m.g === g.id && m.o === name));
+  else { if (g.max === 1) mods = mods.filter(m => m.g !== g.id); mods.push({g: g.id, o: name}); }
+  cart[i] = {...buildLine(l.itemId, l.versionIdx, mods, l.lid), done:l.done, changed:l.changed, changedAt:l.changedAt}; renderCart();
+});
+$('#openList').addEventListener('click', e => {
+  const r = e.target.closest('button[data-orush]'); const ed = e.target.closest('button[data-oedit]');
+  if (r) act(store.mutate(r.dataset.orush, o => { o.rush = !o.rush; }));
+  if (ed) openDrawer(ORDERS.find(o => o.id === ed.dataset.oedit));
+});
+$('#dSend').addEventListener('click', () => {
+  const name = $('#custName').value.trim() || 'Guest';
+  if (!editing){
+    if (!cart.length) return;
+    act(store.createOrder({name, source: $('#source').value, rush, cleared:false, clearedAt:0, createdAtMs: Date.now(), lines: cart.map(l => ({...l, done:false, doneAt:0, changed:null, changedAt:0}))}));
+  } else {
+    const draft = cart.map(l => structuredClone(l)); const now = Date.now();
+    act(store.mutate(editing.id, o => {
+      const keep = new Set(draft.map(l => l.lid));
+      for (const l of o.lines) if (live(l) && !keep.has(l.lid)){ l.removed = true; l.changed = 'removed'; l.changedAt = now; }
+      for (const c of draft){
+        const l = o.lines.find(x => x.lid === c.lid);
+        if (!l) o.lines.push({...c, done:false, doneAt:0, changed:'added', changedAt:now});
+        else if (JSON.stringify([l.mods, l.versionIdx]) !== JSON.stringify([c.mods, c.versionIdx])) Object.assign(l, {...c, done:false, doneAt:0, changed:'modified', changedAt:now});
+      }
+      o.name = name; o.rush = rush;
+    }));
+  }
+  cart = []; editing = null; closeAll();
+});
+
+// ---------- Start ----------
+function setNet(){ const el = $('#net'); el.textContent = navigator.onLine ? 'Online' : 'Offline · changes will sync'; el.classList.toggle('off', !navigator.onLine); }
+addEventListener('online', setNet); addEventListener('offline', setNet); setNet();
+async function boot(){
+  $('#appView').classList.remove('hidden'); $('#loginView').classList.add('hidden');
+  MENU = await store.loadMenu(); settings = await store.getSettings().catch(() => settings);
+  store.subscribe(onOrders); render(); setInterval(tick, 500);
+}
+if (DEMO){
+  $('#modeLabel').textContent = 'Demo mode · nothing is saved';
+  store = demoStore(); boot();
+} else {
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  store = await firebaseStore(app); let booted = false;
+  A.onAuthStateChanged(auth, user => {
+    if (user && !booted){ booted = true; boot().catch(err => alertBar('Could not load: ' + err.message)); }
+    if (!user){ $('#loginView').classList.remove('hidden'); $('#appView').classList.add('hidden'); }
+  });
+  $('#signIn').addEventListener('click', async () => {
+    $('#loginMsg').textContent = 'Signing in…';
+    try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); $('#loginMsg').textContent = ''; }
+    catch (err){ $('#loginMsg').textContent = 'That email and password did not work.'; }
+  });
+  $('#password').addEventListener('keydown', e => { if (e.key === 'Enter') $('#signIn').click(); });
+}
+</script>
+</body>
+</html>
