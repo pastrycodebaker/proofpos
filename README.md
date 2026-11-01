@@ -46,3 +46,13 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 3. Stripe: create a sandbox and a restricted key, store it in Firebase secrets.
 4. Move tickets from the prototype's local storage into Firebase so every screen shares them.
 5. Register screen with Stripe Terminal in test mode, using a simulated reader.
+
+## Menu editor
+
+`admin/menu.html` — sign in with a Firebase Authentication user. Add `?demo` to the URL to try it without signing in (nothing is saved).
+
+- Items: name, category, station, where it shows (register, kiosk, online), alcohol, 86, price, modifier groups, production counts.
+- Drinks use a hot/iced × size grid instead of separate items per size. Blank cells mean that version isn't sold. The credit card price shows under each.
+- Modifier groups: each option is a flat price or priced by size, and can add to a production count.
+- Settings: sizes, credit card surcharge rate, category order, and the starter menu (`data/seed-menu.json`).
+- Data lives in Firestore under `menu/main` (settings), `menu/main/items`, `menu/main/modifierGroups`.

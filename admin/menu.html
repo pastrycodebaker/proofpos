@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof POS · Menu editor</title>
+<style>
+  :root{--bg:#f7f3ec;--panel:#fff;--line:#e4dccf;--ink:#2c2416;--quiet:#7a6a58;--accent:#8b5e3c;--accent-bg:#f4ede4;--warn-bg:#fff4d6;--warn:#7a5a00;--good:#2f7a47;--crit:#b23a2e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  button{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.danger{color:var(--crit)}
+  button.link{border:none;background:none;color:var(--accent);padding:4px;text-decoration:underline}
+  input,select,textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+  input[type=checkbox]{width:auto}
+  label{display:block;font-size:12px;color:var(--quiet);margin:10px 0 4px}
+  header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}
+  header h1{font-size:17px;margin:0 10px 0 0}
+  nav{display:flex;gap:6px}
+  nav button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .who{margin-left:auto;color:var(--quiet);font-size:13px;display:flex;gap:8px;align-items:center}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px;max-width:1300px;margin:0 auto}
+  @media(max-width:860px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .list{max-height:calc(100vh - 170px);overflow:auto;padding:0}
+  @media(max-width:860px){.list{max-height:none}}
+  .listhead{padding:12px;border-bottom:1px solid var(--line);display:grid;gap:8px;position:sticky;top:0;background:var(--panel)}
+  .row{display:flex;gap:8px;align-items:center}
+  .row > *{flex:1}
+  .li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+  .li:hover{background:var(--accent-bg)}
+  .li.sel{background:var(--accent-bg);box-shadow:inset 3px 0 0 var(--accent)}
+  .li .n{font-weight:600}
+  .li .s{font-size:12px;color:var(--quiet)}
+  .cat{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--quiet);padding:10px 12px 4px;background:var(--bg)}
+  .pill{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+  .p-86{background:var(--crit);color:#fff}
+  .p-rev{background:var(--warn-bg);color:var(--warn)}
+  .banner{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;justify-content:space-between;align-items:center}
+  h2{font-size:20px;margin:0}
+  h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--quiet);margin:20px 0 6px;border-top:1px solid var(--line);padding-top:14px}
+  .toggles{display:flex;flex-wrap:wrap;gap:8px}
+  .toggles label{display:flex;gap:6px;align-items:center;margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink);font-size:14px;cursor:pointer}
+  .toggles label.on{background:var(--accent-bg);border-color:var(--accent)}
+  table.grid{border-collapse:collapse;width:100%;font-size:14px}
+  table.grid th{font-size:12px;color:var(--quiet);font-weight:500;text-align:left;padding:4px}
+  table.grid td{padding:4px;vertical-align:top}
+  table.grid input{width:84px;padding:6px}
+  .cc{font-size:11px;color:var(--quiet);margin-top:2px}
+  .scroll{overflow-x:auto}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+  .muted{color:var(--quiet);font-size:13px}
+  .bar{display:flex;gap:8px;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .status{font-size:13px;color:var(--quiet)}
+  .status.ok{color:var(--good)} .status.err{color:var(--crit)}
+  .login{max-width:360px;margin:12vh auto}
+  .hidden{display:none}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .countrow{display:grid;grid-template-columns:1fr 70px 120px 36px;gap:6px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="loginView" class="login card hidden">
+  <h2>Proof POS</h2>
+  <p class="muted">Sign in to edit the menu.</p>
+  <label>Email</label><input id="email" type="email" autocomplete="username">
+  <label>Password</label><input id="password" type="password" autocomplete="current-password">
+  <div class="bar"><button class="primary" id="signIn">Sign in</button><span class="status" id="loginStatus"></span></div>
+</div>
+
+<div id="appView" class="hidden">
+  <header>
+    <h1>Menu editor</h1>
+    <nav id="tabs">
+      <button data-tab="items" class="on">Items</button>
+      <button data-tab="groups">Modifier groups</button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+    <div class="who"><span id="whoName"></span><button id="signOut">Sign out</button></div>
+  </header>
+  <div class="wrap">
+    <div class="card list" id="listPane"></div>
+    <div class="card" id="editPane"></div>
+  </div>
+</div>
+
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const money = n => (n === null || n === undefined || n === '' || isNaN(n)) ? '' : '$' + Number(n).toFixed(2);
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+const STATIONS = {espresso:'Espresso bar', kitchen:'Kitchen', none:'Grab and go (runner)'};
+const TEMPS = [['hot','Hot'],['iced','Iced'],['','No temp']];
+
+// ---------- Data layer ----------
+let store;
+async function seedData(){ const r = await fetch('../data/seed-menu.json'); return r.json(); }
+function memoryStore(){
+  let data = {settings:{sizes:['4 oz','8 oz','12 oz','16 oz','20 oz','Double','Quad'], surchargeRate:0.03, categories:[]}, items:[], groups:[]};
+  return {
+    async loadAll(){ return structuredClone(data); },
+    async saveItem(it){ data.items = data.items.filter(x => x.id !== it.id).concat([structuredClone(it)]); },
+    async deleteItem(id){ data.items = data.items.filter(x => x.id !== id); },
+    async saveGroup(g){ data.groups = data.groups.filter(x => x.id !== g.id).concat([structuredClone(g)]); },
+    async deleteGroup(id){ data.groups = data.groups.filter(x => x.id !== id); },
+    async saveSettings(s){ data.settings = structuredClone(s); },
+    async loadSeed(seed){ data = {settings:seed.settings, items:seed.items, groups:seed.modifierGroups}; },
+  };
+}
+async function firestoreStore(app){
+  const fs = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const db = fs.getFirestore(app);
+  const root = fs.doc(db, 'menu', 'main');
+  const items = fs.collection(db, 'menu', 'main', 'items');
+  const groups = fs.collection(db, 'menu', 'main', 'modifierGroups');
+  return {
+    async loadAll(){
+      const [s, i, g] = await Promise.all([fs.getDoc(root), fs.getDocs(items), fs.getDocs(groups)]);
+      return {settings: s.exists() ? s.data() : {sizes:['4 oz','8 oz','12 oz','16 oz','20 oz','Double','Quad'], surchargeRate:0.03, categories:[]},
+              items: i.docs.map(d => d.data()), groups: g.docs.map(d => d.data())};
+    },
+    saveItem: it => fs.setDoc(fs.doc(items, it.id), it),
+    deleteItem: id => fs.deleteDoc(fs.doc(items, id)),
+    saveGroup: g => fs.setDoc(fs.doc(groups, g.id), g),
+    deleteGroup: id => fs.deleteDoc(fs.doc(groups, id)),
+    saveSettings: s => fs.setDoc(root, s),
+    async loadSeed(seed){
+      let batch = fs.writeBatch(db), n = 0;
+      const flush = async () => { await batch.commit(); batch = fs.writeBatch(db); n = 0; };
+      batch.set(root, seed.settings); n++;
+      for (const it of seed.items){ batch.set(fs.doc(items, it.id), it); if (++n >= 400) await flush(); }
+      for (const g of seed.modifierGroups){ batch.set(fs.doc(groups, g.id), g); if (++n >= 400) await flush(); }
+      await batch.commit();
+    },
+  };
+}
+
+// ---------- State ----------
+let S = {settings:{}, items:[], groups:[]};
+let tab = 'items', selId = null, search = '', filter = 'all';
+const credit = p => Math.round(p * (1 + (S.settings.surchargeRate || 0)) * 100) / 100;
+
+async function reload(){ S = await store.loadAll(); S.items.sort((a,b) => a.name.localeCompare(b.name)); S.groups.sort((a,b) => a.name.localeCompare(b.name)); render(); }
+
+// ---------- Rendering ----------
+function render(){
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'items') { renderItemList(); renderItemEditor(); }
+  if (tab === 'groups') { renderGroupList(); renderGroupEditor(); }
+  if (tab === 'settings') { $('#listPane').innerHTML = `<div class="listhead"><b>Settings</b><div class="muted">Sizes, credit card surcharge, categories and the starter menu.</div></div>`; renderSettings(); }
+}
+function priceSummary(it){
+  const v = (it.versions || []).filter(x => x.price !== null && x.price !== '' && x.price !== undefined);
+  if (!v.length) return 'No price';
+  if (v.length === 1) return money(v[0].price);
+  const ps = v.map(x => Number(x.price)); return `${money(Math.min(...ps))}–${money(Math.max(...ps))} · ${v.length} versions`;
+}
+function renderItemList(){
+  const q = search.toLowerCase();
+  let list = S.items.filter(i => !q || i.name.toLowerCase().includes(q));
+  if (filter === 'review') list = list.filter(i => i.review);
+  if (filter === '86') list = list.filter(i => i.eightySixed);
+  const cats = [...new Set(list.map(i => i.category || 'Other'))].sort((a,b) => (S.settings.categories || []).indexOf(a) - (S.settings.categories || []).indexOf(b));
+  const nRev = S.items.filter(i => i.review).length;
+  $('#listPane').innerHTML = `<div class="listhead">
+      <div class="row"><input id="search" placeholder="Search items" value="${esc(search)}"><button class="primary" id="newItem" style="flex:none">New item</button></div>
+      <div class="row"><select id="filter"><option value="all">All items (${S.items.length})</option><option value="review" ${filter==='review'?'selected':''}>Needs review (${nRev})</option><option value="86" ${filter==='86'?'selected':''}>86'd</option></select></div>
+    </div>` +
+    (S.items.length ? '' : `<div style="padding:16px" class="muted">No items yet. Load the starter menu from Settings.</div>`) +
+    cats.map(c => `<div class="cat">${esc(c)}</div>` + list.filter(i => (i.category || 'Other') === c).map(i =>
+      `<div class="li ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}"><div><div class="n">${esc(i.name)}</div><div class="s">${esc(priceSummary(i))} · ${esc(STATIONS[i.station] || '')}</div></div><div class="chips">${i.eightySixed ? '<span class="pill p-86">86</span>' : ''}${i.review ? '<span class="pill p-rev">Review</span>' : ''}</div></div>`).join('')).join('');
+}
+function versionMode(it){ return (it.versions || []).some(v => v.size || v.temp) ? 'sizes' : 'single'; }
+function renderItemEditor(){
+  const it = S.items.find(i => i.id === selId);
+  if (!it){ $('#editPane').innerHTML = `<p class="muted">Pick an item on the left, or add a new one.</p>`; return; }
+  const mode = versionMode(it);
+  const single = mode === 'single' ? (it.versions?.[0]?.price ?? '') : '';
+  const sizes = S.settings.sizes || [];
+  const cell = (t, s) => { const v = (it.versions || []).find(x => x.temp === t && x.size === s); return v ? v.price : ''; };
+  const usedTemps = TEMPS.filter(([t]) => (it.versions || []).some(v => v.temp === t));
+  $('#editPane').innerHTML = `
+    ${it.review ? `<div class="banner"><div><b>Check this item.</b> Price source: ${esc(it.review.source)}.${it.review.note ? ' ' + esc(it.review.note) : ''}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="f_reviewed"> Reviewed</label></div>` : ''}
+    <h2>${esc(it.name)}</h2>
+    <div class="row"><div><label>Name</label><input id="f_name" value="${esc(it.name)}"></div><div><label>Category</label><input id="f_cat" list="catlist" value="${esc(it.category)}"><datalist id="catlist">${(S.settings.categories || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>
+    <label>Description</label><input id="f_desc" value="${esc(it.description)}">
+    <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div><div></div></div>
+    <h3>Where it shows</h3>
+    <div class="toggles">
+      ${[['register','Register'],['kiosk','Kiosk'],['online','Online']].map(([k,l]) => `<label class="${it.visible?.[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${it.visible?.[k] ? 'checked' : ''}>${l}</label>`).join('')}
+      <label class="${it.alcohol ? 'on' : ''}"><input type="checkbox" id="f_alcohol" ${it.alcohol ? 'checked' : ''}>Alcohol (ID check, never kiosk or online)</label>
+      <label class="${it.eightySixed ? 'on' : ''}"><input type="checkbox" id="f_86" ${it.eightySixed ? 'checked' : ''}>86'd</label>
+    </div>
+    <h3>Price</h3>
+    <div class="toggles"><label class="${mode==='single'?'on':''}"><input type="radio" name="pmode" value="single" ${mode==='single'?'checked':''}>One price</label><label class="${mode==='sizes'?'on':''}"><input type="radio" name="pmode" value="sizes" ${mode==='sizes'?'checked':''}>Hot / iced and sizes</label></div>
+    <div id="singleBox" class="${mode==='single'?'':'hidden'}"><label>Price (cash and debit)</label><div class="row" style="max-width:320px"><input id="f_price" type="number" step="0.01" min="0" value="${esc(single)}"><span class="muted" id="singleCC">${single !== '' ? 'Credit card ' + money(credit(Number(single))) : ''}</span></div></div>
+    <div id="sizesBox" class="${mode==='sizes'?'':'hidden'}">
+      <p class="muted">Fill in the versions you sell. Blank means not offered. Credit card price shows under each.</p>
+      <div class="scroll"><table class="grid"><tr><th></th>${sizes.map(s => `<th>${esc(s)}</th>`).join('')}</tr>
+      ${TEMPS.map(([t,l]) => `<tr><td style="padding-top:10px">${l}</td>${sizes.map(s => { const p = cell(t,s); return `<td><input type="number" step="0.01" min="0" data-t="${t}" data-s="${esc(s)}" value="${esc(p)}"><div class="cc">${p !== '' && p !== null ? money(credit(Number(p))) : ''}</div></td>`; }).join('')}</tr>`).join('')}
+      </table></div>
+    </div>
+    <h3>Modifier groups</h3>
+    <div class="toggles">${S.groups.map(g => { const on = (it.modifierGroupIds || []).includes(g.id); return `<label class="${on?'on':''}"><input type="checkbox" data-grp="${esc(g.id)}" ${on?'checked':''}>${esc(g.name)}</label>`; }).join('') || '<span class="muted">No modifier groups yet.</span>'}</div>
+    <h3>Production counts</h3>
+    <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
+    <div id="counts">${(it.counts || []).map(c => countRow(c, sizes)).join('')}</div>
+    <button id="addCount">Add count</button>
+    <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button class="danger" id="delItem">Delete item</button></div>
+    <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
+}
+function countRow(c, sizes){
+  return `<div class="countrow"><input placeholder="Eggs, shots..." data-c="name" value="${esc(c.name)}"><input type="number" step="1" min="0" data-c="qty" value="${esc(c.qty)}"><select data-c="size"><option value="">All sizes</option>${sizes.map(s => `<option ${c.size === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select><button data-c="del" aria-label="Remove count">✕</button></div>`;
+}
+function readItemForm(it){
+  const out = structuredClone(it);
+  out.name = $('#f_name').value.trim() || it.name;
+  out.category = $('#f_cat').value.trim();
+  out.description = $('#f_desc').value.trim();
+  out.station = $('#f_station').value;
+  out.visible = {}; document.querySelectorAll('[data-vis]').forEach(c => out.visible[c.dataset.vis] = c.checked);
+  out.alcohol = $('#f_alcohol').checked; out.eightySixed = $('#f_86').checked;
+  if (out.alcohol){ out.visible.kiosk = false; out.visible.online = false; }
+  const mode = document.querySelector('input[name=pmode]:checked').value;
+  if (mode === 'single'){ const p = $('#f_price').value; out.versions = [{temp:'', size:'', price: p === '' ? null : Number(p)}]; }
+  else out.versions = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => ({temp:i.dataset.t, size:i.dataset.s, price:Number(i.value)}));
+  out.modifierGroupIds = [...document.querySelectorAll('[data-grp]')].filter(c => c.checked).map(c => c.dataset.grp);
+  out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
+  if (it.review && $('#f_reviewed')?.checked) out.review = null;
+  return out;
+}
+
+// ---------- Modifier groups ----------
+function renderGroupList(){
+  $('#listPane').innerHTML = `<div class="listhead"><div class="row"><b>Modifier groups</b><button class="primary" id="newGroup" style="flex:none">New group</button></div><div class="muted">Build a group once and attach it to every item that uses it.</div></div>` +
+    S.groups.map(g => `<div class="li ${g.id === selId ? 'sel' : ''}" data-gid="${esc(g.id)}"><div><div class="n">${esc(g.name)}</div><div class="s">${g.options.length} options · used by ${S.items.filter(i => (i.modifierGroupIds || []).includes(g.id)).length} items</div></div>${g.review ? '<span class="pill p-rev">Review</span>' : ''}</div>`).join('');
+}
+const RULES = [['1,1','Pick exactly one'],['0,1','Pick up to one'],['0,9','Pick any number'],['1,9','Pick at least one']];
+function renderGroupEditor(){
+  const g = S.groups.find(x => x.id === selId);
+  if (!g){ $('#editPane').innerHTML = `<p class="muted">Pick a group on the left, or add a new one.</p>`; return; }
+  const sizes = S.settings.sizes || [];
+  const rule = `${g.min},${g.max}`;
+  $('#editPane').innerHTML = `
+    ${g.review ? `<div class="banner"><div><b>Check this group.</b> ${esc(g.review.note || '')}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="g_reviewed"> Reviewed</label></div>` : ''}
+    <h2>${esc(g.name)}</h2>
+    <div class="row"><div><label>Name</label><input id="g_name" value="${esc(g.name)}"></div><div><label>Choices</label><select id="g_rule">${RULES.map(([v,l]) => `<option value="${v}" ${v===rule?'selected':''}>${l}</option>`).join('')}${RULES.some(([v]) => v === rule) ? '' : `<option value="${rule}" selected>Min ${g.min}, max ${g.max}</option>`}</select></div></div>
+    <h3>Options</h3>
+    <p class="muted">"By size" lets an add-on cost more in a bigger drink. Blank sizes use the flat price.</p>
+    <div id="opts">${g.options.map(o => optRow(o, sizes)).join('')}</div>
+    <button id="addOpt">Add option</button>
+    <div class="bar"><button class="primary" id="saveGroup">Save</button><span class="status" id="groupStatus"></span><span style="flex:1"></span><button class="danger" id="delGroup">Delete group</button></div>`;
+}
+function optRow(o, sizes){
+  const c = (o.counts || [])[0] || {name:'', qty:''};
+  return `<div class="opt">
+    <div class="row"><div><label>Option</label><input data-o="name" value="${esc(o.name)}"></div>
+      <div><label>Pricing</label><select data-o="pricing"><option value="flat" ${o.pricing!=='bySize'?'selected':''}>Flat</option><option value="bySize" ${o.pricing==='bySize'?'selected':''}>By size</option></select></div>
+      <div><label>Price</label><input type="number" step="0.01" min="0" data-o="price" value="${esc(o.price ?? 0)}"></div>
+      <div style="flex:none;align-self:end"><button data-o="del" aria-label="Remove option">✕</button></div></div>
+    <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(s)}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
+    <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div></div>
+  </div>`;
+}
+function readGroupForm(g){
+  const out = structuredClone(g);
+  out.name = $('#g_name').value.trim() || g.name;
+  const [mn, mx] = $('#g_rule').value.split(',').map(Number); out.min = mn; out.max = mx;
+  out.options = [...document.querySelectorAll('#opts .opt')].map(el => {
+    const bySize = {}; el.querySelectorAll('[data-bs]').forEach(i => { if (i.value !== '') bySize[i.dataset.bs] = Number(i.value); });
+    const cname = el.querySelector('[data-o=cname]').value.trim();
+    return {name: el.querySelector('[data-o=name]').value.trim(), pricing: el.querySelector('[data-o=pricing]').value, price: Number(el.querySelector('[data-o=price]').value || 0), bySize,
+            counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : []};
+  }).filter(o => o.name);
+  if (g.review && $('#g_reviewed')?.checked) out.review = null;
+  return out;
+}
+
+// ---------- Settings ----------
+function renderSettings(){
+  const s = S.settings;
+  $('#editPane').innerHTML = `<h2>Settings</h2>
+    <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
+    <label>Credit card surcharge (%)</label><input id="s_rate" type="number" step="0.1" min="0" max="3" value="${esc(((s.surchargeRate || 0) * 100).toFixed(1))}" style="max-width:140px">
+    <p class="muted">New York requires the credit card price to be posted per item. The register will also cap it at Stripe's actual fee on each order.</p>
+    <label>Categories, in menu order, separated by commas</label><input id="s_cats" value="${esc((s.categories || []).join(', '))}">
+    <div class="bar"><button class="primary" id="saveSettings">Save settings</button><span class="status" id="setStatus"></span></div>
+    <h3>Starter menu</h3>
+    ${S.items.length ? `<p class="muted">Your menu has ${S.items.length} items. Reloading the starter menu replaces items and groups with the same names and undoes edits to them.</p><div class="row" style="max-width:520px"><input id="confirmSeed" placeholder="Type RELOAD to confirm"><button id="seedBtn">Reload starter menu</button></div>`
+      : `<p class="muted">Loads the drinks with sizes from your website menu, sandwiches, and every item from the October Toast export. Each item is marked for review with where its price came from.</p><button class="primary" id="seedBtn">Load starter menu</button>`}
+    <span class="status" id="seedStatus"></span>`;
+}
+
+// ---------- Events ----------
+document.addEventListener('input', e => {
+  if (e.target.id === 'search'){ search = e.target.value; renderItemList(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+  if (e.target.id === 'f_price'){ const v = e.target.value; $('#singleCC').textContent = v !== '' ? 'Credit card ' + money(credit(Number(v))) : ''; }
+  if (e.target.dataset?.s !== undefined && e.target.closest('#sizesBox')){ e.target.nextElementSibling.textContent = e.target.value !== '' ? money(credit(Number(e.target.value))) : ''; }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'filter'){ filter = t.value; renderItemList(); }
+  if (t.name === 'pmode'){ $('#singleBox').classList.toggle('hidden', t.value !== 'single'); $('#sizesBox').classList.toggle('hidden', t.value !== 'sizes'); }
+  if (t.type === 'checkbox' || t.type === 'radio'){ const l = t.closest('.toggles label'); if (l){ if (t.type === 'radio') l.parentElement.querySelectorAll('label').forEach(x => x.classList.remove('on')); l.classList.toggle('on', t.checked); } }
+  if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
+});
+function status(id, msg, kind){ const el = $(id); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const tabBtn = t.closest('#tabs button'); if (tabBtn){ tab = tabBtn.dataset.tab; selId = null; render(); return; }
+  const li = t.closest('.li[data-id]'); if (li){ selId = li.dataset.id; renderItemList(); renderItemEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
+  const gli = t.closest('.li[data-gid]'); if (gli){ selId = gli.dataset.gid; renderGroupList(); renderGroupEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
+  try {
+    if (t.id === 'newItem'){
+      let id = 'new-item', n = 1; while (S.items.some(i => i.id === id)) id = 'new-item-' + (++n);
+      const it = {id, name:'New item', description:'', category:(S.settings.categories || [])[0] || '', station:'none', visible:{register:true,kiosk:true,online:true}, alcohol:false, eightySixed:false, versions:[{temp:'',size:'',price:null}], modifierGroupIds:[], counts:[], review:null};
+      await store.saveItem(it); selId = id; await reload();
+    }
+    if (t.id === 'addCount'){ $('#counts').insertAdjacentHTML('beforeend', countRow({name:'', qty:1, size:''}, S.settings.sizes || [])); }
+    if (t.dataset?.c === 'del'){ t.closest('.countrow').remove(); }
+    if (t.id === 'saveItem'){
+      const it = S.items.find(i => i.id === selId); const out = readItemForm(it);
+      status('#itemStatus', 'Saving…'); await store.saveItem(out); await reload(); status('#itemStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'delItem'){
+      if (t.dataset.armed){ await store.deleteItem(selId); selId = null; await reload(); }
+      else { t.dataset.armed = '1'; t.textContent = 'Tap again to delete'; }
+    }
+    if (t.id === 'newGroup'){
+      let id = 'new-group', n = 1; while (S.groups.some(g => g.id === id)) id = 'new-group-' + (++n);
+      await store.saveGroup({id, name:'New group', min:0, max:1, options:[], review:null}); selId = id; await reload();
+    }
+    if (t.id === 'addOpt'){ $('#opts').insertAdjacentHTML('beforeend', optRow({name:'', pricing:'flat', price:0, bySize:{}, counts:[]}, S.settings.sizes || [])); }
+    if (t.dataset?.o === 'del'){ t.closest('.opt').remove(); }
+    if (t.id === 'saveGroup'){
+      const g = S.groups.find(x => x.id === selId); const out = readGroupForm(g);
+      status('#groupStatus', 'Saving…'); await store.saveGroup(out); await reload(); status('#groupStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'delGroup'){
+      const used = S.items.filter(i => (i.modifierGroupIds || []).includes(selId)).length;
+      if (used){ status('#groupStatus', `Used by ${used} items. Remove it from those items first.`, 'err'); return; }
+      if (t.dataset.armed){ await store.deleteGroup(selId); selId = null; await reload(); }
+      else { t.dataset.armed = '1'; t.textContent = 'Tap again to delete'; }
+    }
+    if (t.id === 'saveSettings'){
+      const rate = Math.min(3, Math.max(0, Number($('#s_rate').value || 0))) / 100;
+      const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), surchargeRate: rate, categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean)};
+      await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'seedBtn'){
+      if (S.items.length && $('#confirmSeed').value.trim() !== 'RELOAD'){ status('#seedStatus', 'Type RELOAD first.', 'err'); return; }
+      status('#seedStatus', 'Loading…'); await store.loadSeed(await seedData()); await reload(); status('#seedStatus', 'Starter menu loaded', 'ok');
+    }
+  } catch (err){ console.error(err); const s = document.querySelector('.status'); if (s){ s.textContent = 'Could not save: ' + (err.message || err); s.className = 'status err'; } }
+});
+
+// ---------- Start ----------
+if (DEMO){
+  store = memoryStore(); $('#appView').classList.remove('hidden'); $('#whoName').textContent = 'Demo mode (nothing is saved)'; $('#signOut').classList.add('hidden'); reload();
+} else {
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  store = await firestoreStore(app);
+  A.onAuthStateChanged(auth, user => {
+    $('#loginView').classList.toggle('hidden', !!user); $('#appView').classList.toggle('hidden', !user);
+    if (user){ $('#whoName').textContent = user.email; reload().catch(err => { $('#editPane').innerHTML = `<p class="status err">Could not load the menu: ${esc(err.message)}</p>`; }); }
+  });
+  $('#signIn').addEventListener('click', async () => {
+    status('#loginStatus', 'Signing in…');
+    try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); }
+    catch (err){ status('#loginStatus', 'That email and password did not work.', 'err'); }
+  });
+  $('#password').addEventListener('keydown', e => { if (e.key === 'Enter') $('#signIn').click(); });
+  $('#signOut').addEventListener('click', () => A.signOut(auth));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,4006 @@
+{
+ "settings": {
+  "sizes": [
+   "4 oz",
+   "8 oz",
+   "12 oz",
+   "16 oz",
+   "20 oz",
+   "Double",
+   "Quad"
+  ],
+  "surchargeRate": 0.03,
+  "categories": [
+   "Sandwiches",
+   "Coffee and drinks",
+   "Pastries and bread",
+   "Bagels",
+   "Retail",
+   "Beer, wine and cocktails"
+  ]
+ },
+ "items": [
+  {
+   "id": "espresso",
+   "name": "Espresso",
+   "description": "Double / quad",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "Double",
+     "price": 3.5
+    },
+    {
+     "temp": "",
+     "size": "Quad",
+     "price": 6.5
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 15
+  },
+  {
+   "id": "drip-coffee",
+   "name": "Drip Coffee",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "8 oz",
+     "price": 2.0
+    },
+    {
+     "temp": "hot",
+     "size": "12 oz",
+     "price": 2.8
+    },
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 3.25
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 811
+  },
+  {
+   "id": "cappuccino",
+   "name": "Cappuccino",
+   "description": "Espresso and steamed milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "12 oz",
+     "price": 5.1
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 165
+  },
+  {
+   "id": "macchiato",
+   "name": "Macchiato",
+   "description": "Espresso with milk foam",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "4 oz",
+     "price": 4.3
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 8
+  },
+  {
+   "id": "cortado",
+   "name": "Cortado",
+   "description": "Equal parts espresso and steamed milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "8 oz",
+     "price": 4.6
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 39
+  },
+  {
+   "id": "latte",
+   "name": "Latte",
+   "description": "Espresso and milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 6.75
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 5.95
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 6.3
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Hot price looks high next to iced; the website PDF had scrambled columns."
+   },
+   "octQtySold": 2231
+  },
+  {
+   "id": "mocha",
+   "name": "Mocha",
+   "description": "Espresso, ganache, and milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 7.3
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 5.95
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Hot vs iced gap looks off; check both."
+   },
+   "octQtySold": 119
+  },
+  {
+   "id": "americano",
+   "name": "Americano",
+   "description": "Espresso and water",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "12 oz",
+     "price": 3.8
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 4.6
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 198
+  },
+  {
+   "id": "red-eye",
+   "name": "Red Eye",
+   "description": "Drip coffee or cold brew with a shot of espresso",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 5.95
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 8.2
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 8.7
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Iced looks high next to hot; check both."
+   },
+   "octQtySold": 29
+  },
+  {
+   "id": "honeybee-coffee",
+   "name": "Honeybee Coffee",
+   "description": "Iced coffee with honey, optional creamer",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 4.3
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 4.6
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 145
+  },
+  {
+   "id": "cold-brew",
+   "name": "Cold Brew",
+   "description": "Steeped in house",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 5.25
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 5.75
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 447
+  },
+  {
+   "id": "hot-chocolate",
+   "name": "Hot Chocolate",
+   "description": "Made with ganache",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "12 oz",
+     "price": 3.8
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 106
+  },
+  {
+   "id": "lemonade",
+   "name": "Lemonade",
+   "description": "Ask about our special flavors",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 3.8
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Website listed one price with no size; set as iced 16 oz."
+   },
+   "octQtySold": 117
+  },
+  {
+   "id": "chai-latte",
+   "name": "Chai Latte",
+   "description": "Chai concentrate and milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 5.75
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 5.95
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 6.2
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 416
+  },
+  {
+   "id": "london-fog-mist",
+   "name": "London Fog / Mist",
+   "description": "Earl Grey tea, vanilla syrup, milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 4.3
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 4.3
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 4.6
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 120
+  },
+  {
+   "id": "matcha",
+   "name": "Matcha",
+   "description": "Powdered matcha and milk",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 4.5
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 4.3
+    }
+   ],
+   "modifierGroupIds": [
+    "milk",
+    "syrup",
+    "cold-foam"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 192
+  },
+  {
+   "id": "tea",
+   "name": "Tea",
+   "description": "Ask about our selection",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "hot",
+     "size": "16 oz",
+     "price": 1.6
+    },
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 2.15
+    },
+    {
+     "temp": "iced",
+     "size": "20 oz",
+     "price": 2.4
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 168
+  },
+  {
+   "id": "kombucha-on-tap",
+   "name": "Kombucha on Tap",
+   "description": "Ask about our selection",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "iced",
+     "size": "16 oz",
+     "price": 8.5
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 35
+  },
+  {
+   "id": "beertree-ipa",
+   "name": "Beertree IPA",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.41."
+   },
+   "octQtySold": 3
+  },
+  {
+   "id": "grow-camplight",
+   "name": "grow camplight",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.56."
+   },
+   "octQtySold": 1
+  },
+  {
+   "id": "flosa-mimosa",
+   "name": "Flosa Mimosa",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $11.12."
+   },
+   "octQtySold": 14
+  },
+  {
+   "id": "bloody-mary",
+   "name": "Bloody Mary",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $12.04."
+   },
+   "octQtySold": 9
+  },
+  {
+   "id": "sandy-cove-sauv-blanc",
+   "name": "Sandy Cove, Sauv Blanc",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $11.12."
+   },
+   "octQtySold": 4
+  },
+  {
+   "id": "bacchus-chardonnay",
+   "name": "Bacchus Chardonnay",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $9.26."
+   },
+   "octQtySold": 2
+  },
+  {
+   "id": "cora-rose",
+   "name": "Cora Rose",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.40."
+   },
+   "octQtySold": 2
+  },
+  {
+   "id": "clovis-blend-red",
+   "name": "Clovis Blend (red)",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $9.26."
+   },
+   "octQtySold": 1
+  },
+  {
+   "id": "anahata-cab-sauv",
+   "name": "Anahata cab sauv",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $9.26."
+   },
+   "octQtySold": 1
+  },
+  {
+   "id": "sparkling-prosecco",
+   "name": "Sparkling - prosecco",
+   "description": "",
+   "category": "Beer, wine and cocktails",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": false
+   },
+   "alcohol": true,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $0.00."
+   },
+   "octQtySold": 0
+  },
+  {
+   "id": "single-bagel",
+   "name": "Single Bagel",
+   "description": "",
+   "category": "Bagels",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.59."
+   },
+   "octQtySold": 223
+  },
+  {
+   "id": "half-dozen-bagels",
+   "name": "Half Dozen Bagels",
+   "description": "",
+   "category": "Bagels",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $9.32."
+   },
+   "octQtySold": 94
+  },
+  {
+   "id": "one-dozen-bagels",
+   "name": "One Dozen Bagels",
+   "description": "",
+   "category": "Bagels",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $18.65."
+   },
+   "octQtySold": 64
+  },
+  {
+   "id": "gluten-free-bagel-single",
+   "name": "Gluten Free Bagel, Single",
+   "description": "",
+   "category": "Bagels",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.50."
+   },
+   "octQtySold": 36
+  },
+  {
+   "id": "day-old-bagel-bag",
+   "name": "Day Old Bagel Bag",
+   "description": "",
+   "category": "Bagels",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.50."
+   },
+   "octQtySold": 33
+  },
+  {
+   "id": "kombucha",
+   "name": "Kombucha",
+   "description": "",
+   "category": "Bulk Bagels and More",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $0.00."
+   },
+   "octQtySold": 0
+  },
+  {
+   "id": "chaider",
+   "name": "Chaider",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.34."
+   },
+   "octQtySold": 385
+  },
+  {
+   "id": "salted-maple-matcha",
+   "name": "Salted Maple Matcha",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.98."
+   },
+   "octQtySold": 162
+  },
+  {
+   "id": "cider",
+   "name": "Cider",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.84."
+   },
+   "octQtySold": 49
+  },
+  {
+   "id": "doctor-s-orders",
+   "name": "Doctor's Orders",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.04."
+   },
+   "octQtySold": 23
+  },
+  {
+   "id": "cafe-au-lait",
+   "name": "Cafe Au Lait",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.14."
+   },
+   "octQtySold": 21
+  },
+  {
+   "id": "florentine-the-brooks",
+   "name": "Florentine / \"The Brooks\"",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.90."
+   },
+   "octQtySold": 10
+  },
+  {
+   "id": "steamer",
+   "name": "Steamer",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.09."
+   },
+   "octQtySold": 8
+  },
+  {
+   "id": "matcha-lemonade",
+   "name": "Matcha Lemonade",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.54."
+   },
+   "octQtySold": 4
+  },
+  {
+   "id": "whole-milk-8-oz",
+   "name": "Whole Milk 8 oz",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.27."
+   },
+   "octQtySold": 4
+  },
+  {
+   "id": "16-oz-hot-chocolate-chai",
+   "name": "16 oz Hot Chocolate Chai",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.02."
+   },
+   "octQtySold": 3
+  },
+  {
+   "id": "ice-water-16-oz",
+   "name": "Ice Water 16 oz",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $0.70."
+   },
+   "octQtySold": 3
+  },
+  {
+   "id": "iced-chocolate-chai",
+   "name": "Iced Chocolate Chai",
+   "description": "",
+   "category": "Coffee and drinks",
+   "station": "espresso",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.02."
+   },
+   "octQtySold": 2
+  },
+  {
+   "id": "house-sourdough",
+   "name": "House Sourdough",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $8.00."
+   },
+   "octQtySold": 207
+  },
+  {
+   "id": "red-wheat-sourdough",
+   "name": "Red Wheat Sourdough",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $9.00."
+   },
+   "octQtySold": 31
+  },
+  {
+   "id": "day-old-bread",
+   "name": "Day Old Bread",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.29."
+   },
+   "octQtySold": 14
+  },
+  {
+   "id": "brioche-sandwich-rolls-half-dozen",
+   "name": "Brioche Sandwich Rolls, half dozen",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.50."
+   },
+   "octQtySold": 13
+  },
+  {
+   "id": "vegan-chocolate-chip-cookie",
+   "name": "Vegan Chocolate Chip Cookie",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.75."
+   },
+   "octQtySold": 896
+  },
+  {
+   "id": "cinnamon-bun",
+   "name": "Cinnamon Bun",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.50."
+   },
+   "octQtySold": 664
+  },
+  {
+   "id": "muffin-seasonal",
+   "name": "Muffin, Seasonal",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.25."
+   },
+   "octQtySold": 316
+  },
+  {
+   "id": "chocolate-croissant",
+   "name": "Chocolate Croissant",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.25."
+   },
+   "octQtySold": 313
+  },
+  {
+   "id": "candied-ginger-molasses-cookie",
+   "name": "Candied Ginger Molasses Cookie",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.75."
+   },
+   "octQtySold": 295
+  },
+  {
+   "id": "danish-seasonal-sweet",
+   "name": "Danish, Seasonal Sweet",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.50."
+   },
+   "octQtySold": 291
+  },
+  {
+   "id": "rugelach",
+   "name": "Rugelach",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.25."
+   },
+   "octQtySold": 277
+  },
+  {
+   "id": "morning-bun",
+   "name": "Morning Bun",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.25."
+   },
+   "octQtySold": 267
+  },
+  {
+   "id": "kouign-amann",
+   "name": "Kouign Amann",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.25."
+   },
+   "octQtySold": 244
+  },
+  {
+   "id": "scone-seasonal",
+   "name": "Scone, Seasonal",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.00."
+   },
+   "octQtySold": 229
+  },
+  {
+   "id": "gf-df-quickbread-slice",
+   "name": "GF/DF Quickbread Slice",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.00."
+   },
+   "octQtySold": 225
+  },
+  {
+   "id": "seasonal-twice-baked-croissant",
+   "name": "Seasonal Twice Baked Croissant",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.70."
+   },
+   "octQtySold": 220
+  },
+  {
+   "id": "twist-seasonal",
+   "name": "Twist, Seasonal",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.25."
+   },
+   "octQtySold": 211
+  },
+  {
+   "id": "plain-croissant",
+   "name": "Plain Croissant",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.00."
+   },
+   "octQtySold": 207
+  },
+  {
+   "id": "oat-bar-seasonal",
+   "name": "Oat Bar, Seasonal",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.50."
+   },
+   "octQtySold": 184
+  },
+  {
+   "id": "donut",
+   "name": "Donut",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.02."
+   },
+   "octQtySold": 155
+  },
+  {
+   "id": "savory-tile",
+   "name": "Savory Tile",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.50."
+   },
+   "octQtySold": 131
+  },
+  {
+   "id": "almond-biscotti",
+   "name": "Almond Biscotti",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.75."
+   },
+   "octQtySold": 74
+  },
+  {
+   "id": "gf-oatmeal-cream-pie",
+   "name": "GF Oatmeal Cream Pie",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.25."
+   },
+   "octQtySold": 59
+  },
+  {
+   "id": "pie-slice",
+   "name": "pie slice",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.00."
+   },
+   "octQtySold": 24
+  },
+  {
+   "id": "baked-good-day-old-bag",
+   "name": "Baked Good Day Old Bag",
+   "description": "",
+   "category": "Pastries and bread",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.00."
+   },
+   "octQtySold": 18
+  },
+  {
+   "id": "bloom",
+   "name": "Bloom",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.70."
+   },
+   "octQtySold": 177
+  },
+  {
+   "id": "collins-farm-chocolate-milk",
+   "name": "Collins Farm Chocolate Milk",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.50."
+   },
+   "octQtySold": 176
+  },
+  {
+   "id": "orange-juice",
+   "name": "Orange Juice",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.25."
+   },
+   "octQtySold": 118
+  },
+  {
+   "id": "liquid-death-still-water",
+   "name": "Liquid Death Still Water",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.00."
+   },
+   "octQtySold": 81
+  },
+  {
+   "id": "yerba-mate",
+   "name": "Yerba Mate",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.51."
+   },
+   "octQtySold": 65
+  },
+  {
+   "id": "harney-sons",
+   "name": "Harney & Sons",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.14."
+   },
+   "octQtySold": 64
+  },
+  {
+   "id": "bai",
+   "name": "Bai",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.01."
+   },
+   "octQtySold": 61
+  },
+  {
+   "id": "sparkling-water",
+   "name": "Sparkling Water",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.00."
+   },
+   "octQtySold": 58
+  },
+  {
+   "id": "yogurt-parfait",
+   "name": "Yogurt Parfait",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.50."
+   },
+   "octQtySold": 57
+  },
+  {
+   "id": "coconut-water",
+   "name": "Coconut Water",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.00."
+   },
+   "octQtySold": 53
+  },
+  {
+   "id": "still-water",
+   "name": "Still Water",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.00."
+   },
+   "octQtySold": 51
+  },
+  {
+   "id": "adirondack-soda",
+   "name": "Adirondack Soda",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.76."
+   },
+   "octQtySold": 32
+  },
+  {
+   "id": "casamara-club",
+   "name": "Casamara Club",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.56."
+   },
+   "octQtySold": 7
+  },
+  {
+   "id": "daypack-lemon-lime",
+   "name": "Daypack Lemon Lime",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.16."
+   },
+   "octQtySold": 2
+  },
+  {
+   "id": "athletic-lemon-radler",
+   "name": "Athletic Lemon Radler",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $4.64."
+   },
+   "octQtySold": 1
+  },
+  {
+   "id": "black-and-white-ceramic-mug",
+   "name": "Black And White Ceramic Mug",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $15.00."
+   },
+   "octQtySold": 9
+  },
+  {
+   "id": "adult-shirt",
+   "name": "Adult Shirt",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $13.88."
+   },
+   "octQtySold": 3
+  },
+  {
+   "id": "bagel-token",
+   "name": "Bagel Token",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.50."
+   },
+   "octQtySold": 221
+  },
+  {
+   "id": "pastry-token",
+   "name": "Pastry Token",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.00."
+   },
+   "octQtySold": 95
+  },
+  {
+   "id": "peaks-coffee",
+   "name": "Peaks Coffee",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $16.73."
+   },
+   "octQtySold": 22
+  },
+  {
+   "id": "cranberry-apricot-granola",
+   "name": "Cranberry Apricot Granola",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $12.50."
+   },
+   "octQtySold": 17
+  },
+  {
+   "id": "jff-plain-creme-cheese-8-oz",
+   "name": "JFF Plain Creme Cheese, 8 oz",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $5.00."
+   },
+   "octQtySold": 50
+  },
+  {
+   "id": "scallion-cream-cheese-8-oz",
+   "name": "Scallion Cream Cheese 8 oz",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.50."
+   },
+   "octQtySold": 18
+  },
+  {
+   "id": "roasted-garlic-cream-cheese-8-oz",
+   "name": "Roasted Garlic Cream Cheese 8 oz",
+   "description": "",
+   "category": "Retail",
+   "station": "none",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.50."
+   },
+   "octQtySold": 7
+  },
+  {
+   "id": "the-freddy",
+   "name": "The Freddy",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $9.51."
+   },
+   "octQtySold": 22
+  },
+  {
+   "id": "say-uncle",
+   "name": "Say Uncle",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.50."
+   },
+   "octQtySold": 4
+  },
+  {
+   "id": "the-brittany",
+   "name": "The Brittany",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": 12.05
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 3
+  },
+  {
+   "id": "the-zimmer",
+   "name": "The Zimmer",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $8.93."
+   },
+   "octQtySold": 1
+  },
+  {
+   "id": "build-your-own-sandwich",
+   "name": "Build Your Own Sandwich",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread",
+    "egg",
+    "protein",
+    "cheese",
+    "produce",
+    "cream-cheese",
+    "sauces"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.47."
+   },
+   "octQtySold": 3970
+  },
+  {
+   "id": "the-colgate",
+   "name": "The Colgate",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": 9.75
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 1398
+  },
+  {
+   "id": "the-chipotle-potato",
+   "name": "The Chipotle Potato",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $7.43."
+   },
+   "octQtySold": 565
+  },
+  {
+   "id": "maple-new-day",
+   "name": "Maple New Day",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": 8.25
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 430
+  },
+  {
+   "id": "the-big-al",
+   "name": "The Big Al",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": 10.55
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 335
+  },
+  {
+   "id": "flosa-club",
+   "name": "Flosa Club",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $13.63."
+   },
+   "octQtySold": 176
+  },
+  {
+   "id": "the-works",
+   "name": "The Works",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $11.34."
+   },
+   "octQtySold": 161
+  },
+  {
+   "id": "blt",
+   "name": "BLT",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": 7.85
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": null
+   },
+   "octQtySold": 66
+  },
+  {
+   "id": "pimento-mori",
+   "name": "Pimento Mori",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $10.49."
+   },
+   "octQtySold": 60
+  },
+  {
+   "id": "the-hamilton",
+   "name": "The Hamilton",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $13.37."
+   },
+   "octQtySold": 50
+  },
+  {
+   "id": "tofu-kan",
+   "name": "Tofu Kan",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $11.25."
+   },
+   "octQtySold": 29
+  },
+  {
+   "id": "in-the-know",
+   "name": "In The Know",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $6.42."
+   },
+   "octQtySold": 11
+  },
+  {
+   "id": "joshua",
+   "name": "Joshua",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [
+    "bread"
+   ],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $11.12."
+   },
+   "octQtySold": 8
+  },
+  {
+   "id": "two-hash-browns",
+   "name": "Two Hash Browns",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $3.01."
+   },
+   "octQtySold": 111
+  },
+  {
+   "id": "side-of-bacon",
+   "name": "Side of Bacon",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.99."
+   },
+   "octQtySold": 28
+  },
+  {
+   "id": "side-of-sausage",
+   "name": "Side of Sausage",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $1.99."
+   },
+   "octQtySold": 10
+  },
+  {
+   "id": "side-of-cream-cheese",
+   "name": "side of cream cheese",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $2.50."
+   },
+   "octQtySold": 1
+  },
+  {
+   "id": "side-of-butter",
+   "name": "Side of butter",
+   "description": "",
+   "category": "Sandwiches",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": true,
+    "online": true
+   },
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": null
+    }
+   ],
+   "modifierGroupIds": [],
+   "counts": [],
+   "review": {
+    "source": "Toast Oct 2026 average (includes add-ons)",
+    "note": "No base price yet. Toast average was $0.64."
+   },
+   "octQtySold": 1
+  }
+ ],
+ "modifierGroups": [
+  {
+   "id": "milk",
+   "name": "Milk",
+   "min": 0,
+   "max": 1,
+   "options": [
+    {
+     "name": "Whole",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Oat",
+     "pricing": "flat",
+     "price": 1.1,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Almond",
+     "pricing": "flat",
+     "price": 1.1,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Oat and almond are +$1.10 on the website; set by-size prices if 20 oz costs more."
+   }
+  },
+  {
+   "id": "syrup",
+   "name": "Syrups",
+   "min": 0,
+   "max": 9,
+   "options": [
+    {
+     "name": "Vanilla",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Caramel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Maple",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Honey",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Simple",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "cold-foam",
+   "name": "Cold foam",
+   "min": 0,
+   "max": 1,
+   "options": [
+    {
+     "name": "Vanilla cold foam",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "bread",
+   "name": "Bread and base",
+   "min": 1,
+   "max": 1,
+   "options": [
+    {
+     "name": "Bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Sourdough bread",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Croissant",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Brioche roll",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Hash browns",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Hash browns",
+       "qty": 2
+      }
+     ]
+    },
+    {
+     "name": "Gluten-free bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "egg",
+   "name": "Egg",
+   "min": 0,
+   "max": 2,
+   "options": [
+    {
+     "name": "Fried egg",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Eggs",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Scrambled egg",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Eggs",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Egg white",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Egg whites",
+       "qty": 1
+      }
+     ]
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "protein",
+   "name": "Protein",
+   "min": 0,
+   "max": 9,
+   "options": [
+    {
+     "name": "Bacon",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Bacon",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Sausage",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Sausage",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Bistro ham",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Impossible sausage",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Impossible sausage",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Thick cut bacon",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Thick cut bacon",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Turkey",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Pastrami-style lox",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "cheese",
+   "name": "Cheese",
+   "min": 0,
+   "max": 9,
+   "options": [
+    {
+     "name": "Cheddar",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Pepper jack",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Swiss",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "American",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Mozzarella",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "produce",
+   "name": "Produce",
+   "min": 0,
+   "max": 9,
+   "options": [
+    {
+     "name": "Tomato",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Avocado spread",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Greens",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Pickled jalapeños",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Roasted red pepper",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Red onions",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Hash brown",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Hash browns",
+       "qty": 1
+      }
+     ]
+    },
+    {
+     "name": "Capers",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Red onion parsley salad",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "cream-cheese",
+   "name": "Cream cheese",
+   "min": 0,
+   "max": 9,
+   "options": [
+    {
+     "name": "Plain",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Scallion",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Roasted garlic",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "sauces",
+   "name": "Sauces and spreads",
+   "min": 0,
+   "max": 9,
+   "options": [
+    {
+     "name": "Ketchup",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Mayo",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Hot sauce",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Chipotle mayo",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Garlic parm za'atar",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Zhoug",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Red pepper pesto",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Tomato brown butter",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    },
+    {
+     "name": "Onion jam",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": []
+    }
+   ],
+   "review": {
+    "source": "website menu, Aug 2026",
+    "note": "Add-on prices and production counts are starting guesses."
+   }
+  }
+ ]
+}
