@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof POS · KDS prototype</title>
+<style>
+  :root{
+    --bg:#15130f; --panel:#201d18; --card:#2a2620; --line:#3a352d; --ink:#f3ede2; --quiet:#a89f90;
+    --accent:#e2a24a; --good:#5fb37a; --warn:#e6c14a; --crit:#e0574a; --rush:#ff5a3c; --new:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+  button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--accent);color:#1b140a;border-color:var(--accent);font-weight:600}
+  button.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+  select,input[type=text],input[type=number]{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .brand{font-weight:700;margin-right:6px}
+  .brand small{display:block;font-weight:400;color:var(--quiet);font-size:12px}
+  #stations{display:flex;gap:6px;flex-wrap:wrap}
+  .tools{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+  .tools label{display:flex;gap:6px;align-items:center;color:var(--quiet)}
+  #counts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);min-height:46px}
+  #counts .lbl{color:var(--quiet);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+  .chip{display:inline-flex;gap:6px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  .chip b{font-size:20px}
+  #counts .note{color:var(--quiet);font-size:12px;margin-left:auto}
+  main{padding:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start}
+  .empty{color:var(--quiet);text-align:center;padding:60px 0}
+  .ticket{background:var(--card);border:2px solid var(--line);border-radius:12px;overflow:hidden}
+  .ticket.rush{border-color:var(--rush);box-shadow:0 0 0 2px var(--rush) inset}
+  .thead{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;gap:8px}
+  .thead .name{font-weight:700;font-size:18px}
+  .thead .num{color:var(--quiet);font-size:12px}
+  .timer{font-variant-numeric:tabular-nums;font-weight:700;border-radius:6px;padding:2px 8px;font-size:15px}
+  .t-ok .thead{background:#24382a}.t-ok .timer{background:var(--good);color:#0e1a12}
+  .t-warn .thead{background:#40381c}.t-warn .timer{background:var(--warn);color:#1c1708}
+  .t-crit .thead{background:#45211c}.t-crit .timer{background:var(--crit);color:#fff}
+  .badges{display:flex;gap:6px;padding:0 12px 4px;flex-wrap:wrap}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 6px}
+  .b-rush{background:var(--rush);color:#fff}
+  .b-src{background:#3d3527;color:var(--accent)}
+  .b-edit{background:var(--new);color:#08131f}
+  ul.items{list-style:none;margin:0;padding:4px 0 6px}
+  li.item{padding:8px 12px;border-top:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+  li.item .box{width:22px;height:22px;border:2px solid var(--quiet);border-radius:6px;flex:none;margin-top:1px;display:grid;place-items:center;font-size:14px}
+  li.item.done{opacity:.45}
+  li.item.done .box{background:var(--good);border-color:var(--good);color:#0e1a12}
+  li.item.done .iname{text-decoration:line-through}
+  li.item .iname{font-weight:600;font-size:16px}
+  li.item .mods{color:var(--quiet);font-size:14px}
+  li.item .mods .up{color:var(--ink)}
+  li.item.other{cursor:default}
+  li.item .where{font-size:11px;color:var(--quiet);text-transform:uppercase;letter-spacing:.05em}
+  li.item.changed{background:rgba(88,166,255,.14)}
+  li.item.removed{background:rgba(224,87,74,.16);cursor:default}
+  li.item.removed .iname{text-decoration:line-through}
+  .tag{font-size:11px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px}
+  .tag.new{background:var(--new);color:#08131f}.tag.rem{background:var(--crit);color:#fff}
+  .tfoot{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line)}
+  .tfoot button{flex:1}
+  .tfoot button.clear.ready{background:var(--good);border-color:var(--good);color:#0e1a12;font-weight:700}
+  /* Kitchen 2 rail layout */
+  .rail{display:flex;flex-direction:column;gap:8px}
+  .rail .ticket{display:grid;grid-template-columns:170px 1fr}
+  .rail .thead{flex-direction:column;align-items:flex-start;height:100%}
+  .rail ul.items{display:flex;flex-wrap:wrap;gap:8px;padding:8px}
+  .rail li.item{border:1px solid var(--line);border-radius:8px;min-width:180px;flex:1 1 200px}
+  .rail .badges{padding:0}
+  /* Drawer and modals */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:20}
+  .scrim.open{display:block}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:21;transform:translateX(100%);transition:transform .2s;display:flex;flex-direction:column}
+  .drawer.open{transform:none}
+  .dhead{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .dhead h2{margin:0;font-size:18px;flex:1}
+  .dbody{flex:1;overflow:auto;padding:12px 14px}
+  .dfoot{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
+  .dfoot button{flex:1}
+  .row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .row > *{flex:1}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--quiet);margin:14px 0 6px}
+  .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+  .menu button{text-align:left;padding:8px;font-size:13px;min-height:44px}
+  .cart{list-style:none;margin:0;padding:0}
+  .cart li{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px}
+  .cart .top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
+  .cart .top button{padding:2px 10px}
+  .modg{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .modg span{font-size:11px;color:var(--quiet);width:100%}
+  .modg button{padding:3px 8px;font-size:12px;border-radius:999px}
+  .openlist li{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,94%);max-height:80vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:22;display:none;padding:14px}
+  .modal.open{display:block}
+  .modal h2{margin:0 0 10px;font-size:18px}
+  .rlist{list-style:none;margin:0;padding:0}
+  .rlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+  .muted{color:var(--quiet);font-size:13px}
+  .thresh{display:grid;grid-template-columns:1fr 90px 90px;gap:6px;align-items:center}
+  .thresh input{width:100%}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Proof POS · KDS<small>Prototype with fake orders</small></div>
+  <nav id="stations"></nav>
+  <div class="tools">
+    <button class="primary" id="btnRegister">Register</button>
+    <label><input type="checkbox" id="auto" checked> Auto orders</label>
+    <label>Clock <select id="speed"><option value="1">1×</option><option value="10" selected>10×</option><option value="30">30×</option></select></label>
+    <button id="btnRecall">Recall</button>
+    <button id="btnTiming">Timing</button>
+    <button id="btnReset">Reset</button>
+  </div>
+</header>
+<section id="counts"></section>
+<main id="board"></main>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawer">
+  <div class="dhead"><h2 id="dTitle">New order</h2><button id="dClose">Close</button></div>
+  <div class="dbody">
+    <div class="row">
+      <input type="text" id="custName" placeholder="Customer name">
+      <select id="source"><option value="register">Register</option><option value="kiosk">Kiosk</option><option value="online">Online</option><option value="phone">Phone</option></select>
+    </div>
+    <h3>This order</h3>
+    <ul class="cart" id="cart"></ul>
+    <div class="muted" id="cartEmpty">Tap menu items below to add them.</div>
+    <h3>Menu</h3>
+    <div id="menuBtns"></div>
+    <h3>Open tickets</h3>
+    <ul class="cart openlist" id="openList"></ul>
+  </div>
+  <div class="dfoot"><button id="dRush">Rush: off</button><button class="primary" id="dSend">Send to kitchen</button></div>
+</aside>
+
+<div class="modal" id="recallModal">
+  <h2 id="recallTitle">Recall</h2>
+  <div class="muted">Bring back a ticket that was bumped or cleared by mistake.</div>
+  <ul class="rlist" id="recallList"></ul>
+  <div style="margin-top:12px"><button id="recallClose">Close</button></div>
+</div>
+
+<div class="modal" id="timingModal">
+  <h2>Ticket timing colors</h2>
+  <div class="muted" style="margin-bottom:10px">Placeholder numbers until you set real ones. Minutes on screen before a ticket turns yellow, then red.</div>
+  <div class="thresh" id="threshRows"></div>
+  <div style="margin-top:12px"><button id="timingClose">Done</button></div>
+</div>
+
+<script>
+'use strict';
+// ---------- Menu (prototype subset) ----------
+// Names and weights come from the Toast product mix (Oct 2026 qty sold).
+// Modifiers and production counts are SAMPLES to show the feature; real ones get set in the menu editor.
+const BAGEL = {name:'Bagel', pick:1, opts:[{n:'Everything'},{n:'Plain'},{n:'Sesame'},{n:'Salt'},{n:'Poppy'},{n:'GF bagel',up:2}]};
+const ADDS = {name:'Add', pick:9, opts:[{n:'Egg',c:{Eggs:1}},{n:'Bacon',c:{Bacon:1}},{n:'Sausage',c:{Sausage:1}},{n:'Cheddar'},{n:'Avocado'},{n:'Tomato'},{n:'Hash brown',c:{'Hash browns':1}}]};
+const TOAST = {name:'Prep', pick:9, opts:[{n:'Not toasted'},{n:'Extra crispy'},{n:'Cut in half'}]};
+const MILK = {name:'Milk', pick:1, opts:[{n:'Whole'},{n:'Oat',up:1.1},{n:'Almond',up:1.1}]};
+const SYRUP = {name:'Syrup', pick:9, opts:[{n:'Vanilla'},{n:'Caramel'},{n:'Maple'},{n:'Honey'}]};
+const SHOT = {name:'Extra', pick:9, opts:[{n:'Extra shot',c:{Shots:1}},{n:'Vanilla cold foam'},{n:'Decaf'}]};
+const MENU = [
+  {id:'byo',name:'Build Your Own',st:'kitchen',w:3970,mods:[BAGEL,ADDS,TOAST],need:['Bagel']},
+  {id:'colgate',name:'The Colgate',st:'kitchen',w:1398,mods:[BAGEL,TOAST]},
+  {id:'chipotle',name:'Chipotle Potato',st:'kitchen',w:565,mods:[BAGEL,TOAST]},
+  {id:'maple',name:'Maple New Day',st:'kitchen',w:430,mods:[BAGEL,TOAST]},
+  {id:'bigal',name:'The Big Al',st:'kitchen',w:335,mods:[BAGEL,TOAST]},
+  {id:'flosa',name:'Flosa Club',st:'kitchen',w:176,mods:[BAGEL,TOAST]},
+  {id:'works',name:'The Works',st:'kitchen',w:161,mods:[BAGEL,TOAST]},
+  {id:'blt',name:'BLT',st:'kitchen',w:66,mods:[BAGEL,TOAST]},
+  {id:'hashbrowns',name:'Two Hash Browns',st:'kitchen',w:111,c:{'Hash browns':2},mods:[]},
+  {id:'sbacon',name:'Side of Bacon',st:'kitchen',w:28,c:{Bacon:1},mods:[]},
+  {id:'iced-latte',name:'Iced Latte',st:'espresso',w:1394,c:{Shots:2},mods:[MILK,SYRUP,SHOT]},
+  {id:'hot-latte',name:'Hot Latte',st:'espresso',w:837,c:{Shots:2},mods:[MILK,SYRUP,SHOT]},
+  {id:'drip',name:'Drip Coffee',st:'espresso',w:811,mods:[MILK]},
+  {id:'cold-brew',name:'Cold Brew',st:'espresso',w:447,mods:[MILK,SYRUP]},
+  {id:'chaider',name:'Chaider',st:'espresso',w:385,mods:[MILK]},
+  {id:'iced-chai',name:'Iced Chai',st:'espresso',w:282,mods:[MILK,SHOT]},
+  {id:'cappuccino',name:'Cappuccino',st:'espresso',w:165,c:{Shots:2},mods:[MILK,SHOT]},
+  {id:'sm-matcha',name:'Salted Maple Matcha',st:'espresso',w:162,mods:[MILK]},
+  {id:'iced-americano',name:'Iced Americano',st:'espresso',w:110,c:{Shots:2},mods:[SHOT]},
+  {id:'london-fog',name:'London Fog',st:'espresso',w:84,mods:[MILK]},
+  {id:'cookie',name:'Vegan Choc Chip Cookie',st:'none',w:896,mods:[]},
+  {id:'cinnamon',name:'Cinnamon Bun',st:'none',w:664,mods:[]},
+  {id:'muffin',name:'Muffin, Seasonal',st:'none',w:316,mods:[]},
+  {id:'choc-croissant',name:'Chocolate Croissant',st:'none',w:313,mods:[]},
+  {id:'rugelach',name:'Rugelach',st:'none',w:277,mods:[]},
+  {id:'morning-bun',name:'Morning Bun',st:'none',w:267,mods:[]},
+  {id:'kouign',name:'Kouign Amann',st:'none',w:244,mods:[]},
+];
+const MENU_BY_ID = Object.fromEntries(MENU.map(m => [m.id, m]));
+const STATION_VIEWS = [
+  {id:'espresso', label:'Espresso bar', shows:'espresso', layout:'grid'},
+  {id:'kitchen1', label:'Kitchen 1', shows:'kitchen', layout:'grid'},
+  {id:'kitchen2', label:'Kitchen 2', shows:'kitchen', layout:'rail'},
+  {id:'runner', label:'Runner', shows:'all', layout:'grid'},
+];
+const SOURCES = {register:'Register', kiosk:'Kiosk', online:'Online', phone:'Phone'};
+const NAMES = ['Maya','Theo','Priya','Sam','Jordan','Elena','Marcus','Ruth','Owen','Lucia','Dev','Hannah','Ike','Nora','Calvin','June','Ari','Bea','Tomas','Gwen','Rafi','Ellis','Kit','Wren'];
+
+// ---------- State ----------
+const KEY = 'proofpos-kds-proto-v1';
+let S = load() || fresh();
+function fresh(){ return {sim:Date.now(), nextNum:101, orders:[], nextAuto:0, view:'kitchen1',
+  thresholds:{espresso:{y:4,r:7}, kitchen:{y:6,r:10}, all:{y:8,r:12}}}; }
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)); } catch(e){ return null; } }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+const uid = () => Math.random().toString(36).slice(2,9);
+const rnd = (a,b) => a + Math.random()*(b-a);
+function weighted(list, w){ const t = list.reduce((s,x)=>s+w(x),0); let r = Math.random()*t; for (const x of list){ r -= w(x); if (r <= 0) return x; } return list[list.length-1]; }
+
+// ---------- Clock ----------
+let speed = 10; let last = Date.now();
+function tick(){
+  const now = Date.now(); S.sim += (now-last)*speed; last = now;
+  if (document.getElementById('auto').checked && S.sim >= S.nextAuto){
+    if (S.nextAuto) addOrder(randomOrder());
+    S.nextAuto = S.sim + rnd(35,95)*1000;
+    render(); return;
+  }
+  if (now - lastFull > 3000 && !pressing) render(); else updateTimers();
+}
+let lastFull = 0, pressing = false;
+document.addEventListener('pointerdown', () => { pressing = true; });
+document.addEventListener('pointerup', () => { setTimeout(() => { pressing = false; }, 150); });
+function updateTimers(){
+  const v = view();
+  document.querySelectorAll('.ticket[data-oid]').forEach(el => {
+    const o = S.orders.find(x => x.id === el.dataset.oid); if (!o) return;
+    el.querySelector('.timer').textContent = fmt(S.sim - o.created);
+    const c = colorClass(o, v);
+    if (!el.classList.contains(c)){ el.classList.remove('t-ok','t-warn','t-crit'); el.classList.add(c); }
+  });
+}
+
+// ---------- Orders ----------
+function makeLine(menuId, mods){ return {lid:uid(), menuId, mods:mods||[], done:false, doneAt:0, changed:null, changedReal:0, removed:false}; }
+function randomMods(m){
+  const out = [];
+  for (const g of m.mods){
+    if (g.pick === 1){ if (g.name === 'Bagel' || Math.random() < .5) out.push(weighted(g.opts, o => o.up ? 1 : 4).n); }
+    else for (const o of g.opts) if (Math.random() < (g.name === 'Add' ? .35 : .12)) out.push(o.n);
+  }
+  return out;
+}
+function randomOrder(){
+  const n = weighted([1,2,3,4], k => [5,6,3,1][k-1]);
+  const lines = []; for (let i=0;i<n;i++){ const m = weighted(MENU, x => x.w); lines.push(makeLine(m.id, randomMods(m))); }
+  const source = weighted(Object.keys(SOURCES), s => ({register:50,kiosk:25,online:20,phone:5})[s]);
+  return {name: NAMES[Math.floor(Math.random()*NAMES.length)], source, lines, rush:false};
+}
+function addOrder(o){
+  S.orders.push({id:uid(), num:S.nextNum++, name:o.name||'Guest', source:o.source, created:S.sim, rush:!!o.rush, cleared:false, clearedAt:0, lines:o.lines});
+  save();
+}
+const stationOf = l => MENU_BY_ID[l.menuId].st;
+const live = l => !l.removed;
+function modObj(m, name){ for (const g of m.mods) for (const o of g.opts) if (o.n === name) return o; return null; }
+function lineCounts(l){
+  const m = MENU_BY_ID[l.menuId]; const c = {...(m.c||{})};
+  for (const name of l.mods){ const o = modObj(m, name); if (o && o.c) for (const k in o.c) c[k] = (c[k]||0) + o.c[k]; }
+  return c;
+}
+
+// ---------- Rendering ----------
+const board = document.getElementById('board');
+const fmt = ms => { const s = Math.max(0, Math.floor(ms/1000)); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); };
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function view(){ return STATION_VIEWS.find(v => v.id === S.view); }
+function linesFor(o, v){ return v.shows === 'all' ? o.lines : o.lines.filter(l => stationOf(l) === v.shows); }
+function visibleOrders(v){
+  return S.orders.filter(o => {
+    if (o.cleared) return false;
+    if (v.shows === 'all') return true;
+    return linesFor(o, v).some(l => live(l) && !l.done);
+  }).sort((a,b) => (b.rush - a.rush) || (a.created - b.created));
+}
+function colorClass(o, v){
+  const t = S.thresholds[v.shows] || S.thresholds.all; const min = (S.sim - o.created)/60000;
+  return min >= t.r ? 't-crit' : min >= t.y ? 't-warn' : 't-ok';
+}
+function modsHtml(l){
+  const m = MENU_BY_ID[l.menuId];
+  return l.mods.map(n => { const o = modObj(m, n); return o && o.up ? `<span class="up">${esc(n)}</span>` : esc(n); }).join(' · ');
+}
+function renderCounts(v, orders){
+  const tot = {};
+  for (const o of orders) for (const l of linesFor(o, v)) if (live(l) && !l.done){ const c = lineCounts(l); for (const k in c) tot[k] = (tot[k]||0) + c[k]; }
+  const keys = Object.keys(tot).sort();
+  document.getElementById('counts').innerHTML = `<span class="lbl">Needed now</span>` +
+    (keys.length ? keys.map(k => `<span class="chip"><b>${tot[k]}</b>${esc(k)}</span>`).join('') : `<span class="muted">Nothing open</span>`) +
+    `<span class="note">Sample counts per item; real counts are set per menu item</span>`;
+}
+function ticketHtml(o, v){
+  const realNow = Date.now();
+  const lines = linesFor(o, v).filter(l => live(l) || realNow - l.changedReal < 90000);
+  const items = lines.map(l => {
+    const m = MENU_BY_ID[l.menuId]; const st = stationOf(l);
+    const mine = v.shows === 'all' ? true : st === v.shows;
+    const fresh = l.changed && realNow - l.changedReal < 90000;
+    const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : '', mine ? '' : 'other'].join(' ');
+    const tag = l.removed ? '<span class="tag rem">REMOVED</span>' : fresh ? `<span class="tag new">${l.changed === 'added' ? 'NEW' : 'CHANGED'}</span>` : '';
+    const where = v.shows === 'all' ? `<div class="where">${st === 'none' ? 'grab' : st}</div>` : '';
+    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${esc(m.name)}${tag}</div>${l.mods.length ? `<div class="mods">${modsHtml(l)}</div>` : ''}${where}</div></li>`;
+  }).join('');
+  const edited = o.lines.some(l => l.changed && realNow - l.changedReal < 90000);
+  const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source]}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
+  const allDone = o.lines.filter(live).every(l => l.done);
+  const foot = v.id === 'runner'
+    ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
+    : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
+  return `<div class="ticket ${colorClass(o, v)} ${o.rush ? 'rush' : ''}" data-oid="${o.id}"><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num}</div></div><span class="timer">${fmt(S.sim - o.created)}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
+}
+function render(){
+  lastFull = Date.now();
+  const v = view();
+  document.getElementById('stations').innerHTML = STATION_VIEWS.map(s => {
+    const n = visibleOrders(s).length;
+    return `<button class="${s.id === v.id ? 'on' : ''}" data-view="${s.id}">${s.label} (${n})</button>`;
+  }).join('');
+  const orders = visibleOrders(v);
+  renderCounts(v, orders);
+  board.className = '';
+  board.innerHTML = orders.length ? `<div class="${v.layout}">${orders.map(o => ticketHtml(o, v)).join('')}</div>` : `<div class="empty">No open tickets for ${v.label}</div>`;
+  if (drawerOpen) renderOpenList();
+}
+
+// ---------- Board actions ----------
+document.getElementById('stations').addEventListener('click', e => { const b = e.target.closest('button[data-view]'); if (!b) return; S.view = b.dataset.view; save(); render(); });
+board.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  const o = btn ? S.orders.find(x => x.id === btn.dataset.o) : null;
+  if (btn && o){
+    const v = view();
+    if (btn.dataset.act === 'rush') o.rush = !o.rush;
+    if (btn.dataset.act === 'clear'){ o.cleared = true; o.clearedAt = S.sim; }
+    if (btn.dataset.act === 'bumpall') for (const l of linesFor(o, v)) if (live(l) && !l.done){ l.done = true; l.doneAt = S.sim; }
+    if (btn.dataset.act === 'edit'){ openDrawer(o); return; }
+    save(); render(); return;
+  }
+  const li = e.target.closest('li.item'); if (!li || li.classList.contains('other') || li.classList.contains('removed')) return;
+  const ord = S.orders.find(x => x.id === li.dataset.o); const l = ord && ord.lines.find(x => x.lid === li.dataset.l); if (!l) return;
+  l.done = !l.done; l.doneAt = l.done ? S.sim : 0; save(); render();
+});
+
+// ---------- Recall ----------
+const scrim = document.getElementById('scrim');
+function openModal(id){ document.getElementById(id).classList.add('open'); scrim.classList.add('open'); }
+function closeModals(){ document.querySelectorAll('.modal').forEach(m => m.classList.remove('open')); scrim.classList.remove('open'); closeDrawer(); }
+scrim.addEventListener('click', closeModals);
+document.getElementById('btnRecall').addEventListener('click', () => {
+  const v = view(); let list;
+  if (v.shows === 'all') list = S.orders.filter(o => o.cleared).sort((a,b) => b.clearedAt - a.clearedAt);
+  else list = S.orders.filter(o => !o.cleared && linesFor(o, v).some(live) && linesFor(o, v).filter(live).every(l => l.done))
+    .sort((a,b) => Math.max(...linesFor(b, v).map(l => l.doneAt)) - Math.max(...linesFor(a, v).map(l => l.doneAt)));
+  list = list.slice(0, 12);
+  document.getElementById('recallTitle').textContent = 'Recall · ' + v.label;
+  document.getElementById('recallList').innerHTML = list.length ? list.map(o => `<li><div><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${linesFor(o, v).filter(live).map(l => MENU_BY_ID[l.menuId].name).join(', ')}</span></div><button data-recall="${o.id}">Bring back</button></li>`).join('') : '<li class="muted">Nothing to recall yet.</li>';
+  openModal('recallModal');
+});
+document.getElementById('recallList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-recall]'); if (!b) return;
+  const o = S.orders.find(x => x.id === b.dataset.recall); const v = view();
+  if (v.shows === 'all') o.cleared = false; else for (const l of linesFor(o, v)) { l.done = false; l.doneAt = 0; }
+  save(); closeModals(); render();
+});
+document.getElementById('recallClose').addEventListener('click', closeModals);
+
+// ---------- Timing ----------
+document.getElementById('btnTiming').addEventListener('click', () => {
+  const labels = {espresso:'Espresso bar', kitchen:'Kitchen', all:'Runner'};
+  document.getElementById('threshRows').innerHTML = '<div class="muted">Station</div><div class="muted">Yellow at</div><div class="muted">Red at</div>' +
+    Object.keys(S.thresholds).map(k => `<div>${labels[k]}</div><input type="number" min="1" data-k="${k}" data-f="y" value="${S.thresholds[k].y}"><input type="number" min="1" data-k="${k}" data-f="r" value="${S.thresholds[k].r}">`).join('');
+  openModal('timingModal');
+});
+document.getElementById('threshRows').addEventListener('input', e => { const i = e.target; if (!i.dataset.k) return; const n = Number(i.value); if (n > 0){ S.thresholds[i.dataset.k][i.dataset.f] = n; save(); } });
+document.getElementById('timingClose').addEventListener('click', closeModals);
+
+// ---------- Register drawer ----------
+const drawer = document.getElementById('drawer');
+let drawerOpen = false, editing = null, cart = [], rush = false;
+function openDrawer(order){
+  editing = order || null;
+  cart = order ? order.lines.filter(live).map(l => ({...l, mods:[...l.mods]})) : [];
+  rush = order ? order.rush : false;
+  document.getElementById('dTitle').textContent = order ? `Edit #${order.num} · ${order.name}` : 'New order';
+  document.getElementById('custName').value = order ? order.name : '';
+  document.getElementById('source').value = order ? order.source : 'register';
+  document.getElementById('source').disabled = !!order;
+  document.getElementById('dSend').textContent = order ? 'Save changes' : 'Send to kitchen';
+  drawerOpen = true; drawer.classList.add('open'); scrim.classList.add('open');
+  renderCart(); renderOpenList();
+}
+function closeDrawer(){ drawerOpen = false; drawer.classList.remove('open'); }
+function renderMenuBtns(){
+  const groups = [['Kitchen','kitchen'],['Espresso bar','espresso'],['Grab and go','none']];
+  document.getElementById('menuBtns').innerHTML = groups.map(([label, st]) => `<div class="muted" style="margin:6px 0 4px">${label}</div><div class="menu">${MENU.filter(m => m.st === st).map(m => `<button data-add="${m.id}">${esc(m.name)}</button>`).join('')}</div>`).join('');
+}
+function renderCart(){
+  const ul = document.getElementById('cart');
+  document.getElementById('cartEmpty').style.display = cart.length ? 'none' : 'block';
+  ul.innerHTML = cart.map((l, i) => {
+    const m = MENU_BY_ID[l.menuId];
+    const groups = m.mods.map(g => `<div class="modg"><span>${g.name}${g.pick === 1 ? ' (pick one)' : ''}</span>${g.opts.map(o => `<button class="${l.mods.includes(o.n) ? 'on' : ''}" data-i="${i}" data-g="${esc(g.name)}" data-mod="${esc(o.n)}">${esc(o.n)}${o.up ? ' +$' + o.up.toFixed(2) : ''}</button>`).join('')}</div>`).join('');
+    return `<li><div class="top"><span>${esc(m.name)}</span><button data-del="${i}">Remove</button></div>${groups}</li>`;
+  }).join('');
+  document.getElementById('dRush').textContent = 'Rush: ' + (rush ? 'on' : 'off');
+  document.getElementById('dRush').className = rush ? 'on' : '';
+}
+function renderOpenList(){
+  const open = S.orders.filter(o => !o.cleared).sort((a,b) => a.created - b.created);
+  document.getElementById('openList').innerHTML = open.length ? open.map(o => `<li><span><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${fmt(S.sim - o.created)}${o.rush ? ' · RUSH' : ''}</span></span><span style="display:flex;gap:6px"><button data-orush="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-oedit="${o.id}">Edit</button></span></li>`).join('') : '<li class="muted">No open tickets.</li>';
+}
+document.getElementById('btnRegister').addEventListener('click', () => openDrawer(null));
+document.getElementById('dClose').addEventListener('click', closeModals);
+document.getElementById('dRush').addEventListener('click', () => { rush = !rush; renderCart(); });
+document.getElementById('menuBtns').addEventListener('click', e => {
+  const b = e.target.closest('button[data-add]'); if (!b) return;
+  const m = MENU_BY_ID[b.dataset.add]; const mods = [];
+  if (m.need) for (const g of m.mods) if (m.need.includes(g.name)) mods.push(g.opts[0].n);
+  cart.push(makeLine(m.id, mods)); renderCart();
+});
+document.getElementById('cart').addEventListener('click', e => {
+  const del = e.target.closest('button[data-del]'); if (del){ cart.splice(Number(del.dataset.del), 1); renderCart(); return; }
+  const b = e.target.closest('button[data-mod]'); if (!b) return;
+  const l = cart[Number(b.dataset.i)]; const m = MENU_BY_ID[l.menuId]; const g = m.mods.find(x => x.name === b.dataset.g); const name = b.dataset.mod;
+  if (l.mods.includes(name)) l.mods = l.mods.filter(x => x !== name);
+  else { if (g.pick === 1) l.mods = l.mods.filter(x => !g.opts.some(o => o.n === x)); l.mods.push(name); }
+  renderCart();
+});
+document.getElementById('openList').addEventListener('click', e => {
+  const r = e.target.closest('button[data-orush]'); const ed = e.target.closest('button[data-oedit]');
+  if (r){ const o = S.orders.find(x => x.id === r.dataset.orush); o.rush = !o.rush; save(); render(); }
+  if (ed){ openDrawer(S.orders.find(x => x.id === ed.dataset.oedit)); }
+});
+document.getElementById('dSend').addEventListener('click', () => {
+  const name = document.getElementById('custName').value.trim() || 'Guest';
+  if (!editing){
+    if (!cart.length) return;
+    addOrder({name, source:document.getElementById('source').value, lines:cart.map(l => makeLine(l.menuId, l.mods)), rush});
+  } else {
+    const o = editing; const realNow = Date.now(); const keep = new Set(cart.map(l => l.lid));
+    for (const l of o.lines) if (live(l) && !keep.has(l.lid)){ l.removed = true; l.changed = 'removed'; l.changedReal = realNow; }
+    for (const c of cart){
+      const l = o.lines.find(x => x.lid === c.lid);
+      if (!l) o.lines.push({...makeLine(c.menuId, c.mods), changed:'added', changedReal:realNow});
+      else if (l.mods.join('|') !== c.mods.join('|')){ l.mods = c.mods; l.changed = 'modified'; l.changedReal = realNow; l.done = false; l.doneAt = 0; }
+    }
+    o.name = name; o.rush = rush; save();
+  }
+  cart = []; editing = null; closeModals(); render();
+});
+document.getElementById('speed').addEventListener('change', e => { speed = Number(e.target.value); });
+document.getElementById('btnReset').addEventListener('click', () => { const v = S.view, t = S.thresholds; S = fresh(); S.view = v; S.thresholds = t; save(); render(); });
+
+renderMenuBtns();
+if (!S.orders.length){ for (let i = 0; i < 5; i++){ addOrder(randomOrder()); S.orders[S.orders.length-1].created = S.sim - (5 - i) * 110000; } }
+render();
+setInterval(tick, 250);
+</script>
+</body>
+</html>

@@ -1,0 +1,2820 @@
+{
+  "_about": "Flour & Salt menu, built from Toast Product Mix Sep 30 - Oct 31 2026. price is blank on purpose: toastAvgPrice includes modifier upcharges and discounts, so set real base prices by hand. station, visibility and counts are first guesses to review.",
+  "stations": [
+    "espresso",
+    "kitchen",
+    "none"
+  ],
+  "items": [
+    {
+      "id": "beertree-ipa",
+      "name": "Beertree IPA",
+      "menu": "Alcohol",
+      "group": "Beer",
+      "toastMenus": [
+        "Alcohol / Beer"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.41,
+      "octQtySold": 3,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "grow-camplight",
+      "name": "grow camplight",
+      "menu": "Alcohol",
+      "group": "Beer",
+      "toastMenus": [
+        "Alcohol / Beer"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.56,
+      "octQtySold": 1,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "flosa-mimosa",
+      "name": "Flosa Mimosa",
+      "menu": "Alcohol",
+      "group": "Cocktails",
+      "toastMenus": [
+        "Alcohol / Cocktails"
+      ],
+      "price": null,
+      "toastAvgPrice": 11.12,
+      "octQtySold": 14,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "bloody-mary",
+      "name": "Bloody Mary",
+      "menu": "Alcohol",
+      "group": "Cocktails",
+      "toastMenus": [
+        "Alcohol / Cocktails"
+      ],
+      "price": null,
+      "toastAvgPrice": 12.04,
+      "octQtySold": 9,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "sandy-cove-sauv-blanc",
+      "name": "Sandy Cove, Sauv Blanc",
+      "menu": "Alcohol",
+      "group": "Wine",
+      "toastMenus": [
+        "Alcohol / Wine"
+      ],
+      "price": null,
+      "toastAvgPrice": 11.12,
+      "octQtySold": 4,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "bacchus-chardonnay",
+      "name": "Bacchus Chardonnay",
+      "menu": "Alcohol",
+      "group": "Wine",
+      "toastMenus": [
+        "Alcohol / Wine"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.26,
+      "octQtySold": 2,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cora-rose",
+      "name": "Cora Rose",
+      "menu": "Alcohol",
+      "group": "Wine",
+      "toastMenus": [
+        "Alcohol / Wine"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.4,
+      "octQtySold": 2,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "clovis-blend-red",
+      "name": "Clovis Blend (red)",
+      "menu": "Alcohol",
+      "group": "Wine",
+      "toastMenus": [
+        "Alcohol / Wine"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.26,
+      "octQtySold": 1,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "anahata-cab-sauv",
+      "name": "Anahata cab sauv",
+      "menu": "Alcohol",
+      "group": "Wine",
+      "toastMenus": [
+        "Alcohol / Wine"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.26,
+      "octQtySold": 1,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "sparkling-prosecco",
+      "name": "Sparkling - prosecco",
+      "menu": "Alcohol",
+      "group": "Wine",
+      "toastMenus": [
+        "Alcohol / Wine"
+      ],
+      "price": null,
+      "toastAvgPrice": 0.0,
+      "octQtySold": 0,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": false,
+        "online": false
+      },
+      "alcohol": true,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "single-bagel",
+      "name": "Single Bagel",
+      "menu": "Bulk Bagels",
+      "group": "Bulk Bagels",
+      "toastMenus": [
+        "Bulk Bagels / Bulk Bagels",
+        "Bulk Bagels and More / Bagels by the Dozen and Spreads"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.59,
+      "octQtySold": 223,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "half-dozen-bagels",
+      "name": "Half Dozen Bagels",
+      "menu": "Bulk Bagels",
+      "group": "Bulk Bagels",
+      "toastMenus": [
+        "Bulk Bagels / Bulk Bagels",
+        "Bulk Bagels and More / Bagels by the Dozen and Spreads"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.32,
+      "octQtySold": 94,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "one-dozen-bagels",
+      "name": "One Dozen Bagels",
+      "menu": "Bulk Bagels",
+      "group": "Bulk Bagels",
+      "toastMenus": [
+        "Bulk Bagels / Bulk Bagels",
+        "Bulk Bagels and More / Bagels by the Dozen and Spreads"
+      ],
+      "price": null,
+      "toastAvgPrice": 18.65,
+      "octQtySold": 64,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "gluten-free-bagel-single",
+      "name": "Gluten Free Bagel, Single",
+      "menu": "Bulk Bagels",
+      "group": "Bulk Bagels",
+      "toastMenus": [
+        "Bulk Bagels / Bulk Bagels"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.5,
+      "octQtySold": 36,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "day-old-bagel-bag",
+      "name": "Day Old Bagel Bag",
+      "menu": "Bulk Bagels",
+      "group": "Bulk Bagels",
+      "toastMenus": [
+        "Bulk Bagels / Bulk Bagels"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.5,
+      "octQtySold": 33,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "kombucha",
+      "name": "Kombucha",
+      "menu": "Bulk Bagels and More",
+      "group": "Bottled Beverages/Parfait",
+      "toastMenus": [
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 0.0,
+      "octQtySold": 0,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "drip-coffee",
+      "name": "Drip Coffee",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.03,
+      "octQtySold": 811,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "chaider",
+      "name": "Chaider",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.34,
+      "octQtySold": 385,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cappuccino",
+      "name": "Cappuccino",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.43,
+      "octQtySold": 165,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "salted-maple-matcha",
+      "name": "Salted Maple Matcha",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.98,
+      "octQtySold": 162,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "honeybee-iced-coffee",
+      "name": "Honeybee Iced Coffee",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.72,
+      "octQtySold": 145,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "lemonade",
+      "name": "Lemonade",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.01,
+      "octQtySold": 117,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-americano",
+      "name": "Iced Americano",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.87,
+      "octQtySold": 110,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-chocolate",
+      "name": "Hot Chocolate",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.94,
+      "octQtySold": 106,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-tea",
+      "name": "Hot Tea",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.91,
+      "octQtySold": 90,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-americano",
+      "name": "Hot Americano",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.83,
+      "octQtySold": 88,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "london-fog",
+      "name": "London Fog",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.62,
+      "octQtySold": 84,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-tea",
+      "name": "Iced Tea",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.51,
+      "octQtySold": 78,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cider",
+      "name": "Cider",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.84,
+      "octQtySold": 49,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cortado",
+      "name": "Cortado",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.94,
+      "octQtySold": 39,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "london-mist",
+      "name": "London Mist",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.89,
+      "octQtySold": 36,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "kombucha-on-tap",
+      "name": "Kombucha on Tap",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 8.11,
+      "octQtySold": 35,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "f-s-kiosk-drip-to-go",
+      "name": "F&S Kiosk Drip To-Go",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.69,
+      "octQtySold": 29,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "doctor-s-orders",
+      "name": "Doctor's Orders",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.04,
+      "octQtySold": 23,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cafe-au-lait",
+      "name": "Cafe Au Lait",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.14,
+      "octQtySold": 21,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-red-eye",
+      "name": "Iced Red Eye",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 8.45,
+      "octQtySold": 17,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "espresso-shot",
+      "name": "Espresso Shot",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.45,
+      "octQtySold": 15,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-red-eye",
+      "name": "Hot Red Eye",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.85,
+      "octQtySold": 12,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "florentine-the-brooks",
+      "name": "Florentine / \"The Brooks\"",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.9,
+      "octQtySold": 10,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "f-s-kiosk-drip-coffee-mug",
+      "name": "F&S Kiosk Drip Coffee Mug",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.81,
+      "octQtySold": 9,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "macchiato",
+      "name": "Macchiato",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.88,
+      "octQtySold": 8,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "steamer",
+      "name": "Steamer",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.09,
+      "octQtySold": 8,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "matcha-lemonade",
+      "name": "Matcha Lemonade",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.54,
+      "octQtySold": 4,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "whole-milk-8-oz",
+      "name": "Whole Milk 8 oz",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.27,
+      "octQtySold": 4,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "16-oz-hot-chocolate-chai",
+      "name": "16 oz Hot Chocolate Chai",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.02,
+      "octQtySold": 3,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "ice-water-16-oz",
+      "name": "Ice Water 16 oz",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 0.7,
+      "octQtySold": 3,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-chocolate-chai",
+      "name": "Iced Chocolate Chai",
+      "menu": "Coffee Bar",
+      "group": "All Other Beverages",
+      "toastMenus": [
+        "Coffee Bar / All Other Beverages"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.02,
+      "octQtySold": 2,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-latte",
+      "name": "Iced Latte",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.31,
+      "octQtySold": 1394,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-latte",
+      "name": "Hot Latte",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.37,
+      "octQtySold": 837,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cold-brew",
+      "name": "Cold Brew",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.08,
+      "octQtySold": 447,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-chai",
+      "name": "Iced Chai",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.37,
+      "octQtySold": 282,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-chai",
+      "name": "Hot Chai",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.52,
+      "octQtySold": 134,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-matcha",
+      "name": "Iced Matcha",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.42,
+      "octQtySold": 118,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-mocha",
+      "name": "Hot Mocha",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.15,
+      "octQtySold": 78,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "hot-matcha",
+      "name": "Hot Matcha",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.74,
+      "octQtySold": 74,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "iced-mocha",
+      "name": "Iced Mocha",
+      "menu": "Coffee Bar",
+      "group": "Popular Drinks",
+      "toastMenus": [
+        "Coffee Bar / Popular Drinks"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.14,
+      "octQtySold": 41,
+      "station": "espresso",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "house-sourdough",
+      "name": "House Sourdough",
+      "menu": "Pastries + Breads",
+      "group": "Breads",
+      "toastMenus": [
+        "Pastries + Breads / Breads"
+      ],
+      "price": null,
+      "toastAvgPrice": 8.0,
+      "octQtySold": 207,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "red-wheat-sourdough",
+      "name": "Red Wheat Sourdough",
+      "menu": "Pastries + Breads",
+      "group": "Breads",
+      "toastMenus": [
+        "Pastries + Breads / Breads"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.0,
+      "octQtySold": 31,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "day-old-bread",
+      "name": "Day Old Bread",
+      "menu": "Pastries + Breads",
+      "group": "Breads",
+      "toastMenus": [
+        "Pastries + Breads / Breads"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.29,
+      "octQtySold": 14,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "brioche-sandwich-rolls-half-dozen",
+      "name": "Brioche Sandwich Rolls, half dozen",
+      "menu": "Pastries + Breads",
+      "group": "Breads",
+      "toastMenus": [
+        "Pastries + Breads / Breads"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.5,
+      "octQtySold": 13,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "vegan-chocolate-chip-cookie",
+      "name": "Vegan Chocolate Chip Cookie",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.75,
+      "octQtySold": 896,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cinnamon-bun",
+      "name": "Cinnamon Bun",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.5,
+      "octQtySold": 664,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "muffin-seasonal",
+      "name": "Muffin, Seasonal",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.25,
+      "octQtySold": 316,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "chocolate-croissant",
+      "name": "Chocolate Croissant",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.25,
+      "octQtySold": 313,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "candied-ginger-molasses-cookie",
+      "name": "Candied Ginger Molasses Cookie",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.75,
+      "octQtySold": 295,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "danish-seasonal-sweet",
+      "name": "Danish, Seasonal Sweet",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.5,
+      "octQtySold": 291,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "rugelach",
+      "name": "Rugelach",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.25,
+      "octQtySold": 277,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "morning-bun",
+      "name": "Morning Bun",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.25,
+      "octQtySold": 267,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "kouign-amann",
+      "name": "Kouign Amann",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.25,
+      "octQtySold": 244,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "scone-seasonal",
+      "name": "Scone, Seasonal",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.0,
+      "octQtySold": 229,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "gf-df-quickbread-slice",
+      "name": "GF/DF Quickbread Slice",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.0,
+      "octQtySold": 225,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "seasonal-twice-baked-croissant",
+      "name": "Seasonal Twice Baked Croissant",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.7,
+      "octQtySold": 220,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "twist-seasonal",
+      "name": "Twist, Seasonal",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.25,
+      "octQtySold": 211,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "plain-croissant",
+      "name": "Plain Croissant",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.0,
+      "octQtySold": 207,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "oat-bar-seasonal",
+      "name": "Oat Bar, Seasonal",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.5,
+      "octQtySold": 184,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "donut",
+      "name": "Donut",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.02,
+      "octQtySold": 155,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "savory-tile",
+      "name": "Savory Tile",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.5,
+      "octQtySold": 131,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "almond-biscotti",
+      "name": "Almond Biscotti",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.75,
+      "octQtySold": 74,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "gf-oatmeal-cream-pie",
+      "name": "GF Oatmeal Cream Pie",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.25,
+      "octQtySold": 59,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "pie-slice",
+      "name": "pie slice",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.0,
+      "octQtySold": 24,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "baked-good-day-old-bag",
+      "name": "Baked Good Day Old Bag",
+      "menu": "Pastries + Breads",
+      "group": "Pastries",
+      "toastMenus": [
+        "Pastries + Breads / Pastries"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.0,
+      "octQtySold": 18,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "bloom",
+      "name": "Bloom",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.7,
+      "octQtySold": 177,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "collins-farm-chocolate-milk",
+      "name": "Collins Farm Chocolate Milk",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.5,
+      "octQtySold": 176,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "orange-juice",
+      "name": "Orange Juice",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.25,
+      "octQtySold": 118,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "liquid-death-still-water",
+      "name": "Liquid Death Still Water",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.0,
+      "octQtySold": 81,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "yerba-mate",
+      "name": "Yerba Mate",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.51,
+      "octQtySold": 65,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "harney-sons",
+      "name": "Harney & Sons",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.14,
+      "octQtySold": 64,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "bai",
+      "name": "Bai",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.01,
+      "octQtySold": 61,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "sparkling-water",
+      "name": "Sparkling Water",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.0,
+      "octQtySold": 58,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "yogurt-parfait",
+      "name": "Yogurt Parfait",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.5,
+      "octQtySold": 57,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "coconut-water",
+      "name": "Coconut Water",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.0,
+      "octQtySold": 53,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "still-water",
+      "name": "Still Water",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.0,
+      "octQtySold": 51,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "adirondack-soda",
+      "name": "Adirondack Soda",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits",
+        "Bulk Bagels and More / Bottled Beverages/Parfait"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.76,
+      "octQtySold": 32,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "casamara-club",
+      "name": "Casamara Club",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.56,
+      "octQtySold": 7,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "daypack-lemon-lime",
+      "name": "Daypack Lemon Lime",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.16,
+      "octQtySold": 2,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "athletic-lemon-radler",
+      "name": "Athletic Lemon Radler",
+      "menu": "Retail",
+      "group": "Beverages/Parfaits",
+      "toastMenus": [
+        "Retail / Beverages/Parfaits"
+      ],
+      "price": null,
+      "toastAvgPrice": 4.64,
+      "octQtySold": 1,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "black-and-white-ceramic-mug",
+      "name": "Black And White Ceramic Mug",
+      "menu": "Retail",
+      "group": "Merch",
+      "toastMenus": [
+        "Retail / Merch"
+      ],
+      "price": null,
+      "toastAvgPrice": 15.0,
+      "octQtySold": 9,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "adult-shirt",
+      "name": "Adult Shirt",
+      "menu": "Retail",
+      "group": "Merch",
+      "toastMenus": [
+        "Retail / Merch"
+      ],
+      "price": null,
+      "toastAvgPrice": 13.88,
+      "octQtySold": 3,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "bagel-token",
+      "name": "Bagel Token",
+      "menu": "Retail",
+      "group": "Other Packaged Food Items",
+      "toastMenus": [
+        "Retail / Other Packaged Food Items",
+        "Bulk Bagels and More / Retail"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.5,
+      "octQtySold": 221,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "pastry-token",
+      "name": "Pastry Token",
+      "menu": "Retail",
+      "group": "Other Packaged Food Items",
+      "toastMenus": [
+        "Retail / Other Packaged Food Items",
+        "Bulk Bagels and More / Retail"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.0,
+      "octQtySold": 95,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "peaks-coffee",
+      "name": "Peaks Coffee",
+      "menu": "Retail",
+      "group": "Other Packaged Food Items",
+      "toastMenus": [
+        "Retail / Other Packaged Food Items"
+      ],
+      "price": null,
+      "toastAvgPrice": 16.73,
+      "octQtySold": 22,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "cranberry-apricot-granola",
+      "name": "Cranberry Apricot Granola",
+      "menu": "Retail",
+      "group": "Other Packaged Food Items",
+      "toastMenus": [
+        "Retail / Other Packaged Food Items",
+        "Bulk Bagels and More / Retail"
+      ],
+      "price": null,
+      "toastAvgPrice": 12.5,
+      "octQtySold": 17,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "jff-plain-creme-cheese-8-oz",
+      "name": "JFF Plain Creme Cheese, 8 oz",
+      "menu": "Retail",
+      "group": "Spreads",
+      "toastMenus": [
+        "Retail / Spreads",
+        "Bulk Bagels and More / Bagels by the Dozen and Spreads"
+      ],
+      "price": null,
+      "toastAvgPrice": 5.0,
+      "octQtySold": 50,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "scallion-cream-cheese-8-oz",
+      "name": "Scallion Cream Cheese 8 oz",
+      "menu": "Retail",
+      "group": "Spreads",
+      "toastMenus": [
+        "Retail / Spreads",
+        "Bulk Bagels and More / Bagels by the Dozen and Spreads"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.5,
+      "octQtySold": 18,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "roasted-garlic-cream-cheese-8-oz",
+      "name": "Roasted Garlic Cream Cheese 8 oz",
+      "menu": "Retail",
+      "group": "Spreads",
+      "toastMenus": [
+        "Retail / Spreads",
+        "Bulk Bagels and More / Bagels by the Dozen and Spreads"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.5,
+      "octQtySold": 7,
+      "station": "none",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-freddy",
+      "name": "The Freddy",
+      "menu": "Sandwiches",
+      "group": "Cheat Codes/10 Yr Anniv",
+      "toastMenus": [
+        "Sandwiches / Cheat Codes/10 Yr Anniv"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.51,
+      "octQtySold": 22,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "say-uncle",
+      "name": "Say Uncle",
+      "menu": "Sandwiches",
+      "group": "Cheat Codes/10 Yr Anniv",
+      "toastMenus": [
+        "Sandwiches / Cheat Codes/10 Yr Anniv"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.5,
+      "octQtySold": 4,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-brittany",
+      "name": "The Brittany",
+      "menu": "Sandwiches",
+      "group": "Cheat Codes/10 Yr Anniv",
+      "toastMenus": [
+        "Sandwiches / Cheat Codes/10 Yr Anniv"
+      ],
+      "price": null,
+      "toastAvgPrice": 10.53,
+      "octQtySold": 3,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-zimmer",
+      "name": "The Zimmer",
+      "menu": "Sandwiches",
+      "group": "Cheat Codes/10 Yr Anniv",
+      "toastMenus": [
+        "Sandwiches / Cheat Codes/10 Yr Anniv"
+      ],
+      "price": null,
+      "toastAvgPrice": 8.93,
+      "octQtySold": 1,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "build-your-own-sandwich",
+      "name": "Build Your Own Sandwich",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.47,
+      "octQtySold": 3970,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-colgate",
+      "name": "The Colgate",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.08,
+      "octQtySold": 1398,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-chipotle-potato",
+      "name": "The Chipotle Potato",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.43,
+      "octQtySold": 565,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "maple-new-day",
+      "name": "Maple New Day",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 8.13,
+      "octQtySold": 430,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-big-al",
+      "name": "The Big Al",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 9.92,
+      "octQtySold": 335,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "flosa-club",
+      "name": "Flosa Club",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 13.63,
+      "octQtySold": 176,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-works",
+      "name": "The Works",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 11.34,
+      "octQtySold": 161,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "blt",
+      "name": "BLT",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 7.44,
+      "octQtySold": 66,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "pimento-mori",
+      "name": "Pimento Mori",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 10.49,
+      "octQtySold": 60,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "the-hamilton",
+      "name": "The Hamilton",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 13.37,
+      "octQtySold": 50,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "tofu-kan",
+      "name": "Tofu Kan",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 11.25,
+      "octQtySold": 29,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "in-the-know",
+      "name": "In The Know",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 6.42,
+      "octQtySold": 11,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "joshua",
+      "name": "Joshua",
+      "menu": "Sandwiches",
+      "group": "Sandwiches",
+      "toastMenus": [
+        "Sandwiches / Sandwiches"
+      ],
+      "price": null,
+      "toastAvgPrice": 11.12,
+      "octQtySold": 8,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "two-hash-browns",
+      "name": "Two Hash Browns",
+      "menu": "Sandwiches",
+      "group": "Sides",
+      "toastMenus": [
+        "Sandwiches / Sides"
+      ],
+      "price": null,
+      "toastAvgPrice": 3.01,
+      "octQtySold": 111,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "side-of-bacon",
+      "name": "Side of Bacon",
+      "menu": "Sandwiches",
+      "group": "Sides",
+      "toastMenus": [
+        "Sandwiches / Sides"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.99,
+      "octQtySold": 28,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "side-of-sausage",
+      "name": "Side of Sausage",
+      "menu": "Sandwiches",
+      "group": "Sides",
+      "toastMenus": [
+        "Sandwiches / Sides"
+      ],
+      "price": null,
+      "toastAvgPrice": 1.99,
+      "octQtySold": 10,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "side-of-cream-cheese",
+      "name": "side of cream cheese",
+      "menu": "Sandwiches",
+      "group": "Sides",
+      "toastMenus": [
+        "Sandwiches / Sides"
+      ],
+      "price": null,
+      "toastAvgPrice": 2.5,
+      "octQtySold": 1,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    },
+    {
+      "id": "side-of-butter",
+      "name": "Side of butter",
+      "menu": "Sandwiches",
+      "group": "Sides",
+      "toastMenus": [
+        "Sandwiches / Sides"
+      ],
+      "price": null,
+      "toastAvgPrice": 0.64,
+      "octQtySold": 1,
+      "station": "kitchen",
+      "visible": {
+        "register": true,
+        "kiosk": true,
+        "online": true
+      },
+      "alcohol": false,
+      "modifierGroups": [],
+      "counts": {},
+      "taxCategory": null
+    }
+  ]
+}
