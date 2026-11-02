@@ -322,6 +322,8 @@ async function renderSettings(){
     <label>Credit card surcharge (%)</label><input id="s_rate" type="number" step="0.1" min="0" max="3" value="${esc(((s.surchargeRate || 0) * 100).toFixed(1))}" style="max-width:140px">
     <p class="muted">New York requires the credit card price to be posted per item. The register will also cap it at Stripe's actual fee on each order.</p>
     <label>Categories, in menu order, separated by commas</label><input id="s_cats" value="${esc((s.categories || []).join(', '))}">
+    <label>Categories that don't need a customer name (an order skips the name only if everything on it is from these)</label>
+    <div class="toggles" id="s_noname">${[...new Set([...(s.categories || []), ...S.items.map(i => i.category || 'Other')])].map(c => { const on = (s.noNameCategories || ['Bagels', 'Pastries and bread', 'Retail', 'Bulk Bagels and More']).includes(c); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-noname="${esc(c)}" ${on ? 'checked' : ''}>${esc(c)}</label>`; }).join('')}</div>
     <label>Sales tax rate (%) — applies only to items marked "Charge sales tax"</label><input id="s_tax" type="number" step="0.001" min="0" value="${esc(((s.taxRate || 0) * 100).toFixed(3))}" style="max-width:140px">
     <label>Pre-mods offered on any picked modifier (comma separated)</label><input id="s_pre" value="${esc((s.preMods || ['No', 'Light', 'Extra', 'On the side']).join(', '))}">
     <label>Discounts, one per line, like "Staff meal: 50%" or "Bagel token: $1.50"</label><textarea id="s_disc" rows="5">${esc((s.discounts || [{name:'Comp', type:'percent', value:100}, {name:'Donation', type:'percent', value:100}]).map(d => `${d.name}: ${d.type === 'percent' ? d.value + '%' : '$' + d.value}`).join('\n'))}</textarea>
@@ -410,6 +412,7 @@ document.addEventListener('click', async e => {
       const disc = $('#s_disc').value.split('\n').map(l => l.match(/^(.+?):\s*(\$)?([\d.]+)\s*(%)?\s*$/)).filter(Boolean).map(m => ({name: m[1].trim(), type: m[4] ? 'percent' : 'amount', value: Number(m[3])}));
       const colors = Object.fromEntries($('#s_colors').value.split('\n').map(l => l.split(':')).filter(p => p.length >= 2 && p[0].trim()).map(p => [p[0].trim(), p.slice(1).join(':').trim()]));
       const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), surchargeRate: rate, categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean),
+        noNameCategories: [...document.querySelectorAll('[data-noname]')].filter(c => c.checked).map(c => c.dataset.noname),
         taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
     }

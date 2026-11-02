@@ -46,6 +46,12 @@
     "type": "amount",
     "value": 3.0
    }
+  ],
+  "noNameCategories": [
+   "Bagels",
+   "Pastries and bread",
+   "Retail",
+   "Bulk Bagels and More"
   ]
  },
  "items": [

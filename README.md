@@ -88,6 +88,7 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - Tapping an item opens all of its choices at once. Size/temperature is the first column on drinks. Required groups show a red ✕ until picked; "Add to order" stays off until they are.
 - Tap a modifier again for 2×, "−" for one less. "Light, extra…" on a picked modifier offers pre-mods (No, Light, Extra, On the side) and styles (over easy…), so they only appear when needed.
 - Modifier counts (bagel flavors, breads) show on the buttons, drop with each order, and gray out at zero (`menu/modStock`).
+- Orders made only of items from the "no name needed" categories (Settings; default Bagels, Pastries and bread, Retail, Bulk Bagels and More) skip the name prompt.
 - Stay sends what's rung so far to the KDS and keeps the order open. Pay asks for the name, then cash (quick-cash buttons, change due), card (test mode until Stripe), Gate Card, Chamber Gift Card or Hotplate. Split across methods by entering an amount first.
 - ⋮: tax exempt (Colgate), schedule, open item, no sale (logged), void (before payment), discounts from Settings.
 - Press and hold any item or modifier to edit its stock: In stock, Out of stock, or set a count (it goes out of stock by itself at zero).
