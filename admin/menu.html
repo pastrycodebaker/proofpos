@@ -196,6 +196,7 @@ function renderItemEditor(){
       <label class="${it.alcohol ? 'on' : ''}"><input type="checkbox" id="f_alcohol" ${it.alcohol ? 'checked' : ''}>Alcohol (ID check, never kiosk or online)</label>
       <label class="${it.eightySixed ? 'on' : ''}"><input type="checkbox" id="f_86" ${it.eightySixed ? 'checked' : ''}>86'd</label>
     </div>
+    <label>Count on hand (blank = not tracked; the item 86s itself at zero)</label><input id="f_stock" type="number" min="0" step="1" style="max-width:160px" value="${typeof it.stockCount === 'number' ? it.stockCount : ''}">
     <h3>Price</h3>
     <div class="toggles"><label class="${mode==='single'?'on':''}"><input type="radio" name="pmode" value="single" ${mode==='single'?'checked':''}>One price</label><label class="${mode==='sizes'?'on':''}"><input type="radio" name="pmode" value="sizes" ${mode==='sizes'?'checked':''}>Hot / iced and sizes</label></div>
     <div id="singleBox" class="${mode==='single'?'':'hidden'}"><label>Price (cash and debit)</label><div class="row" style="max-width:320px"><input id="f_price" type="number" step="0.01" min="0" value="${esc(single)}"><span class="muted" id="singleCC">${single !== '' ? 'Credit card ' + money(credit(Number(single))) : ''}</span></div></div>
@@ -232,6 +233,8 @@ function readItemForm(it){
   out.station = $('#f_station').value;
   out.visible = {}; document.querySelectorAll('[data-vis]').forEach(c => out.visible[c.dataset.vis] = c.checked);
   out.alcohol = $('#f_alcohol').checked; out.eightySixed = $('#f_86').checked;
+  const st = $('#f_stock').value; out.stockCount = st === '' ? null : Math.max(0, Math.floor(Number(st)));
+  if (out.stockCount === 0) out.eightySixed = true;
   if (out.alcohol){ out.visible.kiosk = false; out.visible.online = false; }
   const mode = document.querySelector('input[name=pmode]:checked').value;
   if (mode === 'single'){ const p = $('#f_price').value; out.versions = [{temp:'', size:'', price: p === '' ? null : Number(p)}]; }

@@ -54,6 +54,16 @@
   .eightysix.out b{color:#ffb3a8}
   button.x86{min-width:96px}
   button.x86.out{background:var(--crit);border-color:var(--crit);color:#fff;font-weight:700}
+  .menu button.out{opacity:.5;border-style:dashed}
+  .menu button small{display:block;font-size:11px;color:var(--quiet)}
+  .menu button.out small{color:#ffb3a8}
+  .qty{display:inline-flex;gap:2px}
+  .qty .minus{padding:3px 8px;border-radius:999px;font-size:12px}
+  .banner.off{background:#5a1f18;color:#ffd2cb}
+  button.onlineoff{background:var(--crit);border-color:var(--crit);color:#fff;font-weight:700}
+  .b-sched{background:#2f3a52;color:#b9cdf5}
+  .eightysix{grid-template-columns:1fr 90px auto !important}
+  .eightysix input{width:100%;padding:6px}
   label.sw{display:flex;gap:6px;align-items:center;color:var(--quiet);font-size:14px;cursor:pointer}
   li.item .where{font-size:11px;color:var(--quiet);text-transform:uppercase;letter-spacing:.05em}
   li.item.changed{background:rgba(88,166,255,.14)}
@@ -125,11 +135,14 @@
     <label class="sw"><input type="checkbox" id="reroute"> Weekend reroute</label>
     <button id="btnDone">Show done</button>
     <button id="btn86">86</button>
+    <button id="btnOnline">Online ordering: on</button>
+    <button id="btnUpcoming">Upcoming</button>
     <button class="primary" id="btnRegister">Test register</button>
     <button id="btnRecall">Recall</button>
     <button id="btnTiming">Timing</button>
   </div>
 </header>
+<div class="banner off hidden" id="onlineBanner">Online ordering is OFF. Tap "Online ordering" to turn it back on.</div>
 <div class="banner hidden" id="rerouteBanner"></div>
 <section id="counts"></section>
 <main id="board"></main>
@@ -141,8 +154,13 @@
   <div class="dbody">
     <div class="row">
       <input type="text" id="custName" placeholder="Customer name">
-      <select id="source"><option value="register">Register</option><option value="kiosk">Kiosk</option><option value="online">Online</option><option value="phone">Phone</option></select>
+      <select id="source"><option value="register">Register</option><option value="kiosk">Kiosk</option><option value="online">Online</option><option value="phone">Phone</option><option value="hotplate">Hotplate (paid)</option></select>
     </div>
+    <div class="row">
+      <select id="when"><option value="now">Send now</option><option value="later">Schedule for later</option></select>
+      <input type="datetime-local" id="fireAt" class="hidden">
+    </div>
+    <div class="muted err" id="drawerMsg"></div>
     <h3>This order</h3>
     <ul class="cart" id="cart"></ul>
     <div class="muted" id="cartEmpty">Tap menu items below to add them.</div>
@@ -161,10 +179,16 @@
 </div>
 <div class="modal" id="modal86">
   <h2>86 an item</h2>
-  <div class="muted" style="margin-bottom:8px">Tap to 86. It comes off the register, kiosk and online right away. Tap again to bring it back.</div>
+  <div class="muted" style="margin-bottom:8px">Tap to 86. It comes off the kiosk and online right away and shows as 86'd on the register. Enter a count to track stock: the item 86s itself when it hits zero. Leave the count blank to stop tracking.</div>
   <input id="search86" placeholder="Search items" style="width:100%;margin-bottom:6px">
   <div id="list86"></div>
   <div style="margin-top:12px"><button id="close86">Done</button></div>
+</div>
+<div class="modal" id="upcomingModal">
+  <h2>Upcoming orders</h2>
+  <div class="muted">Scheduled orders appear on the KDS at their time. Send one early or change it here.</div>
+  <ul class="rlist" id="upcomingList"></ul>
+  <div style="margin-top:12px"><button id="upcomingClose">Close</button></div>
 </div>
 <div class="modal" id="timingModal">
   <h2>Ticket timing colors</h2>
@@ -185,18 +209,24 @@ const VIEWS = [
   {id:'kitchen2', label:'Kitchen 2', shows:'kitchen', layout:'rail'},
   {id:'runner', label:'Runner', shows:'all', layout:'grid'},
 ];
-const SOURCES = {register:'Register', kiosk:'Kiosk', online:'Online', phone:'Phone'};
+const SOURCES = {register:'Register', kiosk:'Kiosk', online:'Online', phone:'Phone', hotplate:'Hotplate (paid)'};
+const fireAt = o => o.fireAtMs ?? o.createdAtMs;
 const DEFAULT_T = {espresso:{y:4,r:7}, kitchen:{y:6,r:10}, all:{y:8,r:12}};
 const startOfDay = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
 const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 
 // ---------- Stores ----------
 function demoStore(){
-  let orders = [], subs = [], next = 101, settings = {thresholds: DEFAULT_T, reroute: false}, menu = {items:[], groups:[]}, menuSubs = [], setSubs = [];
+  let orders = [], subs = [], next = 101, settings = {thresholds: DEFAULT_T, reroute: false}, menu = {items:[], groups:[]}, menuSubs = [], setSubs = [], status = {onlinePaused:false}, statusSubs = [];
+  const emitMenu = () => menuSubs.forEach(cb => cb(structuredClone(menu)));
   const emit = () => subs.forEach(cb => cb(structuredClone(orders)));
   return {
     async watchMenu(cb){ const s = await (await fetch('../data/seed-menu.json')).json(); menu = {items:s.items, groups:s.modifierGroups}; menuSubs.push(cb); cb(structuredClone(menu)); },
-    async set86(id, val){ const it = menu.items.find(i => i.id === id); if (it){ it.eightySixed = val; menuSubs.forEach(cb => cb(structuredClone(menu))); } },
+    async set86(id, val){ const it = menu.items.find(i => i.id === id); if (it){ it.eightySixed = val; emitMenu(); } },
+    async adjustStock(id, d){ const it = menu.items.find(i => i.id === id); if (it && typeof it.stockCount === 'number'){ it.stockCount += d; emitMenu(); } },
+    async setStock(id, n){ const it = menu.items.find(i => i.id === id); if (it){ it.stockCount = n; if (n > 0) it.eightySixed = false; emitMenu(); } },
+    watchStatus(cb){ statusSubs.push(cb); cb({...status}); },
+    async setStatus(x){ status = {...status, ...x}; statusSubs.forEach(cb => cb({...status})); },
     watchSettings(cb){ setSubs.push(cb); cb(structuredClone(settings)); },
     subscribe(cb){ subs.push(cb); cb(structuredClone(orders)); },
     async createOrder(o){ orders.push({...o, id:uid(), num:next++}); emit(); },
@@ -219,9 +249,13 @@ async function firebaseStore(app){
       F.onSnapshot(F.collection(db,'menu','main','modifierGroups'), s => { m.groups = s.docs.map(d => d.data()); cb({...m}); });
     },
     set86: (id, val) => F.updateDoc(F.doc(db,'menu','main','items',id), {eightySixed: val}),
+    adjustStock: (id, d) => F.updateDoc(F.doc(db,'menu','main','items',id), {stockCount: F.increment(d)}),
+    setStock: (id, n) => F.updateDoc(F.doc(db,'menu','main','items',id), n > 0 ? {stockCount: n, eightySixed: false} : {stockCount: n}),
+    watchStatus(cb){ F.onSnapshot(F.doc(db,'menu','status'), s => cb(s.exists() ? s.data() : {onlinePaused:false})); },
+    setStatus: x => F.setDoc(F.doc(db,'menu','status'), x, {merge:true}),
     watchSettings(cb){ F.onSnapshot(F.doc(db,'settings','kds'), s => cb(s.exists() ? s.data() : {thresholds: DEFAULT_T, reroute:false})); },
     subscribe(cb){
-      return F.onSnapshot(F.query(orders, F.where('createdAtMs', '>=', startOfDay())), {includeMetadataChanges:true}, snap => {
+      return F.onSnapshot(F.query(orders, F.where('fireAtMs', '>=', startOfDay())), {includeMetadataChanges:true}, snap => {
         cb(snap.docs.map(d => { const o = d.data(); return {...o, id:d.id, lines:Object.values(o.lines || {}).sort((a, b) => a.pos - b.pos)}; }));
       });
     },
@@ -243,7 +277,7 @@ async function firebaseStore(app){
       const cur = ORDERS.find(o => o.id === id); if (!cur) return;
       const before = structuredClone(cur), after = structuredClone(cur); fn(after);
       const upd = {}; let pos = Math.max(-1, ...before.lines.map(l => l.pos ?? 0));
-      for (const k of ['rush', 'cleared', 'clearedAt', 'name']) if (before[k] !== after[k]) upd[k] = after[k] ?? null;
+      for (const k of ['rush', 'cleared', 'clearedAt', 'name', 'fireAtMs', 'scheduled']) if (before[k] !== after[k]) upd[k] = after[k] ?? null;
       for (const l of after.lines){
         const b = before.lines.find(x => x.lid === l.lid);
         if (!b) l.pos = ++pos;
@@ -269,7 +303,7 @@ function buildLine(itemId, versionIdx, mods, lid){
   const it = itemById(itemId); const v = (it.versions || [])[versionIdx] || {};
   const counts = {};
   for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
-  for (const m of mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0); }
+  for (const m of mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
   const rr = settings.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
   return {lid: lid || uid(), itemId, name: it.name, station: rr ? 'none' : (it.station || 'none'), rerouted: !!rr, versionIdx, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods, counts, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
 }
@@ -285,11 +319,12 @@ const linesFor = (o, v) => v.shows === 'all' ? o.lines : o.lines.filter(l => l.s
 // ---------- Rendering ----------
 const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function visibleOrders(v){
-  return ORDERS.filter(o => !o.cleared && (v.shows === 'all' ? o.lines.some(live) : linesFor(o, v).some(l => live(l) && !l.done)))
-    .sort((a, b) => (b.rush - a.rush) || (a.createdAtMs - b.createdAtMs));
+  const now = Date.now();
+  return ORDERS.filter(o => !o.cleared && fireAt(o) <= now && (v.shows === 'all' ? o.lines.some(live) : linesFor(o, v).some(l => live(l) && !l.done)))
+    .sort((a, b) => (b.rush - a.rush) || (fireAt(a) - fireAt(b)));
 }
 function colorClass(o, v){
-  const t = (settings.thresholds || DEFAULT_T)[v.shows] || DEFAULT_T.all; const min = (Date.now() - o.createdAtMs) / 60000;
+  const t = (settings.thresholds || DEFAULT_T)[v.shows] || DEFAULT_T.all; const min = (Date.now() - fireAt(o)) / 60000;
   return min >= t.r ? 't-crit' : min >= t.y ? 't-warn' : 't-ok';
 }
 function renderCounts(v, orders){
@@ -310,15 +345,15 @@ function ticketHtml(o, v, past){
     const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : ''].join(' ');
     const tag = l.removed ? '<span class="tag rem">REMOVED</span>' : fresh ? `<span class="tag new">${l.changed === 'added' ? 'NEW' : 'CHANGED'}</span>` : '';
     const where = v.shows === 'all' ? `<div class="where">${l.rerouted ? 'rerouted to runner' : l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
-    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${l.mods.length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc(m.o)}</div>`).join('')}</div>` : ''}${where}</div></li>`;
+    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${l.mods.length ? `<div class="mods">${sortedMods(l).map(m => `<div>${(m.q || 1) > 1 ? m.q + '× ' : ''}${esc(m.o)}</div>`).join('')}</div>` : ''}${where}</div></li>`;
   }).join('');
   const edited = o.lines.some(l => l.changed && now - l.changedAt < 90000);
-  const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
+  const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', o.scheduled ? `<span class="badge b-sched">Scheduled ${new Date(fireAt(o)).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
   const allDone = o.lines.filter(live).every(l => l.done);
   const foot = past ? `<div class="tfoot"><button data-act="bringback" data-o="${o.id}">Bring back</button></div>` : v.id === 'runner'
     ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
     : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
-  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - o.createdAtMs)}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
+  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - fireAt(o))}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
 }
 let lastFull = 0, pressing = false;
 document.addEventListener('pointerdown', () => { pressing = true; });
@@ -326,6 +361,7 @@ document.addEventListener('pointerup', () => setTimeout(() => { pressing = false
 function render(){
   lastFull = Date.now();
   const v = view();
+  const nUp = ORDERS.filter(o => !o.cleared && fireAt(o) > Date.now()).length; $('#btnUpcoming').textContent = nUp ? `Upcoming (${nUp})` : 'Upcoming';
   const n86 = MENU.items.filter(i => i.eightySixed).length; $('#btn86').textContent = n86 ? `86 (${n86} out)` : '86';
   $('#stations').innerHTML = VIEWS.map(s => `<button class="${s.id === v.id ? 'on' : ''}" data-view="${s.id}">${s.label} (${visibleOrders(s).length})</button>`).join('');
   const orders = visibleOrders(v);
@@ -345,7 +381,7 @@ function tick(){
   const v = view();
   document.querySelectorAll('.ticket[data-oid]').forEach(el => {
     const o = ORDERS.find(x => x.id === el.dataset.oid); if (!o) return;
-    el.querySelector('.timer').textContent = fmt(Date.now() - o.createdAtMs);
+    el.querySelector('.timer').textContent = fmt(Date.now() - fireAt(o));
     const c = colorClass(o, v); if (!el.classList.contains(c)){ el.classList.remove('t-ok','t-warn','t-crit'); el.classList.add(c); }
   });
 }
@@ -403,11 +439,19 @@ function render86(){
   const v = view(); const q = ($('#search86').value || '').toLowerCase();
   const list = MENU.items.filter(i => (v.shows === 'all' || i.station === v.shows || i.eightySixed) && (!q || i.name.toLowerCase().includes(q)))
     .sort((a, b) => (b.eightySixed - a.eightySixed) || a.name.localeCompare(b.name));
-  $('#list86').innerHTML = list.map(i => `<div class="eightysix ${i.eightySixed ? 'out' : ''}"><b>${esc(i.name)}</b><button class="x86 ${i.eightySixed ? 'out' : ''}" data-86="${esc(i.id)}">${i.eightySixed ? "86'd" : '86 it'}</button></div>`).join('') || '<p class="muted">No items for this station.</p>';
+  $('#list86').innerHTML = list.map(i => `<div class="eightysix ${i.eightySixed ? 'out' : ''}"><b>${esc(i.name)}</b><input type="number" min="0" step="1" placeholder="Count" data-cnt="${esc(i.id)}" value="${typeof i.stockCount === 'number' ? i.stockCount : ''}" aria-label="Count on hand"><button class="x86 ${i.eightySixed ? 'out' : ''}" data-86="${esc(i.id)}">${i.eightySixed ? "86'd" : '86 it'}</button></div>`).join('') || '<p class="muted">No items for this station.</p>';
 }
 $('#btn86').addEventListener('click', () => { $('#search86').value = ''; render86(); openModal('modal86'); });
 $('#search86').addEventListener('input', render86);
 $('#list86').addEventListener('click', e => { const b = e.target.closest('button[data-86]'); if (!b) return; const it = itemById(b.dataset['86']); act(store.set86(it.id, !it.eightySixed)); it.eightySixed = !it.eightySixed; render86(); });
+$('#list86').addEventListener('change', e => {
+  const inp = e.target.closest('input[data-cnt]'); if (!inp) return;
+  const it = itemById(inp.dataset.cnt); const n = inp.value === '' ? null : Math.max(0, Math.floor(Number(inp.value)));
+  act(store.setStock(it.id, n)); it.stockCount = n;
+  if (n === 0 && !it.eightySixed){ act(store.set86(it.id, true)); it.eightySixed = true; }
+  if (n > 0) it.eightySixed = false;
+  render86();
+});
 $('#close86').addEventListener('click', closeAll);
 
 // ---------- Timing ----------
@@ -435,14 +479,18 @@ function openDrawer(order){
   $('#custName').value = order ? order.name : '';
   $('#source').value = order ? order.source : 'register'; $('#source').disabled = !!order;
   $('#dSend').textContent = order ? 'Save changes' : 'Send to kitchen';
+  $('#drawerMsg').textContent = '';
+  const later = !!(order && order.scheduled && fireAt(order) > Date.now());
+  $('#when').value = later ? 'later' : 'now'; $('#fireAt').classList.toggle('hidden', !later);
+  $('#fireAt').value = later ? toLocalInput(fireAt(order)) : toLocalInput(Date.now() + 3600000);
   drawerOpen = true; drawer.classList.add('open'); scrim.classList.add('open');
   renderMenuBtns(); renderCart(); renderOpenList();
 }
 function closeDrawer(){ drawerOpen = false; drawer.classList.remove('open'); }
 function renderMenuBtns(){
-  const usable = MENU.items.filter(i => i.visible?.register !== false && !i.eightySixed);
+  const usable = MENU.items.filter(i => i.visible?.register !== false);
   const cats = [...new Set(usable.map(i => i.category || 'Other'))];
-  $('#menuBtns').innerHTML = cats.map(c => `<div class="muted" style="margin:8px 0 4px">${esc(c)}</div><div class="menu">${usable.filter(i => (i.category || 'Other') === c).sort((a,b) => a.name.localeCompare(b.name)).map(i => `<button data-add="${esc(i.id)}">${esc(i.name)}</button>`).join('')}</div>`).join('') || '<p class="muted">No menu items yet. Load the starter menu in the menu editor.</p>';
+  $('#menuBtns').innerHTML = cats.map(c => `<div class="muted" style="margin:8px 0 4px">${esc(c)}</div><div class="menu">${usable.filter(i => (i.category || 'Other') === c).sort((a,b) => a.name.localeCompare(b.name)).map(i => `<button class="${i.eightySixed ? 'out' : ''}" data-add="${esc(i.id)}">${esc(i.name)}${i.eightySixed ? "<small>86'd</small>" : typeof i.stockCount === 'number' ? `<small>${i.stockCount} left</small>` : ''}</button>`).join('')}</div>`).join('') || '<p class="muted">No menu items yet. Load the starter menu in the menu editor.</p>';
 }
 function renderCart(){
   $('#cartEmpty').style.display = cart.length ? 'none' : 'block';
@@ -450,14 +498,14 @@ function renderCart(){
     const it = itemById(l.itemId); if (!it) return `<li><div class="top"><span>${esc(l.name)}</span><button data-del="${i}">Remove</button></div></li>`;
     const vers = it.versions || [];
     const verRow = vers.length > 1 ? `<div class="modg"><span>Version</span>${vers.map((v, vi) => `<button class="${l.versionIdx === vi ? 'on' : ''}" data-i="${i}" data-ver="${vi}">${esc(versionLabel(v))}</button>`).join('')}</div>` : '';
-    const groups = (it.modifierGroupIds || []).map(groupById).filter(Boolean).map(g => `<div class="modg"><span>${esc(g.name)}${g.max === 1 ? ' (pick one)' : ''}</span>${g.options.map(o => `<button class="${l.mods.some(m => m.g === g.id && m.o === o.name) ? 'on' : ''}" data-i="${i}" data-g="${esc(g.id)}" data-mod="${esc(o.name)}">${esc(o.name)}</button>`).join('')}</div>`).join('');
+    const groups = (it.modifierGroupIds || []).map(groupById).filter(Boolean).map(g => `<div class="modg"><span>${esc(g.name)}${g.max === 1 ? ' (pick one)' : ' (tap again for more)'}</span>${g.options.map(o => { const m = l.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? (m.q || 1) : 0; return `<span class="qty"><button class="${q ? 'on' : ''}" data-i="${i}" data-g="${esc(g.id)}" data-mod="${esc(o.name)}">${q > 1 ? q + '× ' : ''}${esc(o.name)}</button>${q && g.max !== 1 ? `<button class="minus" data-i="${i}" data-g="${esc(g.id)}" data-minus="${esc(o.name)}" aria-label="One less">−</button>` : ''}</span>`; }).join('')}</div>`).join('');
     return `<li><div class="top"><span>${esc(it.name)}</span><button data-del="${i}">Remove</button></div>${verRow}${groups}</li>`;
   }).join('');
   $('#dRush').textContent = 'Rush: ' + (rush ? 'on' : 'off'); $('#dRush').className = rush ? 'on' : '';
 }
 function renderOpenList(){
-  const open = ORDERS.filter(o => !o.cleared).sort((a, b) => a.createdAtMs - b.createdAtMs);
-  $('#openList').innerHTML = open.length ? open.map(o => `<li><span><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${fmt(Date.now() - o.createdAtMs)}${o.rush ? ' · RUSH' : ''}</span></span><span style="display:flex;gap:6px"><button data-orush="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-oedit="${o.id}">Edit</button></span></li>`).join('') : '<li class="muted">No open tickets.</li>';
+  const open = ORDERS.filter(o => !o.cleared).sort((a, b) => fireAt(a) - fireAt(b));
+  $('#openList').innerHTML = open.length ? open.map(o => `<li><span><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${fireAt(o) > Date.now() ? 'scheduled ' + new Date(fireAt(o)).toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'}) : fmt(Date.now() - fireAt(o))}${o.rush ? ' · RUSH' : ''}</span></span><span style="display:flex;gap:6px"><button data-orush="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-oedit="${o.id}">Edit</button></span></li>`).join('') : '<li class="muted">No open tickets.</li>';
 }
 $('#btnRegister').addEventListener('click', () => openDrawer(null));
 $('#dClose').addEventListener('click', closeAll);
@@ -472,11 +520,14 @@ $('#cart').addEventListener('click', e => {
   const del = e.target.closest('button[data-del]'); if (del){ cart.splice(Number(del.dataset.del), 1); renderCart(); return; }
   const vb = e.target.closest('button[data-ver]');
   if (vb){ const i = Number(vb.dataset.i); const l = cart[i]; cart[i] = {...buildLine(l.itemId, Number(vb.dataset.ver), l.mods, l.lid), done:l.done, changed:l.changed, changedAt:l.changedAt}; renderCart(); return; }
-  const b = e.target.closest('button[data-mod]'); if (!b) return;
-  const i = Number(b.dataset.i); const l = cart[i]; const g = groupById(b.dataset.g); const name = b.dataset.mod;
-  let mods = l.mods.slice();
-  if (mods.some(m => m.g === g.id && m.o === name)) mods = mods.filter(m => !(m.g === g.id && m.o === name));
-  else { if (g.max === 1) mods = mods.filter(m => m.g !== g.id); mods.push({g: g.id, o: name}); }
+  const mb = e.target.closest('button[data-minus]');
+  const b = mb || e.target.closest('button[data-mod]'); if (!b) return;
+  const i = Number(b.dataset.i); const l = cart[i]; const g = groupById(b.dataset.g); const name = mb ? mb.dataset.minus : b.dataset.mod;
+  let mods = l.mods.map(m => ({...m})); const cur = mods.find(m => m.g === g.id && m.o === name);
+  if (mb){ if (cur.q > 1) cur.q -= 1; else mods = mods.filter(m => m !== cur); }
+  else if (g.max === 1){ mods = mods.filter(m => m.g !== g.id); if (!cur) mods.push({g: g.id, o: name, q: 1}); }
+  else if (cur) cur.q = (cur.q || 1) + 1;
+  else mods.push({g: g.id, o: name, q: 1});
   cart[i] = {...buildLine(l.itemId, l.versionIdx, mods, l.lid), done:l.done, changed:l.changed, changedAt:l.changedAt}; renderCart();
 });
 $('#openList').addEventListener('click', e => {
@@ -486,10 +537,19 @@ $('#openList').addEventListener('click', e => {
 });
 $('#dSend').addEventListener('click', () => {
   const name = $('#custName').value.trim() || 'Guest';
+  let fire = Date.now(), scheduled = false;
+  if ($('#when').value === 'later'){
+    fire = new Date($('#fireAt').value).getTime();
+    if (!fire || fire <= Date.now()){ $('#drawerMsg').textContent = 'Pick a time in the future, or choose Send now.'; return; }
+    scheduled = true;
+  }
   if (!editing){
     if (!cart.length) return;
-    act(store.createOrder({name, source: $('#source').value, rush, cleared:false, clearedAt:0, createdAtMs: Date.now(), lines: cart.map(l => ({...l, done:false, doneAt:0, changed:null, changedAt:0}))}));
+    const lines = cart.map(l => ({...l, done:false, doneAt:0, changed:null, changedAt:0}));
+    act(store.createOrder({name, source: $('#source').value, rush, scheduled, cleared:false, clearedAt:0, createdAtMs: Date.now(), fireAtMs: fire, lines}));
+    applyStock(itemCounts([]), itemCounts(lines));
   } else {
+    applyStock(itemCounts(editing.lines), itemCounts(cart));
     const draft = cart.map(l => structuredClone(l)); const now = Date.now();
     act(store.mutate(editing.id, o => {
       const keep = new Set(draft.map(l => l.lid));
@@ -500,10 +560,44 @@ $('#dSend').addEventListener('click', () => {
         else if (JSON.stringify([l.mods, l.versionIdx]) !== JSON.stringify([c.mods, c.versionIdx])) Object.assign(l, {...c, done:false, doneAt:0, changed:'modified', changedAt:now});
       }
       o.name = name; o.rush = rush;
+      if (scheduled || o.scheduled){ o.fireAtMs = scheduled ? fire : Math.min(fireAt(o), Date.now()); o.scheduled = scheduled; }
     }));
   }
   cart = []; editing = null; closeAll();
 });
+
+function toLocalInput(ms){ const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); }
+$('#when').addEventListener('change', e => { $('#fireAt').classList.toggle('hidden', e.target.value !== 'later'); $('#drawerMsg').textContent = ''; });
+function itemCounts(lines){ const c = {}; for (const l of lines) if (live(l)) c[l.itemId] = (c[l.itemId] || 0) + 1; return c; }
+function applyStock(before, after){
+  for (const id of new Set([...Object.keys(before), ...Object.keys(after)])){
+    const it = itemById(id); if (!it || typeof it.stockCount !== 'number') continue;
+    const d = (before[id] || 0) - (after[id] || 0); if (!d) continue;
+    act(store.adjustStock(id, d));
+    if (d < 0 && it.stockCount + d <= 0 && !it.eightySixed) act(store.set86(id, true));
+  }
+}
+// ---------- Upcoming ----------
+function renderUpcoming(){
+  const list = ORDERS.filter(o => !o.cleared && fireAt(o) > Date.now()).sort((a, b) => fireAt(a) - fireAt(b));
+  $('#upcomingList').innerHTML = list.length ? list.map(o => `<li><div><b>${esc(o.name)}</b> <span class="muted">#${o.num} · ${new Date(fireAt(o)).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})} · ${o.lines.filter(live).map(l => esc(l.name)).join(', ')}</span></div><span style="display:flex;gap:6px"><button data-upnow="${o.id}">Send now</button><button data-upedit="${o.id}">Edit</button></span></li>`).join('') : '<li class="muted">No scheduled orders.</li>';
+}
+$('#btnUpcoming').addEventListener('click', () => { renderUpcoming(); openModal('upcomingModal'); });
+$('#upcomingClose').addEventListener('click', closeAll);
+$('#upcomingList').addEventListener('click', e => {
+  const n = e.target.closest('button[data-upnow]'); const ed = e.target.closest('button[data-upedit]');
+  if (n){ act(store.mutate(n.dataset.upnow, o => { o.fireAtMs = Date.now(); })); setTimeout(renderUpcoming, 100); }
+  if (ed){ closeAll(); openDrawer(ORDERS.find(o => o.id === ed.dataset.upedit)); }
+});
+// ---------- Online ordering switch ----------
+let status = {onlinePaused:false};
+function renderStatus(){
+  const off = !!status.onlinePaused;
+  $('#btnOnline').textContent = 'Online ordering: ' + (off ? 'OFF' : 'on');
+  $('#btnOnline').classList.toggle('onlineoff', off);
+  $('#onlineBanner').classList.toggle('hidden', !off);
+}
+$('#btnOnline').addEventListener('click', () => { status = {...status, onlinePaused: !status.onlinePaused}; renderStatus(); act(store.setStatus({onlinePaused: status.onlinePaused, changedAt: Date.now()})); });
 
 // ---------- Start ----------
 function setNet(){ const el = $('#net'); el.textContent = navigator.onLine ? 'Online' : 'Offline · changes will sync'; el.classList.toggle('off', !navigator.onLine); }
@@ -512,6 +606,7 @@ async function boot(){
   $('#appView').classList.remove('hidden'); $('#loginView').classList.add('hidden');
   await new Promise(res => { let first = true; store.watchMenu(m => { MENU = m; if (first){ first = false; res(); } else { render(); if ($('#modal86').classList.contains('open')) render86(); if (drawerOpen) renderMenuBtns(); } }); });
   store.watchSettings(s => { settings = {thresholds: DEFAULT_T, reroute:false, ...s}; render(); });
+  store.watchStatus(x => { status = {onlinePaused:false, ...x}; renderStatus(); });
   store.subscribe(onOrders); render(); setInterval(tick, 500);
 }
 if (DEMO){

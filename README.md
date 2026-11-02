@@ -70,3 +70,12 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - "Show done" shows tickets finished in the last 30 minutes, each with a "Bring back" button; tap again to hide them.
 - "86" lets any station 86 an item or bring it back. It comes off the register, kiosk and online right away (`menu/main/items/{id}.eightySixed`).
 - "Weekend reroute" (shared, `settings/kds.reroute`) sends drinks marked in the menu editor (all versions or iced only) to the runner instead of the espresso bar, with a banner on the espresso and runner screens. It applies to orders rung in while it's on.
+
+### Added Nov 2
+
+- **Online ordering switch** on every KDS (`menu/status.onlinePaused`, readable by the future online ordering page). A red banner shows on all screens while it's off.
+- **86'd items stay ringable** on the test register: grayed out with "86'd", still addable.
+- **Modifier multiples**: tap an add-on again for 2×, 3×; "−" takes one away. Tickets show "2× Bacon" and production counts multiply.
+- **Hotplate (paid)** order source for special orders.
+- **Scheduled orders**: "Schedule for later" on the test register. The order waits in Upcoming (header button) and appears on the KDS at its time, marked "Scheduled". Orders are now queried by `fireAtMs`.
+- **Counted inventory**: set a count on the KDS 86 screen or in the menu editor (`stockCount`). Each order takes from it, edits put it back, and the item 86s itself at zero. Entering a new count above zero brings it back.
