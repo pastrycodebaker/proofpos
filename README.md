@@ -90,4 +90,5 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - Modifier counts (bagel flavors, breads) show on the buttons, drop with each order, and gray out at zero (`menu/modStock`).
 - Stay sends what's rung so far to the KDS and keeps the order open. Pay asks for the name, then cash (quick-cash buttons, change due), card (test mode until Stripe), Gate Card, Chamber Gift Card or Hotplate. Split across methods by entering an amount first.
 - ⋮: tax exempt (Colgate), schedule, open item, no sale (logged), void (before payment), discounts from Settings.
+- Press and hold any item or modifier to edit its stock: In stock, Out of stock, or set a count (it goes out of stock by itself at zero).
 - Cup group: To go cup +$0.30 pre-selected; Customer cup and For here are hidden on kiosk and online.

@@ -8,7 +8,7 @@
   :root{--bg:#eef1f4;--panel:#fff;--line:#dfe3e8;--ink:#1f2328;--quiet:#6b7280;--accent:#1a5fb4;--accent-bg:#e7f0fb;--good:#2f7a47;--warn:#b26b00;--crit:#c0392b;--sel:#1f2328}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:15px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden}
-  button{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+  button{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none}
   button:active{transform:scale(.97)}
   button:disabled{opacity:.4;cursor:default}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
@@ -172,6 +172,8 @@ function demoStore(){
     async adjustItem(id, d){ const it = menu.items.find(i => i.id === id); if (it && typeof it.stockCount === 'number'){ it.stockCount += d; if (it.stockCount <= 0 && d < 0) it.eightySixed = true; emit('menu', menu); } },
     async adjustMod(key, d){ if (typeof modStock[key] === 'number'){ modStock[key] += d; emit('stock', modStock); } },
     async setStatus(x){ status = {...status, ...x}; emit('status', status); },
+    async setItemStock(id, x){ const it = menu.items.find(i => i.id === id); Object.assign(it, x); emit('menu', menu); },
+    async setModStock(key, n){ if (n === null) delete modStock[key]; else modStock[key] = n; emit('stock', modStock); },
     async logEvent(){},
   };
 }
@@ -208,6 +210,8 @@ async function firebaseStore(app){
     async adjustItem(id, d, hitZero){ const u = {stockCount: F.increment(d)}; if (hitZero) u.eightySixed = true; await F.updateDoc(F.doc(db,'menu','main','items',id), u); },
     async adjustMod(key, d){ await F.updateDoc(F.doc(db,'menu','modStock'), new F.FieldPath('counts', key), F.increment(d)); },
     setStatus: x => F.setDoc(F.doc(db,'menu','status'), x, {merge:true}),
+    setItemStock: (id, x) => F.updateDoc(F.doc(db,'menu','main','items',id), x),
+    setModStock: (key, n) => F.setDoc(F.doc(db,'menu','modStock'), {counts: {[key]: n === null ? F.deleteField() : n}}, {merge:true}),
     logEvent: e => F.setDoc(F.doc(F.collection(db,'events')), {...e, at: Date.now()}),
   };
 }
@@ -426,6 +430,42 @@ async function takePayment(method){
     lastChange = change; view = 'done';
   }
   render();
+}
+
+// ---------- Press and hold: edit stock ----------
+let holdTimer = null, held = false;
+$('#main').addEventListener('pointerdown', e => {
+  const b = e.target.closest('button[data-item], button[data-mod]'); held = false; if (!b) return;
+  holdTimer = setTimeout(() => { held = true; if (navigator.vibrate) navigator.vibrate(30); b.dataset.item ? stockSheet({item: b.dataset.item}) : stockSheet({mod: b.dataset.mod}); }, 550);
+});
+['pointerup', 'pointerleave', 'pointercancel', 'pointermove'].forEach(ev => $('#main').addEventListener(ev, e => { if (ev === 'pointermove' && !(Math.abs(e.movementX) + Math.abs(e.movementY) > 6)) return; clearTimeout(holdTimer); }));
+$('#main').addEventListener('contextmenu', e => { if (e.target.closest('button[data-item], button[data-mod]')) e.preventDefault(); });
+$('#main').addEventListener('click', e => { if (held){ held = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+function stockSheet(ref){
+  let name, count, out;
+  if (ref.item){ const it = itemById(ref.item); name = it.name; count = typeof it.stockCount === 'number' ? it.stockCount : null; out = !!it.eightySixed || count === 0; }
+  else { const [gid, o] = ref.mod.split('|'); name = o + ' · ' + (groupById(gid) || {}).name; count = MODSTOCK[modKey(gid, o)]; count = typeof count === 'number' ? count : null; out = count === 0; }
+  sheet(`<h3>${esc(name)}</h3><div class="muted">${out ? 'Out of stock' : count !== null ? count + ' left' : 'In stock, not counted'}</div>
+    <div class="grid2"><button id="stIn" class="${!out && count === null ? 'on' : ''}">In stock</button><button id="stOut" class="${out ? 'on' : ''}">Out of stock</button></div>
+    <div class="muted" style="margin-top:12px">Or set how many are left. It goes out of stock by itself at zero.</div>
+    <div style="display:flex;gap:8px;margin-top:6px"><input id="stNum" type="number" min="0" step="1" inputmode="numeric" placeholder="Count" value="${count ?? ''}"><button class="primary" id="stSet" style="min-width:110px">Set count</button></div>
+    <div class="err" id="stErr"></div><div class="row"><button data-close>Close</button></div>`);
+  $('#sheetRoot').onclick = async e => {
+    if (e.target.classList.contains('scrim') || e.target.closest('[data-close]')) return closeSheet();
+    const id = e.target.id; let p = null;
+    if (ref.item){
+      if (id === 'stIn') p = store.setItemStock(ref.item, {eightySixed:false, stockCount:null});
+      if (id === 'stOut') p = store.setItemStock(ref.item, {eightySixed:true});
+      if (id === 'stSet'){ const n = parseInt($('#stNum').value, 10); if (!(n >= 0)){ $('#stErr').textContent = 'Enter a number, 0 or more.'; return; } p = store.setItemStock(ref.item, {stockCount:n, eightySixed: n === 0}); }
+    } else {
+      const [gid, o] = ref.mod.split('|'); const key = modKey(gid, o);
+      if (id === 'stIn') p = store.setModStock(key, null);
+      if (id === 'stOut') p = store.setModStock(key, 0);
+      if (id === 'stSet'){ const n = parseInt($('#stNum').value, 10); if (!(n >= 0)){ $('#stErr').textContent = 'Enter a number, 0 or more.'; return; } p = store.setModStock(key, n); }
+    }
+    if (!p) return;
+    try { await p; closeSheet(); render(); } catch (err){ $('#stErr').textContent = 'Could not save: ' + err.message; }
+  };
 }
 
 // ---------- Main panel events ----------
