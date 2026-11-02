@@ -108,6 +108,10 @@ function memoryStore(){
     async saveGroup(g){ data.groups = data.groups.filter(x => x.id !== g.id).concat([structuredClone(g)]); },
     async deleteGroup(id){ data.groups = data.groups.filter(x => x.id !== id); },
     async saveSettings(s){ data.settings = structuredClone(s); },
+    async getModStock(){ return structuredClone(data.modStock || {}); },
+    async setModStock(key, n){ data.modStock = data.modStock || {}; if (n === null) delete data.modStock[key]; else data.modStock[key] = n; },
+    async getStaff(){ return structuredClone(data.staff || {members:[], sleepMinutes:5}); },
+    async saveStaff(x){ data.staff = structuredClone(x); },
     async loadSeed(seed){ data = {settings:seed.settings, items:seed.items, groups:seed.modifierGroups}; },
   };
 }
@@ -128,6 +132,10 @@ async function firestoreStore(app){
     saveGroup: g => fs.setDoc(fs.doc(groups, g.id), g),
     deleteGroup: id => fs.deleteDoc(fs.doc(groups, id)),
     saveSettings: s => fs.setDoc(root, s),
+    async getModStock(){ const d = await fs.getDoc(fs.doc(db, 'menu', 'modStock')); return d.exists() ? (d.data().counts || {}) : {}; },
+    async setModStock(key, n){ await fs.setDoc(fs.doc(db, 'menu', 'modStock'), {counts: {[key]: n === null ? fs.deleteField() : n}}, {merge: true}); },
+    async getStaff(){ const d = await fs.getDoc(fs.doc(db, 'settings', 'staff')); return d.exists() ? d.data() : {members:[], sleepMinutes:5}; },
+    saveStaff: x => fs.setDoc(fs.doc(db, 'settings', 'staff'), x),
     async loadSeed(seed){
       let batch = fs.writeBatch(db), n = 0;
       const flush = async () => { await batch.commit(); batch = fs.writeBatch(db); n = 0; };
@@ -188,6 +196,7 @@ function renderItemEditor(){
     <h2>${esc(it.name)}</h2>
     <div class="row"><div><label>Name</label><input id="f_name" value="${esc(it.name)}"></div><div><label>Category</label><input id="f_cat" list="catlist" value="${esc(it.category)}"><datalist id="catlist">${(S.settings.categories || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>
     <label>Description</label><input id="f_desc" value="${esc(it.description)}">
+    <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
     <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       <div><label>Weekend reroute to runner</label><select id="f_reroute">${[['none','Off'],['all','All versions'],['iced','Iced only']].map(([k,l]) => `<option value="${k}" ${(it.reroute || 'none') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
     <h3>Where it shows</h3>
@@ -230,6 +239,7 @@ function readItemForm(it){
   out.name = $('#f_name').value.trim() || it.name;
   out.category = $('#f_cat').value.trim();
   out.description = $('#f_desc').value.trim();
+  out.taxable = $('#f_tax').checked;
   out.station = $('#f_station').value;
   out.visible = {}; document.querySelectorAll('[data-vis]').forEach(c => out.visible[c.dataset.vis] = c.checked);
   out.alcohol = $('#f_alcohol').checked; out.eightySixed = $('#f_86').checked;
@@ -252,8 +262,9 @@ function renderGroupList(){
     S.groups.map(g => `<div class="li ${g.id === selId ? 'sel' : ''}" data-gid="${esc(g.id)}"><div><div class="n">${esc(g.name)}</div><div class="s">${g.options.length} options · used by ${S.items.filter(i => (i.modifierGroupIds || []).includes(g.id)).length} items</div></div>${g.review ? '<span class="pill p-rev">Review</span>' : ''}</div>`).join('');
 }
 const RULES = [['1,1','Pick exactly one'],['0,1','Pick up to one'],['0,9','Pick any number'],['1,9','Pick at least one']];
-function renderGroupEditor(){
+async function renderGroupEditor(){
   const g = S.groups.find(x => x.id === selId);
+  if (g){ modStockNow = await store.getModStock().catch(() => ({})); groupIdNow = g.id; }
   if (!g){ $('#editPane').innerHTML = `<p class="muted">Pick a group on the left, or add a new one.</p>`; return; }
   const sizes = S.settings.sizes || [];
   const rule = `${g.min},${g.max}`;
@@ -261,49 +272,72 @@ function renderGroupEditor(){
     ${g.review ? `<div class="banner"><div><b>Check this group.</b> ${esc(g.review.note || '')}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="g_reviewed"> Reviewed</label></div>` : ''}
     <h2>${esc(g.name)}</h2>
     <div class="row"><div><label>Name</label><input id="g_name" value="${esc(g.name)}"></div><div><label>Choices</label><select id="g_rule">${RULES.map(([v,l]) => `<option value="${v}" ${v===rule?'selected':''}>${l}</option>`).join('')}${RULES.some(([v]) => v === rule) ? '' : `<option value="${rule}" selected>Min ${g.min}, max ${g.max}</option>`}</select></div></div>
+    <label>Pre-selected option (optional, must match an option name)</label><input id="g_default" value="${esc(g.default || '')}" style="max-width:320px">
     <h3>Options</h3>
     <p class="muted">"By size" lets an add-on cost more in a bigger drink. Blank sizes use the flat price.</p>
     <div id="opts">${g.options.map(o => optRow(o, sizes)).join('')}</div>
     <button id="addOpt">Add option</button>
     <div class="bar"><button class="primary" id="saveGroup">Save</button><span class="status" id="groupStatus"></span><span style="flex:1"></span><button class="danger" id="delGroup">Delete group</button></div>`;
 }
+let modStockNow = {}, groupIdNow = '';
 function optRow(o, sizes){
   const c = (o.counts || [])[0] || {name:'', qty:''};
   return `<div class="opt">
     <div class="row"><div><label>Option</label><input data-o="name" value="${esc(o.name)}"></div>
       <div><label>Pricing</label><select data-o="pricing"><option value="flat" ${o.pricing!=='bySize'?'selected':''}>Flat</option><option value="bySize" ${o.pricing==='bySize'?'selected':''}>By size</option></select></div>
-      <div><label>Price</label><input type="number" step="0.01" min="0" data-o="price" value="${esc(o.price ?? 0)}"></div>
+      <div><label>Price (negative for a discount)</label><input type="number" step="0.01" data-o="price" value="${esc(o.price ?? 0)}"></div>
       <div style="flex:none;align-self:end"><button data-o="del" aria-label="Remove option">✕</button></div></div>
     <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(s)}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
-    <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div></div>
+    <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
+      <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[groupIdNow + '~' + o.name] ?? '')}"></div></div>
+    <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
+      <div style="flex:none;align-self:end"><label style="display:flex;gap:6px;align-items:center;margin:0 0 8px;color:var(--ink);font-size:14px"><input type="checkbox" data-o="hide" ${o.hideOnline ? 'checked' : ''}>Hide on kiosk and online</label></div></div>
   </div>`;
 }
 function readGroupForm(g){
   const out = structuredClone(g);
   out.name = $('#g_name').value.trim() || g.name;
   const [mn, mx] = $('#g_rule').value.split(',').map(Number); out.min = mn; out.max = mx;
+  out.default = $('#g_default').value.trim();
   out.options = [...document.querySelectorAll('#opts .opt')].map(el => {
     const bySize = {}; el.querySelectorAll('[data-bs]').forEach(i => { if (i.value !== '') bySize[i.dataset.bs] = Number(i.value); });
     const cname = el.querySelector('[data-o=cname]').value.trim();
     return {name: el.querySelector('[data-o=name]').value.trim(), pricing: el.querySelector('[data-o=pricing]').value, price: Number(el.querySelector('[data-o=price]').value || 0), bySize,
-            counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : []};
+            counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : [],
+            subs: el.querySelector('[data-o=subs]').value.split(',').map(x => x.trim()).filter(Boolean),
+            hideOnline: el.querySelector('[data-o=hide]').checked,
+            _stock: el.querySelector('[data-o=stock]').value};
   }).filter(o => o.name);
   if (g.review && $('#g_reviewed')?.checked) out.review = null;
   return out;
 }
 
 // ---------- Settings ----------
-function renderSettings(){
+let staffNow = {members:[], sleepMinutes:5};
+async function renderSettings(){
+  staffNow = await store.getStaff().catch(() => staffNow);
   const s = S.settings;
   $('#editPane').innerHTML = `<h2>Settings</h2>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
     <label>Credit card surcharge (%)</label><input id="s_rate" type="number" step="0.1" min="0" max="3" value="${esc(((s.surchargeRate || 0) * 100).toFixed(1))}" style="max-width:140px">
     <p class="muted">New York requires the credit card price to be posted per item. The register will also cap it at Stripe's actual fee on each order.</p>
     <label>Categories, in menu order, separated by commas</label><input id="s_cats" value="${esc((s.categories || []).join(', '))}">
+    <label>Sales tax rate (%) — applies only to items marked "Charge sales tax"</label><input id="s_tax" type="number" step="0.001" min="0" value="${esc(((s.taxRate || 0) * 100).toFixed(3))}" style="max-width:140px">
+    <label>Pre-mods offered on any picked modifier (comma separated)</label><input id="s_pre" value="${esc((s.preMods || ['No', 'Light', 'Extra', 'On the side']).join(', '))}">
+    <label>Discounts, one per line, like "Staff meal: 50%" or "Bagel token: $1.50"</label><textarea id="s_disc" rows="5">${esc((s.discounts || [{name:'Comp', type:'percent', value:100}, {name:'Donation', type:'percent', value:100}]).map(d => `${d.name}: ${d.type === 'percent' ? d.value + '%' : '$' + d.value}`).join('\n'))}</textarea>
+    <label>Category colors, one per line, like "Sandwiches: #f4b860" (blank uses the default colors)</label><textarea id="s_colors" rows="3">${esc(Object.entries(s.categoryColors || {}).map(([k, v]) => `${k}: ${v}`).join('\n'))}</textarea>
     <div class="bar"><button class="primary" id="saveSettings">Save settings</button><span class="status" id="setStatus"></span></div>
+    <h3>Register sign-in</h3>
+    <p class="muted">Staff sign in on the register with their code. The register locks after the idle time below. Leave the list empty to skip sign-in.</p>
+    <label>Staff, one per line, like "Britty O: 1234"</label><textarea id="s_staff" rows="5" placeholder="Britty O: 1234">${esc((staffNow.members || []).map(m => `${m.name}: ${m.pin}`).join('\n'))}</textarea>
+    <label>Lock after this many idle minutes</label><input id="s_sleep" type="number" min="1" step="1" value="${esc(staffNow.sleepMinutes || 5)}" style="max-width:140px">
+    <div class="bar"><button class="primary" id="saveStaff">Save sign-in</button><span class="status" id="staffStatus"></span></div>
     <h3>Weekend reroute</h3>
     <p class="muted">Drinks that move to the runner screen when "Weekend reroute" is checked on the KDS: ${S.items.filter(i => i.reroute && i.reroute !== 'none').map(i => esc((i.reroute === 'iced' ? 'iced ' : '') + i.name)).join(', ') || 'none yet'}. Change one on its item page.</p>
     <button id="rrDefaults">Set cold brew, Honeybee, kombucha, lemonade, iced tea and iced chai</button> <span class="status" id="rrStatus"></span>
+    <h3>Cup charge</h3>
+    <p class="muted">Adds a "Cup" group (To go cup +$0.30 pre-selected, Customer cup and For here hidden on kiosk and online) to every drink. Set the customer cup discount on the group afterward.</p>
+    <button id="cupDefaults">Add the cup group to drinks</button> <span class="status" id="cupStatus"></span>
     <h3>Starter menu</h3>
     ${S.items.length ? `<p class="muted">Your menu has ${S.items.length} items. Reloading the starter menu replaces items and groups with the same names and undoes edits to them.</p><div class="row" style="max-width:520px"><input id="confirmSeed" placeholder="Type RELOAD to confirm"><button id="seedBtn">Reload starter menu</button></div>`
       : `<p class="muted">Loads the drinks with sizes from your website menu, sandwiches, and every item from the October Toast export. Each item is marked for review with where its price came from.</p><button class="primary" id="seedBtn">Load starter menu</button>`}
@@ -355,6 +389,7 @@ document.addEventListener('click', async e => {
     if (t.dataset?.o === 'del'){ t.closest('.opt').remove(); }
     if (t.id === 'saveGroup'){
       const g = S.groups.find(x => x.id === selId); const out = readGroupForm(g);
+      for (const o of out.options){ const v = o._stock; delete o._stock; const key = out.id + '~' + o.name; const cur = modStockNow[key]; const n = v === '' ? null : Math.max(0, Math.floor(Number(v))); if (n !== (cur ?? null)) await store.setModStock(key, n); }
       status('#groupStatus', 'Saving…'); await store.saveGroup(out); await reload(); status('#groupStatus', 'Saved', 'ok');
     }
     if (t.id === 'delGroup'){
@@ -363,10 +398,28 @@ document.addEventListener('click', async e => {
       if (t.dataset.armed){ await store.deleteGroup(selId); selId = null; await reload(); }
       else { t.dataset.armed = '1'; t.textContent = 'Tap again to delete'; }
     }
+    if (t.id === 'saveStaff'){
+      const lines = $('#s_staff').value.split('\n').map(l => l.trim()).filter(Boolean);
+      const members = lines.map(l => { const i = l.lastIndexOf(':'); return i > 0 ? {name: l.slice(0, i).trim(), pin: l.slice(i + 1).trim()} : null; }).filter(m => m && m.name && /^\d{3,6}$/.test(m.pin));
+      if (members.length !== lines.length){ status('#staffStatus', 'Each line needs a name, a colon, and a 3 to 6 digit code.', 'err'); return; }
+      if (new Set(members.map(m => m.pin)).size !== members.length){ status('#staffStatus', 'Two people have the same code.', 'err'); return; }
+      await store.saveStaff({members, sleepMinutes: Math.max(1, Number($('#s_sleep').value || 5))}); status('#staffStatus', 'Saved', 'ok');
+    }
     if (t.id === 'saveSettings'){
       const rate = Math.min(3, Math.max(0, Number($('#s_rate').value || 0))) / 100;
-      const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), surchargeRate: rate, categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean)};
+      const disc = $('#s_disc').value.split('\n').map(l => l.match(/^(.+?):\s*(\$)?([\d.]+)\s*(%)?\s*$/)).filter(Boolean).map(m => ({name: m[1].trim(), type: m[4] ? 'percent' : 'amount', value: Number(m[3])}));
+      const colors = Object.fromEntries($('#s_colors').value.split('\n').map(l => l.split(':')).filter(p => p.length >= 2 && p[0].trim()).map(p => [p[0].trim(), p.slice(1).join(':').trim()]));
+      const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), surchargeRate: rate, categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean),
+        taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'cupDefaults'){
+      const seed = await seedData(); const cup = seed.modifierGroups.find(g => g.id === 'cup');
+      if (!S.groups.some(g => g.id === 'cup')) await store.saveGroup(cup);
+      const drinkIds = new Set(seed.items.filter(i => i.modifierGroupIds.includes('cup')).map(i => i.id));
+      const hits = S.items.filter(i => drinkIds.has(i.id) && !(i.modifierGroupIds || []).includes('cup'));
+      for (const it of hits) await store.saveItem({...it, modifierGroupIds: [...(it.modifierGroupIds || []), 'cup']});
+      await reload(); status('#cupStatus', `Added to ${hits.length} drinks`, 'ok');
     }
     if (t.id === 'rrDefaults'){
       const rr = {'cold-brew':'all','honeybee-coffee':'all','kombucha-on-tap':'all','lemonade':'all','tea':'iced','chai-latte':'iced'};

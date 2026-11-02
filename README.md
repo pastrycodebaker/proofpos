@@ -79,3 +79,15 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - **Hotplate (paid)** order source for special orders.
 - **Scheduled orders**: "Schedule for later" on the test register. The order waits in Upcoming (header button) and appears on the KDS at its time, marked "Scheduled". Orders are now queried by `fireAtMs`.
 - **Counted inventory**: set a count on the KDS 86 screen or in the menu editor (`stockCount`). Each order takes from it, edits put it back, and the item 86s itself at zero. Entering a new count above zero brings it back.
+
+## Register
+
+`register/index.html` — full-screen register in Toast's Open View style, with less on screen. Sign the register in once with the shop account; staff then sign in with their code (Settings → Register sign-in) and it locks after the idle time. Add `?demo` to try it without signing in (code 1234).
+
+- Order on the left, categories and items on the right. 86'd items are grayed out but can still be rung.
+- Tapping an item opens all of its choices at once. Size/temperature is the first column on drinks. Required groups show a red ✕ until picked; "Add to order" stays off until they are.
+- Tap a modifier again for 2×, "−" for one less. "Light, extra…" on a picked modifier offers pre-mods (No, Light, Extra, On the side) and styles (over easy…), so they only appear when needed.
+- Modifier counts (bagel flavors, breads) show on the buttons, drop with each order, and gray out at zero (`menu/modStock`).
+- Stay sends what's rung so far to the KDS and keeps the order open. Pay asks for the name, then cash (quick-cash buttons, change due), card (test mode until Stripe), Gate Card, Chamber Gift Card or Hotplate. Split across methods by entering an amount first.
+- ⋮: tax exempt (Colgate), schedule, open item, no sale (logged), void (before payment), discounts from Settings.
+- Cup group: To go cup +$0.30 pre-selected; Customer cup and For here are hidden on kiosk and online.

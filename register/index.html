@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Proof POS · Register</title>
+<style>
+  :root{--bg:#eef1f4;--panel:#fff;--line:#dfe3e8;--ink:#1f2328;--quiet:#6b7280;--accent:#1a5fb4;--accent-bg:#e7f0fb;--good:#2f7a47;--warn:#b26b00;--crit:#c0392b;--sel:#1f2328}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:15px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden}
+  button{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.4;cursor:default}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.ghost{background:transparent;border-color:transparent;color:var(--accent)}
+  input{font:inherit;color:inherit;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;-webkit-user-select:text;user-select:text}
+  .hidden{display:none !important}
+  .app{display:grid;grid-template-columns:340px 1fr;height:100vh;gap:10px;padding:10px}
+  /* Check panel */
+  .check{background:var(--panel);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line)}
+  .chead{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .chead .num{font-weight:700;font-size:17px}
+  .chead .nm{flex:1;padding:6px 10px;border-radius:8px;background:var(--bg);color:var(--quiet);text-align:left}
+  .chead .nm.set{color:var(--ink);font-weight:600}
+  .ctags{display:flex;gap:6px;padding:6px 12px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+  .ctags span{font-size:12px;border-radius:999px;padding:3px 9px;background:var(--accent-bg);color:var(--accent);font-weight:600}
+  .ctags span.warn{background:#fff3e0;color:var(--warn)}
+  .clines{flex:1;overflow:auto}
+  .cl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+  .cl.editing{background:var(--accent-bg);box-shadow:inset 3px 0 0 var(--accent)}
+  .cl.sent{cursor:default}
+  .cl .n{font-weight:600}
+  .cl .p{text-align:right;font-variant-numeric:tabular-nums}
+  .cl .m{grid-column:1/-1;color:var(--quiet);font-size:13px}
+  .cl .s{grid-column:1/-1;font-size:11px;color:var(--good);text-transform:uppercase;letter-spacing:.05em}
+  .cl .x{grid-column:2;justify-self:end;padding:2px 8px;font-size:12px;color:var(--crit)}
+  .cempty{color:var(--quiet);text-align:center;padding:40px 16px}
+  .ctot{padding:10px 12px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .ctot div{display:flex;justify-content:space-between;color:var(--quiet);font-size:14px}
+  .ctot div.t{color:var(--ink);font-weight:700;font-size:16px;margin-top:2px}
+  .cbtns{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:10px 12px 12px}
+  .cbtns button{padding:14px 10px;font-weight:600;font-size:16px}
+  /* Right side */
+  .main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+  .top{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .top input{max-width:260px;padding:9px 12px;background:#fff}
+  .top .sp{flex:1}
+  .pill{font-size:13px;border-radius:999px;padding:7px 12px}
+  .pill.off{background:var(--crit);border-color:var(--crit);color:#fff;font-weight:700}
+  .who{font-size:13px;color:var(--quiet)}
+  .menuwrap{display:grid;grid-template-columns:170px 1fr;gap:10px;flex:1;min-height:0}
+  .cats{display:flex;flex-direction:column;gap:8px;overflow:auto}
+  .cats button{text-align:left;min-height:56px;font-weight:600;border:none;border-left:6px solid var(--c, #999)}
+  .cats button.on{outline:3px solid var(--sel);outline-offset:-3px}
+  .items{overflow:auto;align-content:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .items button,.opts button{min-height:64px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;background:var(--tint, #fff);border-color:transparent}
+  .items button small,.opts button small{color:var(--quiet);font-size:12px;display:flex;justify-content:space-between;gap:6px;width:100%}
+  .items button.out,.opts button.out{opacity:.45;background:repeating-linear-gradient(135deg,#fff,#fff 6px,#f2f2f2 6px,#f2f2f2 12px)}
+  .items button.out small b,.opts button.out small b{color:var(--crit)}
+  /* Modifier panel */
+  .modbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .modbar .title{font-weight:700;font-size:18px;margin-right:6px}
+  .modbar .qty{display:flex;align-items:center;gap:6px}
+  .modbar .qty b{min-width:28px;text-align:center;font-size:18px}
+  .modbar .sp{flex:1}
+  .cols{display:flex;gap:10px;overflow-x:auto;flex:1;align-items:flex-start;padding-bottom:6px}
+  .col{min-width:170px;max-width:200px;flex:0 0 auto}
+  .colh{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:10px;padding:8px 10px;margin-bottom:6px;font-weight:600;border-bottom:3px solid transparent}
+  .colh.need{border-bottom-color:var(--crit)}
+  .colh .st{font-size:13px}
+  .colh.need .st{color:var(--crit)} .colh.ok .st{color:var(--good)}
+  .opts{display:flex;flex-direction:column;gap:6px}
+  .opt{position:relative}
+  .opt > button{width:100%}
+  .opts button.on{outline:3px solid var(--sel);outline-offset:-3px;font-weight:600}
+  .opt .tools{display:flex;gap:4px;margin-top:4px}
+  .opt .tools button{min-height:0;padding:4px 10px;font-size:13px;flex:1;text-align:center;display:block;background:#fff;border-color:var(--line)}
+  /* Pay */
+  .pay{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;min-height:0}
+  .pay h2{margin:0 0 10px;font-size:26px}
+  .keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .keypad button{min-height:62px;font-size:22px}
+  .keypad button.q{background:#dfe6ee;font-weight:700}
+  .tender{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+  .tender .amt{flex:1;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:20px;text-align:right;font-variant-numeric:tabular-nums}
+  .methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start}
+  .methods button{min-height:60px;font-weight:600}
+  .methods .card{grid-column:1/-1;background:var(--accent);color:#fff;border-color:var(--accent);min-height:70px;font-size:17px}
+  .paid{margin-top:12px;font-size:14px}
+  .paid div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)}
+  .done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;flex:1;text-align:center}
+  .done .big{font-size:40px;font-weight:700}
+  /* Sheets */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;display:flex;align-items:center;justify-content:center}
+  .sheet{background:#fff;border-radius:16px;padding:18px;width:min(520px,94vw);max-height:86vh;overflow:auto}
+  .sheet h3{margin:0 0 6px;font-size:19px}
+  .sheet .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .sheet .row > button{flex:1;min-height:52px}
+  .sheet .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .sheet .grid2 button{min-height:52px;text-align:left}
+  .sheet .grid2 button.on{outline:3px solid var(--sel);outline-offset:-3px;font-weight:600}
+  .muted{color:var(--quiet);font-size:13px}
+  .err{color:var(--crit);font-size:14px;min-height:18px;margin-top:6px}
+  .lock{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;align-items:center;justify-content:center}
+  .lockbox{background:#fff;border-radius:16px;padding:22px;width:340px;text-align:center}
+  .dots{font-size:30px;letter-spacing:10px;min-height:40px}
+  .pin{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .pin button{min-height:60px;font-size:22px}
+  .banner{background:var(--crit);color:#fff;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="lock hidden" id="login">
+  <div class="lockbox" style="text-align:left">
+    <h3 style="margin-top:0">Proof POS register</h3>
+    <p class="muted">Sign this register in once with the shop account.</p>
+    <input id="email" type="email" placeholder="Email" style="margin-bottom:8px">
+    <input id="password" type="password" placeholder="Password">
+    <button class="primary" id="signIn" style="width:100%;margin-top:10px">Sign in</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+<div class="lock hidden" id="lock">
+  <div class="lockbox">
+    <h3 style="margin:0">Enter your code</h3>
+    <div class="dots" id="dots"></div>
+    <div class="pin" id="pin"></div>
+    <div class="err" id="pinErr"></div>
+  </div>
+</div>
+
+<div class="app hidden" id="app">
+  <section class="check">
+    <div class="chead"><span class="num" id="cNum">New</span><button class="nm" id="cName">Add name</button><button id="cMore" aria-label="More actions">⋮</button></div>
+    <div class="ctags hidden" id="cTags"></div>
+    <div class="clines" id="cLines"></div>
+    <div class="ctot" id="cTot"></div>
+    <div class="cbtns"><button id="btnStay">Stay</button><button class="primary" id="btnPay">Pay</button></div>
+  </section>
+  <section class="main" id="main"></section>
+</div>
+<div id="sheetRoot"></div>
+
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const money = n => (n < 0 ? '−$' : '$') + Math.abs(n).toFixed(2);
+const r2 = n => Math.round(n * 100) / 100;
+const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const startOfDay = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
+const PALETTE = ['#f4b860','#9aa5b1','#eba8a0','#e2b42f','#a8d672','#8b93f0','#e07a5f','#7fc8f8','#c39bd3','#76c7b7'];
+const DEFAULT_PREMODS = ['No', 'Light', 'Extra', 'On the side'];
+const METHODS = [['cash','Cash'],['gift','Gift card'],['gate','Gate Card'],['chamber','Chamber Gift Card'],['hotplate','Hotplate']];
+
+// ---------- Store ----------
+function demoStore(){
+  let menu, modStock = {'bread~Bagel': 3, 'bread~Croissant': 0}, settings = {}, status = {onlinePaused:false}, orders = [], next = 101;
+  const subs = {menu:[], stock:[], status:[], orders:[]};
+  const emit = (k, v) => subs[k].forEach(cb => cb(structuredClone(v)));
+  return {
+    async watchMenu(cb){ const s = await (await fetch('../data/seed-menu.json')).json(); menu = {items:s.items, groups:s.modifierGroups, settings:s.settings}; subs.menu.push(cb); cb(structuredClone(menu)); },
+    watchModStock(cb){ subs.stock.push(cb); cb({...modStock}); },
+    watchStatus(cb){ subs.status.push(cb); cb({...status}); },
+    watchKds(cb){ cb({reroute:false}); },
+    async getStaff(){ return {members:[{name:'Demo Staff', pin:'1234'}], sleepMinutes:5}; },
+    watchOrders(cb){ subs.orders.push(cb); cb(structuredClone(orders)); },
+    async createOrder(o){ const id = uid(); orders.push({...o, id, num: next++}); emit('orders', orders); return id; },
+    async updateOrder(id, fields, newLines){ const o = orders.find(x => x.id === id); Object.assign(o, fields); if (newLines) o.lines.push(...newLines); emit('orders', orders); },
+    async adjustItem(id, d){ const it = menu.items.find(i => i.id === id); if (it && typeof it.stockCount === 'number'){ it.stockCount += d; if (it.stockCount <= 0 && d < 0) it.eightySixed = true; emit('menu', menu); } },
+    async adjustMod(key, d){ if (typeof modStock[key] === 'number'){ modStock[key] += d; emit('stock', modStock); } },
+    async setStatus(x){ status = {...status, ...x}; emit('status', status); },
+    async logEvent(){},
+  };
+}
+async function firebaseStore(app){
+  const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  let db; try { db = F.initializeFirestore(app, {localCache: F.persistentLocalCache({tabManager: F.persistentMultipleTabManager()})}); } catch (e){ db = F.getFirestore(app); }
+  const orders = F.collection(db, 'orders');
+  return {
+    watchMenu(cb){
+      const m = {items:[], groups:[], settings:{}}; const got = {i:false, g:false, s:false};
+      const fire = () => { if (got.i && got.g && got.s) cb({...m}); };
+      F.onSnapshot(F.collection(db,'menu','main','items'), s => { m.items = s.docs.map(d => d.data()); got.i = true; fire(); });
+      F.onSnapshot(F.collection(db,'menu','main','modifierGroups'), s => { m.groups = s.docs.map(d => d.data()); got.g = true; fire(); });
+      F.onSnapshot(F.doc(db,'menu','main'), s => { m.settings = s.exists() ? s.data() : {}; got.s = true; fire(); });
+    },
+    watchModStock(cb){ F.onSnapshot(F.doc(db,'menu','modStock'), s => cb(s.exists() ? (s.data().counts || {}) : {})); },
+    watchStatus(cb){ F.onSnapshot(F.doc(db,'menu','status'), s => cb(s.exists() ? s.data() : {onlinePaused:false})); },
+    watchKds(cb){ F.onSnapshot(F.doc(db,'settings','kds'), s => cb(s.exists() ? s.data() : {})); },
+    async getStaff(){ const s = await F.getDoc(F.doc(db,'settings','staff')); return s.exists() ? s.data() : {members:[], sleepMinutes:5}; },
+    watchOrders(cb){ F.onSnapshot(F.query(orders, F.where('fireAtMs', '>=', startOfDay())), snap => cb(snap.docs.map(d => { const o = d.data(); return {...o, id:d.id, lines:Object.values(o.lines || {}).sort((a, b) => a.pos - b.pos)}; }))); },
+    async createOrder(o){
+      const ref = F.doc(orders);
+      const data = {...o, lines:Object.fromEntries(o.lines.map((l, i) => [l.lid, {...l, pos:i}])), createdAt: F.serverTimestamp()};
+      if (!navigator.onLine){ await F.setDoc(ref, {...data, num:'T' + ref.id.slice(0,3).toUpperCase()}); return ref.id; }
+      const counter = F.doc(db, 'counters', 'orders-' + dayKey());
+      await F.runTransaction(db, async tx => { const c = await tx.get(counter); const num = c.exists() ? c.data().next : 101; tx.set(counter, {next:num + 1}); tx.set(ref, {...data, num}); });
+      return ref.id;
+    },
+    async updateOrder(id, fields, newLines, startPos){
+      const upd = {...fields};
+      (newLines || []).forEach((l, i) => { upd['lines.' + l.lid] = {...l, pos:(startPos || 0) + i}; });
+      await F.updateDoc(F.doc(orders, id), upd);
+    },
+    async adjustItem(id, d, hitZero){ const u = {stockCount: F.increment(d)}; if (hitZero) u.eightySixed = true; await F.updateDoc(F.doc(db,'menu','main','items',id), u); },
+    async adjustMod(key, d){ await F.updateDoc(F.doc(db,'menu','modStock'), new F.FieldPath('counts', key), F.increment(d)); },
+    setStatus: x => F.setDoc(F.doc(db,'menu','status'), x, {merge:true}),
+    logEvent: e => F.setDoc(F.doc(F.collection(db,'events')), {...e, at: Date.now()}),
+  };
+}
+
+// ---------- State ----------
+let store, MENU = {items:[], groups:[], settings:{}}, MODSTOCK = {}, STATUS = {onlinePaused:false}, KDS = {}, STAFF = {members:[], sleepMinutes:5}, ORDERS = [];
+let user = null, view = 'menu', cat = null, search = '';
+let check = newCheck(), draft = null, tender = '';
+function newCheck(){ return {orderId:null, name:'', lines:[], taxExempt:false, discount:null, fireAtMs:null, payments:[]}; }
+const itemById = id => MENU.items.find(i => i.id === id);
+const groupById = id => MENU.groups.find(g => g.id === id);
+const settings = () => MENU.settings || {};
+const preMods = () => settings().preMods || DEFAULT_PREMODS;
+const modKey = (g, o) => g + '~' + o;
+const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
+const cats = () => { const order = settings().categories || []; const set = [...new Set(MENU.items.filter(i => i.visible?.register !== false).map(i => i.category || 'Other'))]; return set.sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99)); };
+const catColor = c => (settings().categoryColors || {})[c] || PALETTE[cats().indexOf(c) % PALETTE.length];
+
+// ---------- Pricing ----------
+function optPrice(o, size){ if (!o) return 0; if (o.pricing === 'bySize' && size && o.bySize && o.bySize[size] !== undefined) return Number(o.bySize[size]); return Number(o.price || 0); }
+function lineFrom(d){
+  const it = itemById(d.itemId); const v = (it.versions || [])[d.versionIdx ?? 0] || {};
+  let price = d.openPrice !== undefined ? Number(d.openPrice) : Number(v.price || 0);
+  const counts = {};
+  for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
+  for (const m of d.mods){
+    const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o);
+    if (m.pre !== 'No') { price += optPrice(o, v.size) * (m.q || 1); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
+  }
+  const rr = KDS.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
+  return {lid: d.lid || uid(), itemId: it.id, name: d.openName || it.name, station: d.openStation || (rr ? 'none' : (it.station || 'none')), rerouted: !!rr,
+    versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods: d.mods.map(m => ({...m})), counts, price: r2(price),
+    taxable: !!it.taxable, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
+}
+function modText(m){ return [m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''); }
+function totals(){
+  const live = check.lines.filter(l => !l.removed);
+  const sub = r2(live.reduce((s, l) => s + l.price, 0));
+  let disc = 0; const d = check.discount;
+  if (d) disc = r2(d.type === 'percent' ? sub * d.value / 100 : Math.min(sub, d.value));
+  const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + l.price, 0) * (sub ? (sub - disc) / sub : 0));
+  const tax = check.taxExempt ? 0 : r2(taxable * Number(settings().taxRate || 0));
+  const total = r2(sub - disc + tax);
+  const paid = r2(check.payments.reduce((s, p) => s + p.amount, 0));
+  const surcharge = r2(check.payments.reduce((s, p) => s + (p.surcharge || 0), 0));
+  return {sub, disc, tax, total, paid, surcharge, due: r2(total - paid)};
+}
+
+// ---------- Check panel ----------
+function renderCheck(){
+  const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
+  $('#cNum').textContent = o && o.num ? '#' + o.num : 'New';
+  $('#cName').textContent = check.name || 'Add name'; $('#cName').classList.toggle('set', !!check.name);
+  const tags = [];
+  if (check.taxExempt) tags.push('<span>Tax exempt</span>');
+  if (check.discount) tags.push(`<span>${esc(check.discount.name)}</span>`);
+  if (check.fireAtMs) tags.push(`<span class="warn">Scheduled ${new Date(check.fireAtMs).toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'})}</span>`);
+  $('#cTags').innerHTML = tags.join(''); $('#cTags').classList.toggle('hidden', !tags.length);
+  const lines = check.lines.filter(l => !l.removed);
+  $('#cLines').innerHTML = lines.length ? lines.map((l, i) => {
+    const idx = check.lines.indexOf(l);
+    const editing = draft && draft.editIdx === idx;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}</span><span class="p">${money(l.price)}</span>${l.mods.length ? `<span class="m">${l.mods.map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
+  }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
+  const t = totals();
+  $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}<div><span>Tax${check.taxExempt ? ' (exempt)' : ''}</span><span>${money(t.tax)}</span></div>${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
+  const unsent = check.lines.some(l => !l.sent && !l.removed);
+  $('#btnStay').disabled = !unsent || !!draft;
+  $('#btnPay').disabled = !lines.length || !!draft || view === 'pay';
+  $('#btnPay').textContent = lines.length ? `${lines.length} item${lines.length > 1 ? 's' : ''} · Pay ${money(t.paid ? t.due : t.total)}` : 'Pay';
+}
+$('#cLines').addEventListener('click', e => {
+  const del = e.target.closest('button[data-del]');
+  if (del){ e.stopPropagation(); const i = Number(del.dataset.del); check.lines.splice(i, 1); if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } render(); return; }
+  const row = e.target.closest('.cl'); if (!row || row.classList.contains('sent') || view === 'pay') return;
+  const i = Number(row.dataset.idx); const l = check.lines[i]; if (l.itemId === '_open' || !itemById(l.itemId)) return;
+  draft = {itemId:l.itemId, versionIdx:l.versionIdx, mods:l.mods.map(m => ({...m})), qty:1, editIdx:i, lid:l.lid, openName: l.openName, openPrice: l.openPrice, openStation: l.openStation};
+  view = 'mods'; render();
+});
+
+// ---------- Menu view ----------
+function renderTop(){
+  const off = !!STATUS.onlinePaused;
+  return `${off ? '<div class="banner">Online ordering is OFF</div>' : ''}<div class="top"><input id="search" placeholder="Search items" value="${esc(search)}"><span class="sp"></span><button class="pill ${off ? 'off' : ''}" id="online">Online ordering: ${off ? 'OFF' : 'on'}</button><span class="who">${esc(user ? user.name : '')}</span><button class="pill" id="switchUser">Switch user</button></div>`;
+}
+function renderMenu(){
+  const cs = cats(); if (!cat || !cs.includes(cat)) cat = cs[0];
+  const q = search.trim().toLowerCase();
+  const list = MENU.items.filter(i => i.visible?.register !== false && (q ? i.name.toLowerCase().includes(q) : (i.category || 'Other') === cat)).sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name));
+  const tint = c => `${catColor(c)}33`;
+  $('#main').innerHTML = renderTop() + `<div class="menuwrap"><div class="cats">${cs.map(c => `<button class="${c === cat && !q ? 'on' : ''}" style="--c:${catColor(c)};background:${tint(c)}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="items">${list.map(i => { const out = i.eightySixed || (typeof i.stockCount === 'number' && i.stockCount <= 0); const vs = (i.versions || []).filter(v => v.price !== null && v.price !== undefined); const pr = vs.length ? (vs.length > 1 ? 'from ' + money(Math.min(...vs.map(v => Number(v.price)))) : money(Number(vs[0].price))) : 'No price';
+      return `<button class="${out ? 'out' : ''}" style="--tint:${tint(i.category || 'Other')}" data-item="${esc(i.id)}"><span>${esc(i.name)}</span><small><span>${pr}</span>${out ? "<b>86'd</b>" : typeof i.stockCount === 'number' ? `<span>${i.stockCount} left</span>` : ''}</small></button>`; }).join('') || '<p class="muted">No items.</p>'}</div></div>`;
+}
+
+// ---------- Modifier view ----------
+function draftGroups(){ const it = itemById(draft.itemId); return (it.modifierGroupIds || []).map(groupById).filter(Boolean); }
+function groupStatus(g){ const n = draft.mods.filter(m => m.g === g.id).reduce((s, m) => s + (m.q || 1), 0); return {n, need: n < (g.min || 0)}; }
+function draftReady(){ const it = itemById(draft.itemId); if ((it.versions || []).length > 1 && draft.versionIdx === null) return false; return draftGroups().every(g => !groupStatus(g).need); }
+function renderMods(){
+  const it = itemById(draft.itemId); const vers = it.versions || []; const size = (vers[draft.versionIdx ?? 0] || {}).size;
+  const cols = [];
+  if (vers.length > 1){
+    const need = draft.versionIdx === null;
+    cols.push(`<div class="col"><div class="colh ${need ? 'need' : 'ok'}"><span>Size</span><span class="st">${need ? '✕ 1' : '✓'}</span></div><div class="opts">${vers.map((v, vi) => `<div class="opt"><button class="${draft.versionIdx === vi ? 'on' : ''}" data-ver="${vi}"><span>${esc(versionLabel(v))}</span><small><span>${money(Number(v.price || 0))}</span></small></button></div>`).join('')}</div></div>`);
+  }
+  for (const g of draftGroups()){
+    const st = groupStatus(g);
+    cols.push(`<div class="col"><div class="colh ${st.need ? 'need' : (g.min ? 'ok' : '')}"><span>${esc(g.name)}</span><span class="st">${st.need ? '✕ ' + (g.min - st.n) : g.min ? '✓' : ''}</span></div><div class="opts">${g.options.map(o => {
+      const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const cnt = MODSTOCK[modKey(g.id, o.name)]; const out = typeof cnt === 'number' && cnt <= 0;
+      const p = optPrice(o, size);
+      const label = m ? modText(m) : o.name;
+      const tools = m ? `<div class="tools">${g.max !== 1 ? `<button data-minus="${esc(g.id)}|${esc(o.name)}">−</button>` : ''}<button data-more="${esc(g.id)}|${esc(o.name)}">Light, extra…</button></div>` : '';
+      return `<div class="opt"><button class="${m ? 'on' : ''} ${out ? 'out' : ''}" data-mod="${esc(g.id)}|${esc(o.name)}"><span>${esc(label)}</span><small><span>${p ? (p > 0 ? '+' : '') + money(p) : ''}</span>${typeof cnt === 'number' ? (out ? '<b>0</b>' : `<span>${cnt}</span>`) : ''}</small></button>${tools}</div>`;
+    }).join('')}</div></div>`);
+  }
+  const ready = draftReady();
+  $('#main').innerHTML = `<div class="modbar"><span class="title">${esc(draft.openName || it.name)}</span>${draft.editIdx === undefined || draft.editIdx === null ? `<span class="qty"><button id="qMinus" ${draft.qty <= 1 ? 'disabled' : ''}>−</button><b>${draft.qty}</b><button id="qPlus">+</button></span>` : ''}<span class="sp"></span><button id="mCancel">Cancel</button><button class="primary" id="mDone" ${ready ? '' : 'disabled'}>${draft.editIdx !== undefined && draft.editIdx !== null ? 'Update' : 'Add to order'}</button></div>
+    <div class="cols">${cols.join('') || '<p class="muted">No choices for this item. Tap Add to order.</p>'}</div>`;
+}
+function startDraft(itemId){
+  const it = itemById(itemId);
+  draft = {itemId, versionIdx: (it.versions || []).length > 1 ? null : 0, mods: [], qty: 1, editIdx: null};
+  for (const g of draftGroups()) if (g.default && g.options.some(o => o.name === g.default)) draft.mods.push({g: g.id, o: g.default, q: 1});
+  if ((it.versions || []).length <= 1 && !draftGroups().length){ commitDraft(); return; }
+  view = 'mods'; render();
+}
+function commitDraft(){
+  if (draft.editIdx !== null && draft.editIdx !== undefined){ const old = check.lines[draft.editIdx]; check.lines[draft.editIdx] = {...lineFrom(draft), lid: old.lid}; }
+  else for (let i = 0; i < draft.qty; i++) check.lines.push({...lineFrom({...draft, lid: null}), openName: draft.openName, openPrice: draft.openPrice, openStation: draft.openStation});
+  draft = null; view = 'menu'; search = ''; render();
+}
+
+// ---------- Pay view ----------
+function quickCash(due){ const a = Math.ceil(due); const b = Math.ceil(due / 5) * 5; const c = Math.ceil(due / 10) * 10; const d = Math.ceil(due / 20) * 20; return [...new Set([a, b, c, d].filter(x => x >= due))].slice(0, 3); }
+function renderPay(){
+  const t = totals(); const qc = quickCash(t.due);
+  const rate = Number(settings().surchargeRate ?? 0.03);
+  $('#main').innerHTML = renderTop() + `<div class="pay"><div><h2>Balance due: ${money(t.due)}</h2>
+    <div class="tender"><span class="muted">Amount</span><div class="amt" id="amt">${tender ? money(Number(tender) / 100) : money(t.due)}</div></div>
+    <div class="keypad">${[1,2,3].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[0] ?? ''}">${qc[0] !== undefined ? '$' + qc[0] : ''}</button>${[4,5,6].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[1] ?? ''}">${qc[1] !== undefined ? '$' + qc[1] : ''}</button>${[7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[2] ?? ''}">${qc[2] !== undefined ? '$' + qc[2] : ''}</button><button data-k="C">C</button><button data-k="0">0</button><button data-k="00">00</button><button data-k="B">⌫</button></div>
+    ${check.payments.length ? `<div class="paid">${check.payments.map(p => `<div><span>${esc(p.label)}</span><span>${money(p.amount)}${p.surcharge ? ' + ' + money(p.surcharge) + ' surcharge' : ''}</span></div>`).join('')}</div>` : ''}
+    <div class="row" style="margin-top:10px;display:flex;gap:8px"><button id="payBack" style="flex:1;min-height:50px">Back to order</button></div></div>
+    <div class="methods"><button class="card" data-pay="card">Card${rate ? ` · credit adds up to ${(rate * 100).toFixed(1)}%` : ''}<br><small style="font-weight:400">Test mode until the Stripe reader is set up</small></button>${METHODS.map(([k, l]) => `<button data-pay="${k}" ${k === 'gift' ? 'disabled title="Gift cards are not built yet"' : ''}>${l}${k === 'gift' ? ' (soon)' : ''}</button>`).join('')}</div></div>`;
+}
+function renderDone(change){
+  const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
+  $('#main').innerHTML = renderTop() + `<div class="done">${change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
+}
+
+// ---------- Render ----------
+function render(){
+  renderCheck();
+  if (view === 'menu') renderMenu();
+  if (view === 'mods') renderMods();
+  if (view === 'pay') renderPay();
+  if (view === 'done') renderDone(lastChange);
+}
+let lastChange = 0;
+
+// ---------- Sending to the KDS ----------
+async function sendUnsent(){
+  const unsent = check.lines.filter(l => !l.sent && !l.removed);
+  if (!unsent.length) return;
+  const clean = l => { const {sent, openName, openPrice, openStation, ...rest} = l; return rest; };
+  const base = {name: check.name || 'Guest', staff: user ? user.name : '', taxExempt: check.taxExempt, discount: check.discount};
+  if (!check.orderId){
+    const now = Date.now();
+    const fire = check.fireAtMs && check.fireAtMs > now ? check.fireAtMs : now;
+    check.orderId = await store.createOrder({...base, source:'register', rush:false, scheduled: fire > now, cleared:false, clearedAt:0, status:'open', createdAtMs: now, fireAtMs: fire, lines: unsent.map(clean), payments:[]});
+  } else {
+    const o = ORDERS.find(x => x.id === check.orderId); const startPos = o ? o.lines.length : check.lines.length;
+    await store.updateOrder(check.orderId, base, unsent.map(clean), startPos);
+  }
+  unsent.forEach(l => { l.sent = true; });
+  adjustStock(unsent, -1);
+}
+function adjustStock(lines, sign){
+  const items = {}, mods = {};
+  for (const l of lines){ items[l.itemId] = (items[l.itemId] || 0) + 1; for (const m of l.mods) if (m.pre !== 'No'){ const k = modKey(m.g, m.o); mods[k] = (mods[k] || 0) + (m.q || 1); } }
+  for (const [id, n] of Object.entries(items)){ const it = itemById(id); if (it && typeof it.stockCount === 'number') store.adjustItem(id, sign * n, sign < 0 && it.stockCount - n <= 0).catch(console.error); }
+  for (const [k, n] of Object.entries(mods)) if (typeof MODSTOCK[k] === 'number') store.adjustMod(k, sign * n).catch(console.error);
+}
+function needName(then, force){
+  if (check.name && !force) return then();
+  sheet(`<h3>Name for this order</h3><input id="nameIn" placeholder="Customer name" autocomplete="off" value="${esc(check.name)}"><div class="row"><button data-close>Cancel</button><button class="primary" id="nameOk">Set name</button></div>`);
+  const inp = $('#nameIn'); inp.focus();
+  const ok = () => { const v = inp.value.trim(); if (!v) { inp.focus(); return; } check.name = v; closeSheet(); renderCheck(); then(); };
+  $('#nameOk').onclick = ok; inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+}
+$('#btnStay').addEventListener('click', () => needName(async () => { try { await sendUnsent(); } catch (e){ alertSheet('Could not send: ' + e.message); } render(); }));
+$('#btnPay').addEventListener('click', () => needName(() => { tender = ''; view = 'pay'; render(); }));
+$('#cName').addEventListener('click', () => needName(() => { if (check.orderId) store.updateOrder(check.orderId, {name: check.name}).catch(console.error); }, true));
+
+async function takePayment(method){
+  const t = totals(); let amt = tender ? Number(tender) / 100 : t.due; tender = '';
+  if (amt <= 0) return;
+  let change = 0;
+  if (method === 'cash'){ if (amt > t.due){ change = r2(amt - t.due); } amt = Math.min(amt, t.due); }
+  else amt = Math.min(amt, t.due);
+  const label = method === 'card' ? 'Card (test)' : (METHODS.find(m => m[0] === method) || [, method])[1];
+  const p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
+  if (method === 'card'){
+    const rate = Number(settings().surchargeRate ?? 0.03);
+    // Credit cards only once Stripe reports the card type; capped at Stripe's in-person fee (2.7% + 5¢).
+    p.surcharge = r2(Math.min(amt * rate, amt * 0.027 + 0.05)); p.note = 'Test payment, no card charged';
+  }
+  if (change) p.tendered = r2(amt + change);
+  check.payments.push(p);
+  const after = totals();
+  if (after.due <= 0.004){
+    try {
+      await sendUnsent();
+      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now()});
+    } catch (e){ alertSheet('Saved locally, will sync: ' + e.message); }
+    lastChange = change; view = 'done';
+  }
+  render();
+}
+
+// ---------- Main panel events ----------
+$('#main').addEventListener('input', e => { if (e.target.id === 'search'){ search = e.target.value; renderMenu(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); } });
+$('#main').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'online'){ const v = !STATUS.onlinePaused; STATUS = {...STATUS, onlinePaused: v}; render(); store.setStatus({onlinePaused: v, changedAt: Date.now()}).catch(console.error); return; }
+  if (t.id === 'switchUser'){ lockNow(); return; }
+  if (t.dataset.cat){ cat = t.dataset.cat; search = ''; renderMenu(); return; }
+  if (t.dataset.item){ startDraft(t.dataset.item); return; }
+  if (t.dataset.ver !== undefined){ draft.versionIdx = Number(t.dataset.ver); renderMods(); return; }
+  if (t.dataset.mod){
+    const [gid, name] = t.dataset.mod.split('|'); const g = groupById(gid); const cur = draft.mods.find(m => m.g === gid && m.o === name);
+    if (g.max === 1){ draft.mods = draft.mods.filter(m => m.g !== gid); if (!cur) draft.mods.push({g:gid, o:name, q:1}); }
+    else if (cur){ const total = draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0); if (total < (g.max || 99)) cur.q = (cur.q || 1) + 1; }
+    else { const total = draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0); if (total < (g.max || 99)) draft.mods.push({g:gid, o:name, q:1}); }
+    renderMods(); return;
+  }
+  if (t.dataset.minus){ const [gid, name] = t.dataset.minus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur.q > 1) cur.q -= 1; else draft.mods = draft.mods.filter(m => m !== cur); renderMods(); return; }
+  if (t.dataset.more){ openMore(...t.dataset.more.split('|')); return; }
+  if (t.id === 'qMinus'){ draft.qty = Math.max(1, draft.qty - 1); renderMods(); return; }
+  if (t.id === 'qPlus'){ draft.qty += 1; renderMods(); return; }
+  if (t.id === 'mCancel'){ draft = null; view = 'menu'; render(); return; }
+  if (t.id === 'mDone'){ if (draftReady()) commitDraft(); return; }
+  if (t.dataset.k !== undefined){ const k = t.dataset.k; if (k === 'C') tender = ''; else if (k === 'B') tender = tender.slice(0, -1); else tender = (tender + k).replace(/^0+/, '').slice(0, 7); renderPay(); return; }
+  if (t.dataset.q){ tender = String(Math.round(Number(t.dataset.q) * 100)); takePayment('cash'); return; }
+  if (t.dataset.pay){ takePayment(t.dataset.pay); return; }
+  if (t.id === 'payBack'){ view = 'menu'; render(); return; }
+  if (t.id === 'newOrder'){ check = newCheck(); view = 'menu'; render(); return; }
+});
+function openMore(gid, name){
+  const g = groupById(gid); const o = g.options.find(x => x.name === name); const m = draft.mods.find(x => x.g === gid && x.o === name);
+  const subs = (o.subs || []);
+  sheet(`<h3>${esc(name)}</h3><div class="muted">How should it be made?</div><div class="grid2">${preMods().map(p => `<button class="${m.pre === p ? 'on' : ''}" data-pre="${esc(p)}">${esc(p)}</button>`).join('')}</div>${subs.length ? `<div class="muted" style="margin-top:12px">Style</div><div class="grid2">${subs.map(s => `<button class="${m.sub === s ? 'on' : ''}" data-sub="${esc(s)}">${esc(s)}</button>`).join('')}</div>` : ''}<div class="row"><button class="primary" data-close>Done</button></div>`);
+  $('#sheetRoot').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.pre){ m.pre = m.pre === b.dataset.pre ? '' : b.dataset.pre; }
+    if (b.dataset.sub){ m.sub = m.sub === b.dataset.sub ? '' : b.dataset.sub; }
+    if (b.dataset.close !== undefined || e.target.classList.contains('scrim')){ closeSheet(); renderMods(); return; }
+    openMore(gid, name);
+  };
+}
+
+// ---------- More actions (⋮) ----------
+$('#cMore').addEventListener('click', () => {
+  const discounts = settings().discounts || [{name:'Comp', type:'percent', value:100}, {name:'Donation', type:'percent', value:100}];
+  sheet(`<h3>Order actions</h3><div class="grid2">
+    <button data-a="exempt" class="${check.taxExempt ? 'on' : ''}">Tax exempt (Colgate)</button>
+    <button data-a="schedule">Schedule</button>
+    <button data-a="open">Open item</button>
+    <button data-a="nosale">No sale</button>
+    <button data-a="void">Void order</button>
+    <button data-a="clearDisc" ${check.discount ? '' : 'disabled'}>Remove discount</button></div>
+    <div class="muted" style="margin-top:12px">Discounts</div><div class="grid2">${discounts.map((d, i) => `<button data-disc="${i}" class="${check.discount && check.discount.name === d.name ? 'on' : ''}">${esc(d.name)} · ${d.type === 'percent' ? d.value + '%' : money(d.value)}</button>`).join('')}</div>
+    <div class="row"><button data-close>Close</button></div>`);
+  $('#sheetRoot').onclick = e => {
+    const b = e.target.closest('button'); if (!b && !e.target.classList.contains('scrim')) return;
+    if (!b || b.dataset.close !== undefined){ closeSheet(); return; }
+    const a = b.dataset.a;
+    if (b.dataset.disc !== undefined){ check.discount = discounts[Number(b.dataset.disc)]; closeSheet(); render(); return; }
+    if (a === 'clearDisc'){ check.discount = null; closeSheet(); render(); }
+    if (a === 'exempt'){ check.taxExempt = !check.taxExempt; closeSheet(); render(); }
+    if (a === 'nosale'){ store.logEvent({type:'no_sale', staff: user ? user.name : ''}).catch(console.error); closeSheet(); alertSheet('Drawer opened. No sale was logged.'); }
+    if (a === 'void') voidOrder();
+    if (a === 'schedule') scheduleSheet();
+    if (a === 'open') openItemSheet();
+  };
+});
+function scheduleSheet(){
+  const d = new Date((check.fireAtMs || Date.now() + 3600000) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  sheet(`<h3>Schedule this order</h3><div class="muted">It appears on the KDS at this time. Ring it, take payment, and it waits until then.</div><input type="datetime-local" id="schedIn" value="${d}" style="margin-top:10px"><div class="err" id="schedErr"></div><div class="row"><button id="schedClear">Send now instead</button><button class="primary" id="schedOk">Schedule</button></div>`);
+  $('#sheetRoot').onclick = e => {
+    if (e.target.classList.contains('scrim')) return closeSheet();
+    if (e.target.id === 'schedClear'){ check.fireAtMs = null; closeSheet(); render(); }
+    if (e.target.id === 'schedOk'){ const ms = new Date($('#schedIn').value).getTime(); if (!ms || ms <= Date.now()){ $('#schedErr').textContent = 'Pick a time in the future.'; return; } if (check.orderId){ $('#schedErr').textContent = 'Part of this order was already sent. Start a new order to schedule.'; return; } check.fireAtMs = ms; closeSheet(); render(); }
+  };
+}
+function openItemSheet(){
+  sheet(`<h3>Open item</h3><input id="oiName" placeholder="What is it?"><input id="oiPrice" type="number" step="0.01" min="0" placeholder="Price" style="margin-top:8px"><div class="grid2"><button data-st="kitchen">Kitchen</button><button data-st="espresso">Espresso bar</button><button data-st="none" class="on">Runner (grab)</button></div><div class="err" id="oiErr"></div><div class="row"><button data-close>Cancel</button><button class="primary" id="oiOk">Add</button></div>`);
+  let st = 'none';
+  $('#sheetRoot').onclick = e => {
+    const b = e.target.closest('button');
+    if (e.target.classList.contains('scrim') || (b && b.dataset.close !== undefined)) return closeSheet();
+    if (b && b.dataset.st){ st = b.dataset.st; document.querySelectorAll('[data-st]').forEach(x => x.classList.toggle('on', x === b)); }
+    if (b && b.id === 'oiOk'){
+      const name = $('#oiName').value.trim(); const price = Number($('#oiPrice').value);
+      if (!name || !(price >= 0) || $('#oiPrice').value === ''){ $('#oiErr').textContent = 'Enter a name and a price.'; return; }
+      const line = {lid: uid(), itemId: '_open', name, station: st, rerouted:false, versionIdx:0, version:'', mods:[], counts:{}, price: r2(price), taxable:false, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
+      check.lines.push(line); closeSheet(); render();
+    }
+  };
+}
+async function voidOrder(){
+  closeSheet();
+  if (check.payments.length){ alertSheet('This order has payments. Refunds are not built yet.'); return; }
+  if (check.orderId){
+    const sentLines = check.lines.filter(l => l.sent && !l.removed);
+    try { await store.updateOrder(check.orderId, {status:'void', cleared:true, clearedAt:Date.now(), voidedBy: user ? user.name : ''}); } catch (e){ console.error(e); }
+    adjustStock(sentLines, 1);
+  }
+  check = newCheck(); draft = null; view = 'menu'; render();
+}
+
+// ---------- Sheets ----------
+function sheet(html){ $('#sheetRoot').innerHTML = `<div class="scrim"><div class="sheet">${html}</div></div>`; $('#sheetRoot').onclick = e => { if (e.target.classList.contains('scrim') || e.target.closest('[data-close]')) closeSheet(); }; }
+function closeSheet(){ $('#sheetRoot').innerHTML = ''; $('#sheetRoot').onclick = null; }
+function alertSheet(msg){ sheet(`<p>${esc(msg)}</p><div class="row"><button class="primary" data-close>OK</button></div>`); }
+
+// ---------- Staff lock ----------
+let pinBuf = '', lastTouch = Date.now();
+function lockNow(){ if (!STAFF.members || !STAFF.members.length){ user = {name: 'Staff'}; return; } user = null; pinBuf = ''; renderPin(); $('#lock').classList.remove('hidden'); }
+function renderPin(){ $('#dots').textContent = '•'.repeat(pinBuf.length); $('#pin').innerHTML = [1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(k => `<button data-p="${k}">${k}</button>`).join(''); }
+$('#pin').addEventListener('click', e => {
+  const b = e.target.closest('button[data-p]'); if (!b) return; const k = b.dataset.p; $('#pinErr').textContent = '';
+  if (k === 'C') pinBuf = ''; else if (k === '⌫') pinBuf = pinBuf.slice(0, -1); else pinBuf += k;
+  $('#dots').textContent = '•'.repeat(pinBuf.length);
+  const hit = STAFF.members.find(m => String(m.pin) === pinBuf);
+  if (hit){ user = {name: hit.name}; $('#lock').classList.add('hidden'); lastTouch = Date.now(); render(); }
+  else if (pinBuf.length >= 6){ $('#pinErr').textContent = 'That code did not match.'; pinBuf = ''; $('#dots').textContent = ''; }
+});
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastTouch = Date.now(); }));
+setInterval(() => { const mins = Number(STAFF.sleepMinutes || 5); if (user && STAFF.members && STAFF.members.length && Date.now() - lastTouch > mins * 60000) lockNow(); }, 15000);
+
+// ---------- Start ----------
+async function boot(){
+  $('#app').classList.remove('hidden'); $('#login').classList.add('hidden');
+  STAFF = await store.getStaff().catch(() => STAFF);
+  await new Promise(res => { let first = true; store.watchMenu(m => { MENU = m; if (first){ first = false; res(); } else if (view !== 'pay') render(); }); });
+  store.watchModStock(s => { MODSTOCK = s; if (view === 'mods') renderMods(); });
+  store.watchStatus(s => { STATUS = {onlinePaused:false, ...s}; if (view !== 'mods') render(); });
+  store.watchKds(s => { KDS = s || {}; });
+  store.watchOrders(list => { ORDERS = list; renderCheck(); });
+  lockNow(); render();
+}
+if (DEMO){ store = demoStore(); boot(); }
+else {
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  store = await firebaseStore(app); let booted = false;
+  A.onAuthStateChanged(auth, u => { if (u && !booted){ booted = true; boot().catch(e => alertSheet('Could not load: ' + e.message)); } if (!u) $('#login').classList.remove('hidden'); });
+  $('#signIn').addEventListener('click', async () => { try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); } catch (e){ $('#loginErr').textContent = 'That email and password did not work.'; } });
+  $('#password').addEventListener('keydown', e => { if (e.key === 'Enter') $('#signIn').click(); });
+}
+</script>
+</body>
+</html>

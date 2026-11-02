@@ -17,6 +17,35 @@
    "Bagels",
    "Retail",
    "Beer, wine and cocktails"
+  ],
+  "taxRate": 0.08,
+  "preMods": [
+   "No",
+   "Light",
+   "Extra",
+   "On the side"
+  ],
+  "discounts": [
+   {
+    "name": "Comp",
+    "type": "percent",
+    "value": 100
+   },
+   {
+    "name": "Donation",
+    "type": "percent",
+    "value": 100
+   },
+   {
+    "name": "Bagel token",
+    "type": "amount",
+    "value": 1.5
+   },
+   {
+    "name": "Pastry token",
+    "type": "amount",
+    "value": 3.0
+   }
   ]
  },
  "items": [
@@ -52,7 +81,8 @@
     "note": null
    },
    "octQtySold": 15,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "drip-coffee",
@@ -87,7 +117,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -95,7 +126,8 @@
     "note": null
    },
    "octQtySold": 811,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cappuccino",
@@ -120,7 +152,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -128,7 +161,8 @@
     "note": null
    },
    "octQtySold": 165,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "macchiato",
@@ -153,7 +187,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -161,7 +196,8 @@
     "note": null
    },
    "octQtySold": 8,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cortado",
@@ -186,7 +222,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -194,7 +231,8 @@
     "note": null
    },
    "octQtySold": 39,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "latte",
@@ -229,7 +267,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -237,7 +276,8 @@
     "note": "Hot price looks high next to iced; the website PDF had scrambled columns."
    },
    "octQtySold": 2231,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "mocha",
@@ -267,7 +307,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -275,7 +316,8 @@
     "note": "Hot vs iced gap looks off; check both."
    },
    "octQtySold": 119,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "americano",
@@ -305,7 +347,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -313,7 +356,8 @@
     "note": null
    },
    "octQtySold": 198,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "red-eye",
@@ -348,7 +392,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -356,7 +401,8 @@
     "note": "Iced looks high next to hot; check both."
    },
    "octQtySold": 29,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "honeybee-coffee",
@@ -386,7 +432,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -394,7 +441,8 @@
     "note": null
    },
    "octQtySold": 145,
-   "reroute": "all"
+   "reroute": "all",
+   "taxable": false
   },
   {
    "id": "cold-brew",
@@ -424,7 +472,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -432,7 +481,8 @@
     "note": null
    },
    "octQtySold": 447,
-   "reroute": "all"
+   "reroute": "all",
+   "taxable": false
   },
   {
    "id": "hot-chocolate",
@@ -454,14 +504,17 @@
      "price": 3.8
     }
    ],
-   "modifierGroupIds": [],
+   "modifierGroupIds": [
+    "cup"
+   ],
    "counts": [],
    "review": {
     "source": "website menu, Aug 2026",
     "note": null
    },
    "octQtySold": 106,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "lemonade",
@@ -483,14 +536,17 @@
      "price": 3.8
     }
    ],
-   "modifierGroupIds": [],
+   "modifierGroupIds": [
+    "cup"
+   ],
    "counts": [],
    "review": {
     "source": "website menu, Aug 2026",
     "note": "Website listed one price with no size; set as iced 16 oz."
    },
    "octQtySold": 117,
-   "reroute": "all"
+   "reroute": "all",
+   "taxable": false
   },
   {
    "id": "chai-latte",
@@ -525,7 +581,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -533,7 +590,8 @@
     "note": null
    },
    "octQtySold": 416,
-   "reroute": "iced"
+   "reroute": "iced",
+   "taxable": false
   },
   {
    "id": "london-fog-mist",
@@ -568,7 +626,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -576,7 +635,8 @@
     "note": null
    },
    "octQtySold": 120,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "matcha",
@@ -606,7 +666,8 @@
    "modifierGroupIds": [
     "milk",
     "syrup",
-    "cold-foam"
+    "cold-foam",
+    "cup"
    ],
    "counts": [],
    "review": {
@@ -614,7 +675,8 @@
     "note": null
    },
    "octQtySold": 192,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "tea",
@@ -646,14 +708,17 @@
      "price": 2.4
     }
    ],
-   "modifierGroupIds": [],
+   "modifierGroupIds": [
+    "cup"
+   ],
    "counts": [],
    "review": {
     "source": "website menu, Aug 2026",
     "note": null
    },
    "octQtySold": 168,
-   "reroute": "iced"
+   "reroute": "iced",
+   "taxable": false
   },
   {
    "id": "kombucha-on-tap",
@@ -675,14 +740,17 @@
      "price": 8.5
     }
    ],
-   "modifierGroupIds": [],
+   "modifierGroupIds": [
+    "cup"
+   ],
    "counts": [],
    "review": {
     "source": "website menu, Aug 2026",
     "note": null
    },
    "octQtySold": 35,
-   "reroute": "all"
+   "reroute": "all",
+   "taxable": false
   },
   {
    "id": "beertree-ipa",
@@ -711,7 +779,8 @@
     "note": "No base price yet. Toast average was $7.41."
    },
    "octQtySold": 3,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "grow-camplight",
@@ -740,7 +809,8 @@
     "note": "No base price yet. Toast average was $5.56."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "flosa-mimosa",
@@ -769,7 +839,8 @@
     "note": "No base price yet. Toast average was $11.12."
    },
    "octQtySold": 14,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "bloody-mary",
@@ -798,7 +869,8 @@
     "note": "No base price yet. Toast average was $12.04."
    },
    "octQtySold": 9,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "sandy-cove-sauv-blanc",
@@ -827,7 +899,8 @@
     "note": "No base price yet. Toast average was $11.12."
    },
    "octQtySold": 4,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "bacchus-chardonnay",
@@ -856,7 +929,8 @@
     "note": "No base price yet. Toast average was $9.26."
    },
    "octQtySold": 2,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cora-rose",
@@ -885,7 +959,8 @@
     "note": "No base price yet. Toast average was $7.40."
    },
    "octQtySold": 2,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "clovis-blend-red",
@@ -914,7 +989,8 @@
     "note": "No base price yet. Toast average was $9.26."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "anahata-cab-sauv",
@@ -943,7 +1019,8 @@
     "note": "No base price yet. Toast average was $9.26."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "sparkling-prosecco",
@@ -972,7 +1049,8 @@
     "note": "No base price yet. Toast average was $0.00."
    },
    "octQtySold": 0,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "single-bagel",
@@ -1001,7 +1079,8 @@
     "note": "No base price yet. Toast average was $1.59."
    },
    "octQtySold": 223,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "half-dozen-bagels",
@@ -1030,7 +1109,8 @@
     "note": "No base price yet. Toast average was $9.32."
    },
    "octQtySold": 94,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "one-dozen-bagels",
@@ -1059,7 +1139,8 @@
     "note": "No base price yet. Toast average was $18.65."
    },
    "octQtySold": 64,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "gluten-free-bagel-single",
@@ -1088,7 +1169,8 @@
     "note": "No base price yet. Toast average was $3.50."
    },
    "octQtySold": 36,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "day-old-bagel-bag",
@@ -1117,7 +1199,8 @@
     "note": "No base price yet. Toast average was $6.50."
    },
    "octQtySold": 33,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "kombucha",
@@ -1146,7 +1229,8 @@
     "note": "No base price yet. Toast average was $0.00."
    },
    "octQtySold": 0,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "chaider",
@@ -1175,7 +1259,8 @@
     "note": "No base price yet. Toast average was $6.34."
    },
    "octQtySold": 385,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "salted-maple-matcha",
@@ -1204,7 +1289,8 @@
     "note": "No base price yet. Toast average was $5.98."
    },
    "octQtySold": 162,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cider",
@@ -1233,7 +1319,8 @@
     "note": "No base price yet. Toast average was $5.84."
    },
    "octQtySold": 49,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "doctor-s-orders",
@@ -1262,7 +1349,8 @@
     "note": "No base price yet. Toast average was $5.04."
    },
    "octQtySold": 23,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cafe-au-lait",
@@ -1291,7 +1379,8 @@
     "note": "No base price yet. Toast average was $4.14."
    },
    "octQtySold": 21,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "florentine-the-brooks",
@@ -1320,7 +1409,8 @@
     "note": "No base price yet. Toast average was $4.90."
    },
    "octQtySold": 10,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "steamer",
@@ -1349,7 +1439,8 @@
     "note": "No base price yet. Toast average was $4.09."
    },
    "octQtySold": 8,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "matcha-lemonade",
@@ -1378,7 +1469,8 @@
     "note": "No base price yet. Toast average was $4.54."
    },
    "octQtySold": 4,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "whole-milk-8-oz",
@@ -1407,7 +1499,8 @@
     "note": "No base price yet. Toast average was $2.27."
    },
    "octQtySold": 4,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "16-oz-hot-chocolate-chai",
@@ -1436,7 +1529,8 @@
     "note": "No base price yet. Toast average was $6.02."
    },
    "octQtySold": 3,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "ice-water-16-oz",
@@ -1465,7 +1559,8 @@
     "note": "No base price yet. Toast average was $0.70."
    },
    "octQtySold": 3,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "iced-chocolate-chai",
@@ -1494,7 +1589,8 @@
     "note": "No base price yet. Toast average was $6.02."
    },
    "octQtySold": 2,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "house-sourdough",
@@ -1523,7 +1619,8 @@
     "note": "No base price yet. Toast average was $8.00."
    },
    "octQtySold": 207,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "red-wheat-sourdough",
@@ -1552,7 +1649,8 @@
     "note": "No base price yet. Toast average was $9.00."
    },
    "octQtySold": 31,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "day-old-bread",
@@ -1581,7 +1679,8 @@
     "note": "No base price yet. Toast average was $5.29."
    },
    "octQtySold": 14,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "brioche-sandwich-rolls-half-dozen",
@@ -1610,7 +1709,8 @@
     "note": "No base price yet. Toast average was $7.50."
    },
    "octQtySold": 13,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "vegan-chocolate-chip-cookie",
@@ -1639,7 +1739,8 @@
     "note": "No base price yet. Toast average was $1.75."
    },
    "octQtySold": 896,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cinnamon-bun",
@@ -1668,7 +1769,8 @@
     "note": "No base price yet. Toast average was $3.50."
    },
    "octQtySold": 664,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "muffin-seasonal",
@@ -1697,7 +1799,8 @@
     "note": "No base price yet. Toast average was $3.25."
    },
    "octQtySold": 316,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "chocolate-croissant",
@@ -1726,7 +1829,8 @@
     "note": "No base price yet. Toast average was $4.25."
    },
    "octQtySold": 313,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "candied-ginger-molasses-cookie",
@@ -1755,7 +1859,8 @@
     "note": "No base price yet. Toast average was $1.75."
    },
    "octQtySold": 295,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "danish-seasonal-sweet",
@@ -1784,7 +1889,8 @@
     "note": "No base price yet. Toast average was $4.50."
    },
    "octQtySold": 291,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "rugelach",
@@ -1813,7 +1919,8 @@
     "note": "No base price yet. Toast average was $1.25."
    },
    "octQtySold": 277,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "morning-bun",
@@ -1842,7 +1949,8 @@
     "note": "No base price yet. Toast average was $4.25."
    },
    "octQtySold": 267,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "kouign-amann",
@@ -1871,7 +1979,8 @@
     "note": "No base price yet. Toast average was $4.25."
    },
    "octQtySold": 244,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "scone-seasonal",
@@ -1900,7 +2009,8 @@
     "note": "No base price yet. Toast average was $2.00."
    },
    "octQtySold": 229,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "gf-df-quickbread-slice",
@@ -1929,7 +2039,8 @@
     "note": "No base price yet. Toast average was $3.00."
    },
    "octQtySold": 225,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "seasonal-twice-baked-croissant",
@@ -1958,7 +2069,8 @@
     "note": "No base price yet. Toast average was $4.70."
    },
    "octQtySold": 220,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "twist-seasonal",
@@ -1987,7 +2099,8 @@
     "note": "No base price yet. Toast average was $4.25."
    },
    "octQtySold": 211,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "plain-croissant",
@@ -2016,7 +2129,8 @@
     "note": "No base price yet. Toast average was $4.00."
    },
    "octQtySold": 207,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "oat-bar-seasonal",
@@ -2045,7 +2159,8 @@
     "note": "No base price yet. Toast average was $2.50."
    },
    "octQtySold": 184,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "donut",
@@ -2074,7 +2189,8 @@
     "note": "No base price yet. Toast average was $5.02."
    },
    "octQtySold": 155,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "savory-tile",
@@ -2103,7 +2219,8 @@
     "note": "No base price yet. Toast average was $4.50."
    },
    "octQtySold": 131,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "almond-biscotti",
@@ -2132,7 +2249,8 @@
     "note": "No base price yet. Toast average was $2.75."
    },
    "octQtySold": 74,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "gf-oatmeal-cream-pie",
@@ -2161,7 +2279,8 @@
     "note": "No base price yet. Toast average was $3.25."
    },
    "octQtySold": 59,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "pie-slice",
@@ -2190,7 +2309,8 @@
     "note": "No base price yet. Toast average was $5.00."
    },
    "octQtySold": 24,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "baked-good-day-old-bag",
@@ -2219,7 +2339,8 @@
     "note": "No base price yet. Toast average was $6.00."
    },
    "octQtySold": 18,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "bloom",
@@ -2248,7 +2369,8 @@
     "note": "No base price yet. Toast average was $3.70."
    },
    "octQtySold": 177,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "collins-farm-chocolate-milk",
@@ -2277,7 +2399,8 @@
     "note": "No base price yet. Toast average was $3.50."
    },
    "octQtySold": 176,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "orange-juice",
@@ -2306,7 +2429,8 @@
     "note": "No base price yet. Toast average was $2.25."
    },
    "octQtySold": 118,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "liquid-death-still-water",
@@ -2335,7 +2459,8 @@
     "note": "No base price yet. Toast average was $2.00."
    },
    "octQtySold": 81,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "yerba-mate",
@@ -2364,7 +2489,8 @@
     "note": "No base price yet. Toast average was $5.51."
    },
    "octQtySold": 65,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "harney-sons",
@@ -2393,7 +2519,8 @@
     "note": "No base price yet. Toast average was $3.14."
    },
    "octQtySold": 64,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "bai",
@@ -2422,7 +2549,8 @@
     "note": "No base price yet. Toast average was $3.01."
    },
    "octQtySold": 61,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "sparkling-water",
@@ -2451,7 +2579,8 @@
     "note": "No base price yet. Toast average was $2.00."
    },
    "octQtySold": 58,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "yogurt-parfait",
@@ -2480,7 +2609,8 @@
     "note": "No base price yet. Toast average was $7.50."
    },
    "octQtySold": 57,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "coconut-water",
@@ -2509,7 +2639,8 @@
     "note": "No base price yet. Toast average was $4.00."
    },
    "octQtySold": 53,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "still-water",
@@ -2538,7 +2669,8 @@
     "note": "No base price yet. Toast average was $2.00."
    },
    "octQtySold": 51,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "adirondack-soda",
@@ -2567,7 +2699,8 @@
     "note": "No base price yet. Toast average was $1.76."
    },
    "octQtySold": 32,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "casamara-club",
@@ -2596,7 +2729,8 @@
     "note": "No base price yet. Toast average was $5.56."
    },
    "octQtySold": 7,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "daypack-lemon-lime",
@@ -2625,7 +2759,8 @@
     "note": "No base price yet. Toast average was $4.16."
    },
    "octQtySold": 2,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "athletic-lemon-radler",
@@ -2654,7 +2789,8 @@
     "note": "No base price yet. Toast average was $4.64."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "black-and-white-ceramic-mug",
@@ -2683,7 +2819,8 @@
     "note": "No base price yet. Toast average was $15.00."
    },
    "octQtySold": 9,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "adult-shirt",
@@ -2712,7 +2849,8 @@
     "note": "No base price yet. Toast average was $13.88."
    },
    "octQtySold": 3,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "bagel-token",
@@ -2741,7 +2879,8 @@
     "note": "No base price yet. Toast average was $1.50."
    },
    "octQtySold": 221,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "pastry-token",
@@ -2770,7 +2909,8 @@
     "note": "No base price yet. Toast average was $3.00."
    },
    "octQtySold": 95,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "peaks-coffee",
@@ -2799,7 +2939,8 @@
     "note": "No base price yet. Toast average was $16.73."
    },
    "octQtySold": 22,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "cranberry-apricot-granola",
@@ -2828,7 +2969,8 @@
     "note": "No base price yet. Toast average was $12.50."
    },
    "octQtySold": 17,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "jff-plain-creme-cheese-8-oz",
@@ -2857,7 +2999,8 @@
     "note": "No base price yet. Toast average was $5.00."
    },
    "octQtySold": 50,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "scallion-cream-cheese-8-oz",
@@ -2886,7 +3029,8 @@
     "note": "No base price yet. Toast average was $6.50."
    },
    "octQtySold": 18,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "roasted-garlic-cream-cheese-8-oz",
@@ -2915,7 +3059,8 @@
     "note": "No base price yet. Toast average was $7.50."
    },
    "octQtySold": 7,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-freddy",
@@ -2946,7 +3091,8 @@
     "note": "No base price yet. Toast average was $9.51."
    },
    "octQtySold": 22,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "say-uncle",
@@ -2977,7 +3123,8 @@
     "note": "No base price yet. Toast average was $7.50."
    },
    "octQtySold": 4,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-brittany",
@@ -3008,7 +3155,8 @@
     "note": null
    },
    "octQtySold": 3,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-zimmer",
@@ -3039,7 +3187,8 @@
     "note": "No base price yet. Toast average was $8.93."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "build-your-own-sandwich",
@@ -3076,7 +3225,8 @@
     "note": "No base price yet. Toast average was $6.47."
    },
    "octQtySold": 3970,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-colgate",
@@ -3107,7 +3257,8 @@
     "note": null
    },
    "octQtySold": 1398,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-chipotle-potato",
@@ -3138,7 +3289,8 @@
     "note": "No base price yet. Toast average was $7.43."
    },
    "octQtySold": 565,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "maple-new-day",
@@ -3169,7 +3321,8 @@
     "note": null
    },
    "octQtySold": 430,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-big-al",
@@ -3200,7 +3353,8 @@
     "note": null
    },
    "octQtySold": 335,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "flosa-club",
@@ -3231,7 +3385,8 @@
     "note": "No base price yet. Toast average was $13.63."
    },
    "octQtySold": 176,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-works",
@@ -3262,7 +3417,8 @@
     "note": "No base price yet. Toast average was $11.34."
    },
    "octQtySold": 161,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "blt",
@@ -3293,7 +3449,8 @@
     "note": null
    },
    "octQtySold": 66,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "pimento-mori",
@@ -3324,7 +3481,8 @@
     "note": "No base price yet. Toast average was $10.49."
    },
    "octQtySold": 60,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "the-hamilton",
@@ -3355,7 +3513,8 @@
     "note": "No base price yet. Toast average was $13.37."
    },
    "octQtySold": 50,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "tofu-kan",
@@ -3386,7 +3545,8 @@
     "note": "No base price yet. Toast average was $11.25."
    },
    "octQtySold": 29,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "in-the-know",
@@ -3417,7 +3577,8 @@
     "note": "No base price yet. Toast average was $6.42."
    },
    "octQtySold": 11,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "joshua",
@@ -3448,7 +3609,8 @@
     "note": "No base price yet. Toast average was $11.12."
    },
    "octQtySold": 8,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "two-hash-browns",
@@ -3477,7 +3639,8 @@
     "note": "No base price yet. Toast average was $3.01."
    },
    "octQtySold": 111,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "side-of-bacon",
@@ -3506,7 +3669,8 @@
     "note": "No base price yet. Toast average was $1.99."
    },
    "octQtySold": 28,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "side-of-sausage",
@@ -3535,7 +3699,8 @@
     "note": "No base price yet. Toast average was $1.99."
    },
    "octQtySold": 10,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "side-of-cream-cheese",
@@ -3564,7 +3729,8 @@
     "note": "No base price yet. Toast average was $2.50."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   },
   {
    "id": "side-of-butter",
@@ -3593,7 +3759,8 @@
     "note": "No base price yet. Toast average was $0.64."
    },
    "octQtySold": 1,
-   "reroute": "none"
+   "reroute": "none",
+   "taxable": false
   }
  ],
  "modifierGroups": [
@@ -3608,21 +3775,27 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Oat",
      "pricing": "flat",
      "price": 1.1,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Almond",
      "pricing": "flat",
      "price": 1.1,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3641,35 +3814,45 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Caramel",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Maple",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Honey",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Simple",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3688,7 +3871,9 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3707,28 +3892,36 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Sourdough bread",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Croissant",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Brioche roll",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Hash browns",
@@ -3740,14 +3933,18 @@
        "name": "Hash browns",
        "qty": 2
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Gluten-free bagel",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3771,7 +3968,13 @@
        "name": "Eggs",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [
+      "Over easy",
+      "Over medium",
+      "Over hard"
+     ],
+     "hideOnline": false
     },
     {
      "name": "Scrambled egg",
@@ -3783,7 +3986,9 @@
        "name": "Eggs",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Egg white",
@@ -3795,7 +4000,9 @@
        "name": "Egg whites",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3819,7 +4026,9 @@
        "name": "Bacon",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Sausage",
@@ -3831,14 +4040,18 @@
        "name": "Sausage",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Bistro ham",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Impossible sausage",
@@ -3850,7 +4063,9 @@
        "name": "Impossible sausage",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Thick cut bacon",
@@ -3862,21 +4077,27 @@
        "name": "Thick cut bacon",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Turkey",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Pastrami-style lox",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3895,35 +4116,45 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Pepper jack",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Swiss",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "American",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Mozzarella",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -3942,42 +4173,54 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Avocado spread",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Greens",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Pickled jalapeños",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Roasted red pepper",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Red onions",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Hash brown",
@@ -3989,21 +4232,27 @@
        "name": "Hash browns",
        "qty": 1
       }
-     ]
+     ],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Capers",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Red onion parsley salad",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -4022,21 +4271,27 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Scallion",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Roasted garlic",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
@@ -4055,68 +4310,126 @@
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Mayo",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Hot sauce",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Chipotle mayo",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Garlic parm za'atar",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Zhoug",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Red pepper pesto",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Tomato brown butter",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     },
     {
      "name": "Onion jam",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
-     "counts": []
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
     }
    ],
    "review": {
     "source": "website menu, Aug 2026",
     "note": "Add-on prices and production counts are starting guesses."
+   }
+  },
+  {
+   "id": "cup",
+   "name": "Cup",
+   "min": 0,
+   "max": 1,
+   "default": "To go cup",
+   "options": [
+    {
+     "name": "To go cup",
+     "pricing": "flat",
+     "price": 0.3,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false
+    },
+    {
+     "name": "Customer cup",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": true
+    },
+    {
+     "name": "For here (mug)",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": true
+    }
+   ],
+   "review": {
+    "source": "Toast register photos, Nov 2026",
+    "note": "To go cup is +$0.30 like Toast. Set the customer cup discount (a negative price). \"For here (mug)\" is a guess; delete it if you don't use it."
    }
   }
  ]
