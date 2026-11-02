@@ -1,0 +1,23 @@
+{
+ "name": "F&S KDS",
+ "short_name": "F&S KDS",
+ "start_url": "/kds/",
+ "scope": "/kds/",
+ "display": "fullscreen",
+ "orientation": "landscape",
+ "background_color": "#eef1f4",
+ "theme_color": "#8b5e3c",
+ "icons": [
+  {
+   "src": "/icons/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "/icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
+}

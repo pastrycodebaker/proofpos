@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#15130f">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="/icons/icon-192.png">
 <title>Proof POS · KDS</title>
 <style>
   :root{--bg:#15130f;--panel:#201d18;--card:#2a2620;--line:#3a352d;--ink:#f3ede2;--quiet:#a89f90;--accent:#e2a24a;--good:#5fb37a;--warn:#e6c14a;--crit:#e0574a;--rush:#ff5a3c;--new:#58a6ff}
@@ -140,6 +144,7 @@
     <button class="primary" id="btnRegister">Test register</button>
     <button id="btnRecall">Recall</button>
     <button id="btnTiming">Timing</button>
+    <button id="btnFull">Full screen</button>
   </div>
 </header>
 <div class="banner off hidden" id="onlineBanner">Online ordering is OFF. Tap "Online ordering" to turn it back on.</div>
@@ -599,6 +604,8 @@ function renderStatus(){
 }
 $('#btnOnline').addEventListener('click', () => { status = {...status, onlinePaused: !status.onlinePaused}; renderStatus(); act(store.setStatus({onlinePaused: status.onlinePaused, changedAt: Date.now()})); });
 
+$('#btnFull').addEventListener('click', () => document.documentElement.requestFullscreen?.().catch(() => {}));
+document.addEventListener('fullscreenchange', () => $('#btnFull').classList.toggle('hidden', !!document.fullscreenElement));
 // ---------- Start ----------
 function setNet(){ const el = $('#net'); el.textContent = navigator.onLine ? 'Online' : 'Offline · changes will sync'; el.classList.toggle('off', !navigator.onLine); }
 addEventListener('online', setNet); addEventListener('offline', setNet); setNet();
