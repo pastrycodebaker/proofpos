@@ -121,6 +121,8 @@
   .sec button.out{opacity:.45;background:repeating-linear-gradient(135deg,#fff,#fff 6px,#f2f2f2 6px,#f2f2f2 12px)}
   .sec button.out small b{color:var(--crit)}
   .items button.notday,.sec button.notday{opacity:.5;filter:grayscale(.6)}
+  .needmsg{color:var(--crit);font-size:14px;font-weight:600}
+  .cl .n em.inc{color:var(--crit);font-style:normal;font-size:12px;font-weight:600}
 </style>
 </head>
 <body>
@@ -268,10 +270,11 @@ const shownMods = l => [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.m
 function modText(m){ return [m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''); }
 function totals(){
   const live = check.lines.filter(l => !l.removed);
-  const sub = r2(live.reduce((s, l) => s + l.price, 0));
+  const q = l => l.price * (l.qtyPending || 1);
+  const sub = r2(live.reduce((s, l) => s + q(l), 0));
   let disc = 0; const d = check.discount;
   if (d) disc = r2(d.type === 'percent' ? sub * d.value / 100 : Math.min(sub, d.value));
-  const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + l.price, 0) * (sub ? (sub - disc) / sub : 0));
+  const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + q(l), 0) * (sub ? (sub - disc) / sub : 0));
   // Prices are tax-inclusive: tax is the part of taxable prices that is tax. Tax exempt takes that part off.
   const rate = Number(settings().taxRate || 0);
   const inTax = r2(taxable * rate / (1 + rate));
@@ -296,21 +299,23 @@ function renderCheck(){
   $('#cLines').innerHTML = lines.length ? lines.map((l, i) => {
     const idx = check.lines.indexOf(l);
     const editing = draft && draft.editIdx === idx;
-    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}</span><span class="p">${money(l.price)}</span>${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || 1))}</span>${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
   $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
   const unsent = check.lines.some(l => !l.sent && !l.removed);
-  $('#btnStay').disabled = !unsent || !!draft;
-  $('#btnPay').disabled = !lines.length || !!draft || view === 'pay';
+  const blocked = draft && !draftReady();
+  $('#btnStay').disabled = !unsent || !!blocked;
+  $('#btnPay').disabled = !lines.length || !!blocked || view === 'pay';
   $('#btnPay').textContent = lines.length ? `${lines.length} item${lines.length > 1 ? 's' : ''} · Pay ${money(t.paid ? t.due : t.total)}` : 'Pay';
 }
 $('#cLines').addEventListener('click', e => {
   const del = e.target.closest('button[data-del]');
-  if (del){ e.stopPropagation(); const i = Number(del.dataset.del); check.lines.splice(i, 1); if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } render(); return; }
+  if (del){ e.stopPropagation(); const i = Number(del.dataset.del); check.lines.splice(i, 1); if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } else if (draft && i < draft.editIdx) draft.editIdx--; render(); return; }
   const row = e.target.closest('.cl'); if (!row || row.classList.contains('sent') || view === 'pay') return;
   const i = Number(row.dataset.idx); const l = check.lines[i]; if (l.itemId === '_open' || !itemById(l.itemId)) return;
-  draft = {itemId:l.itemId, versionIdx:l.versionIdx, mods:l.mods.map(m => ({...m})), qty:1, editIdx:i, lid:l.lid, openName: l.openName, openPrice: l.openPrice, openStation: l.openStation};
+  if (draft && !finishDraft()){ renderMods(); return; }
+  draft = {itemId:l.itemId, versionIdx:l.versionIdx, mods:l.mods.map(m => ({...m})), qty:1, editIdx:i, lid:l.lid, orig: structuredClone(l), openName: l.openName, openPrice: l.openPrice, openStation: l.openStation};
   view = 'mods'; render();
 });
 
@@ -364,8 +369,27 @@ function renderMods(){
     }).join('')}</div></div>`);
   }
   const ready = draftReady();
-  $('#main').innerHTML = `<div class="modbar"><span class="title">${esc(draft.openName || it.name)}</span>${draft.editIdx === undefined || draft.editIdx === null ? `<span class="qty"><button id="qMinus" ${draft.qty <= 1 ? 'disabled' : ''}>−</button><b>${draft.qty}</b><button id="qPlus">+</button></span>` : ''}<span class="sp"></span><button id="mCancel">Cancel</button><button class="primary" id="mDone" ${ready ? '' : 'disabled'}>${draft.editIdx !== undefined && draft.editIdx !== null ? 'Update' : 'Add to order'}</button></div>
-    <div class="cols">${cols.join('') || '<p class="muted">No choices for this item. Tap Add to order.</p>'}</div>`;
+  $('#main').innerHTML = `<div class="modbar"><span class="title">${esc(draft.openName || it.name)}</span>${draft.isNew ? `<span class="qty"><button id="qMinus" ${draft.qty <= 1 ? 'disabled' : ''}>−</button><b>${draft.qty}</b><button id="qPlus">+</button></span>` : ''}<span class="sp"></span>${ready ? '' : `<span class="needmsg">Pick ${esc(missingText())} to finish</span>`}<button id="mCancel">${draft.isNew ? 'Remove' : 'Undo changes'}</button><button class="primary" id="mDone" ${ready ? '' : 'disabled'}>Done</button></div>
+    <div class="cols">${cols.join('') || '<p class="muted">No choices for this item.</p>'}</div>`;
+  syncDraft();
+}
+// The line goes on the check as soon as the item is tapped and updates with every mod tap.
+function missingText(){ const it = itemById(draft.itemId); const out = []; if ((it.versions || []).length > 1 && draft.versionIdx === null) out.push('a size'); for (const g of draftGroups()) if (groupStatus(g).need) out.push(g.name.toLowerCase()); return out.join(', '); }
+function syncDraft(){
+  const old = check.lines[draft.editIdx]; if (!old) return;
+  check.lines[draft.editIdx] = {...lineFrom(draft), lid: old.lid, openName: draft.openName, openPrice: draft.openPrice, openStation: draft.openStation, qtyPending: draft.isNew && draft.qty > 1 ? draft.qty : undefined, incomplete: !draftReady()};
+  renderCheck();
+}
+function finishDraft(){
+  if (!draft) return true; if (!draftReady()) return false;
+  const l = check.lines[draft.editIdx]; delete l.incomplete; delete l.qtyPending;
+  if (draft.isNew) for (let i = 1; i < draft.qty; i++) check.lines.splice(draft.editIdx + i, 0, {...structuredClone(l), lid: uid()});
+  draft = null; view = 'menu'; search = ''; return true;
+}
+function cancelDraft(){
+  if (!draft) return;
+  if (draft.isNew) check.lines.splice(draft.editIdx, 1); else check.lines[draft.editIdx] = draft.orig;
+  draft = null; view = 'menu';
 }
 function startDraft(itemId){
   const it = itemById(itemId);
@@ -373,6 +397,7 @@ function startDraft(itemId){
   for (const g of draftGroups()) if (g.default && g.options.some(o => o.name === g.default)) draft.mods.push({g: g.id, o: g.default, q: 1});
   for (const x of it.included || []) if (groupById(x.g) && !draft.mods.some(m => m.g === x.g && m.o === x.o)) draft.mods.push({g: x.g, o: x.o, q: x.q || 1, inc: true});
   if ((it.versions || []).length <= 1 && !draftGroups().length){ commitDraft(); return; }
+  check.lines.push({...lineFrom({...draft, lid: null})}); draft.editIdx = check.lines.length - 1; draft.isNew = true;
   view = 'mods'; render();
 }
 function commitDraft(){
@@ -444,7 +469,9 @@ function needName(then, force){
   const ok = () => { const v = inp.value.trim(); if (!v) { inp.focus(); return; } check.name = v; closeSheet(); renderCheck(); then(); };
   $('#nameOk').onclick = ok; inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
 }
+$('#btnStay').addEventListener('click', () => { if (!finishDraft()) return; render(); } , true);
 $('#btnStay').addEventListener('click', () => needName(async () => { try { await sendUnsent(); } catch (e){ alertSheet('Could not send: ' + e.message); } render(); }));
+$('#btnPay').addEventListener('click', () => { if (!finishDraft()) return; render(); }, true);
 $('#btnPay').addEventListener('click', () => needName(() => { tender = ''; view = 'pay'; render(); }));
 $('#cName').addEventListener('click', () => needName(() => { if (check.orderId) store.updateOrder(check.orderId, {name: check.name}).catch(console.error); }, true));
 
@@ -535,8 +562,8 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.more){ openMore(...t.dataset.more.split('|')); return; }
   if (t.id === 'qMinus'){ draft.qty = Math.max(1, draft.qty - 1); renderMods(); return; }
   if (t.id === 'qPlus'){ draft.qty += 1; renderMods(); return; }
-  if (t.id === 'mCancel'){ draft = null; view = 'menu'; render(); return; }
-  if (t.id === 'mDone'){ if (draftReady()) commitDraft(); return; }
+  if (t.id === 'mCancel'){ cancelDraft(); render(); return; }
+  if (t.id === 'mDone'){ if (finishDraft()) render(); return; }
   if (t.dataset.k !== undefined){ const k = t.dataset.k; if (k === 'C') tender = ''; else if (k === 'B') tender = tender.slice(0, -1); else tender = (tender + k).replace(/^0+/, '').slice(0, 7); renderPay(); return; }
   if (t.dataset.q){ tender = String(Math.round(Number(t.dataset.q) * 100)); takePayment('cash'); return; }
   if (t.dataset.pay){ takePayment(t.dataset.pay); return; }

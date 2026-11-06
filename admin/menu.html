@@ -283,11 +283,10 @@ function renderItemEditor(){
       </table></div>
     </div>
     <h3>Modifier groups</h3>
-    <div class="toggles">${S.groups.map(g => { const on = (it.modifierGroupIds || []).includes(g.id); return `<label class="${on?'on':''}"><input type="checkbox" data-grp="${esc(g.id)}" ${on?'checked':''}>${esc(g.name)}</label>`; }).join('') || '<span class="muted">No modifier groups yet.</span>'}</div>
-    <label>Order on tickets and the register</label>
+    <p class="muted">Only the groups on this item show here, in ticket and register order.</p>
     <div id="grpOrder"></div>
     <h3>Built from (included ingredients)</h3>
-    <p class="muted">For sandwiches like the BLT: tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
+    <p class="muted">For sandwiches like the BLT: add the groups above, then tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
     <div id="incBox"></div>
     <h3>Production counts</h3>
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
@@ -309,7 +308,7 @@ function renderInc(){
   const box = $('#incBox'); if (!box) return;
   incSel = incSel.filter(x => grpOrder.includes(x.g));
   const groups = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
-  if (!groups.length){ box.innerHTML = '<span class="muted">Turn on the groups first (bread, protein, produce…), then tap what comes on it.</span>'; return; }
+  if (!groups.length){ box.innerHTML = '<span class="muted">Add the groups first (bread, protein, produce…), then tap what comes on it.</span>'; return; }
   const optP = o => Number(o.pricing === 'bySize' ? 0 : (o.price || 0));
   box.innerHTML = groups.map(g => `<div style="margin-bottom:8px"><div class="muted" style="font-size:13px">${esc(g.name)}${g.min ? ' · customer picks' : ''}</div><div class="toggles">${g.options.map(o => `<label class="${isIncl(g.id, o.name) ? 'on' : ''}"><input type="checkbox" data-inc="${esc(g.id)}|${esc(o.name)}" ${isIncl(g.id, o.name) ? 'checked' : ''}>${esc(o.name)}${optP(o) ? ' · ' + money(optP(o)) : ''}</label>`).join('')}</div></div>`).join('');
   // Price breakdown: base + each required group's pre-selected (or cheapest) pick + included ingredients
@@ -323,6 +322,11 @@ function renderInc(){
 }
 function renderGrpOrder(){
   setTimeout(renderInc, 0);
+  const avail = S.groups.filter(g => !grpOrder.includes(g.id));
+  const add = `<div class="row" style="max-width:420px;margin-top:6px"><select id="addGrpSel"><option value="">Add a modifier group…</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select></div>`;
+  if (!grpOrder.length){ $('#grpOrder').innerHTML = '<span class="muted">No modifier groups on this item yet.</span>' + add; return; }
+  $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
+  return;
   $('#grpOrder').innerHTML = grpOrder.length ? grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></div>`; }).join('') : '<span class="muted">Turn on a group above to set its order.</span>';
 }
 function countRow(c, sizes){
@@ -461,6 +465,7 @@ document.addEventListener('change', e => {
   if (t.type === 'checkbox' || t.type === 'radio'){ const l = t.closest('.toggles label'); if (l){ if (t.type === 'radio') l.parentElement.querySelectorAll('label').forEach(x => x.classList.remove('on')); l.classList.toggle('on', t.checked); } }
   if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
   if (t.dataset?.inc){ const [g, o] = t.dataset.inc.split('|'); incSel = incSel.filter(x => !(x.g === g && x.o === o)); if (t.checked) incSel.push({g, o, q:1}); renderInc(); }
+  if (t.id === 'addGrpSel' && t.value){ grpOrder.push(t.value); renderGrpOrder(); }
   if (t.dataset?.grp){ grpOrder = grpOrder.filter(x => x !== t.dataset.grp); if (t.checked) grpOrder.push(t.dataset.grp); renderGrpOrder(); }
 });
 function status(id, msg, kind){ const el = $(id); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }
@@ -477,6 +482,7 @@ document.addEventListener('click', async e => {
     }
     if (t.id === 'addCount'){ $('#counts').insertAdjacentHTML('beforeend', countRow({name:'', qty:1, size:''}, S.settings.sizes || [])); }
     if (t.dataset?.c === 'del'){ t.closest('.countrow').remove(); }
+    if (t.dataset?.rmgrp){ grpOrder = grpOrder.filter(x => x !== t.dataset.rmgrp); renderGrpOrder(); }
     if (t.dataset?.up !== undefined || t.dataset?.down !== undefined){ const i = Number(t.dataset.up ?? t.dataset.down), j = t.dataset.up !== undefined ? i - 1 : i + 1; [grpOrder[i], grpOrder[j]] = [grpOrder[j], grpOrder[i]]; renderGrpOrder(); }
     if (t.id === 'saveItem'){
       const it = S.items.find(i => i.id === selId); const out = readItemForm(it);
