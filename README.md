@@ -101,3 +101,14 @@ On an item, turn on the shared groups (bread, protein, produce, sauces), then ta
 - Register: included ingredients start selected and add their price. Tapping one off ("No tomato") drops its price; extras add on top.
 - Check and KDS: only changes show (bread pick, "No Tomato", "+ Avocado", "Light Mayo"). Lines carry `mods[].inc` and `noMods`.
 - One price per ingredient: changing bacon's price reprices every sandwich built with it.
+
+## Layout, sections, days and seasons
+- Menu editor → **Layout**: drag categories (register button order), add sections per category (`settings.sections = {Category: [names]}`), drag items between section columns and reorder (`item.section`, `item.sortOrder`). Tap an item for its days (`item.days`, JS weekday numbers; null = every open day) and season (`item.active === false` hides it everywhere).
+- Register shows sections as columns (items without a section go in "More"), grays items not offered today (still ringable), hides off-season items.
+- Settings → "Set bake days" fills in sourdough, red wheat, donuts and brioche.
+
+## Tax
+Prices are tax-inclusive. The check shows "Includes tax" (taxable × rate ÷ (1 + rate)); tax exempt removes that amount from the total.
+
+## KDS
+Removed items never show on tickets.

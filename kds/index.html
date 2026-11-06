@@ -352,7 +352,7 @@ function stationDoneAt(o, v){ if (v.shows === 'all') return o.cleared ? o.cleare
 function recentDone(v){ const cut = Date.now() - DONE_MIN * 60000; return ORDERS.filter(o => { const t = stationDoneAt(o, v); return t && t >= cut; }).sort((a, b) => stationDoneAt(b, v) - stationDoneAt(a, v)); }
 function ticketHtml(o, v, past){
   const now = Date.now();
-  const lines = linesFor(o, v).filter(l => live(l) || now - l.changedAt < 90000);
+  const lines = linesFor(o, v).filter(live); // removed items never show on tickets
   const items = lines.map(l => {
     const fresh = l.changed && now - l.changedAt < 90000;
     const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : ''].join(' ');
@@ -360,7 +360,7 @@ function ticketHtml(o, v, past){
     const where = v.shows === 'all' ? `<div class="where">${l.rerouted ? 'rerouted to runner' : l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
     return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${sortedMods(l).length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc([m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''))}</div>`).join('')}</div>` : ''}${where}</div></li>`;
   }).join('');
-  const edited = o.lines.some(l => l.changed && now - l.changedAt < 90000);
+  const edited = o.lines.some(l => live(l) && l.changed && now - l.changedAt < 90000);
   const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', o.scheduled ? `<span class="badge b-sched">Scheduled ${new Date(fireAt(o)).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
   const allDone = o.lines.filter(live).every(l => l.done);
   const foot = past ? `<div class="tfoot"><button data-act="bringback" data-o="${o.id}">Bring back</button></div>` : v.id === 'runner'
@@ -504,7 +504,7 @@ function openDrawer(order){
 }
 function closeDrawer(){ drawerOpen = false; drawer.classList.remove('open'); }
 function renderMenuBtns(){
-  const usable = MENU.items.filter(i => i.visible?.register !== false);
+  const usable = MENU.items.filter(i => i.visible?.register !== false && i.active !== false);
   const cats = [...new Set(usable.map(i => i.category || 'Other'))];
   $('#menuBtns').innerHTML = cats.map(c => `<div class="muted" style="margin:8px 0 4px">${esc(c)}</div><div class="menu">${usable.filter(i => (i.category || 'Other') === c).sort((a,b) => a.name.localeCompare(b.name)).map(i => `<button class="${i.eightySixed ? 'out' : ''}" data-add="${esc(i.id)}">${esc(i.name)}${i.eightySixed ? "<small>86'd</small>" : typeof i.stockCount === 'number' ? `<small>${i.stockCount} left</small>` : ''}</button>`).join('')}</div>`).join('') || '<p class="muted">No menu items yet. Load the starter menu in the menu editor.</p>';
 }

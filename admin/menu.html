@@ -88,6 +88,28 @@
   table.sheet input:disabled{color:#b9aea0}
   table.sheet .grp{font-weight:600;color:var(--quiet)}
   .countrow{display:grid;grid-template-columns:1fr 70px 120px 36px;gap:6px;margin-bottom:6px}
+  #layoutPane{padding:12px 16px}
+  .lwrap{display:grid;grid-template-columns:240px 1fr;gap:14px;align-items:start}
+  @media(max-width:860px){.lwrap{grid-template-columns:1fr}}
+  .lcat{display:flex;gap:8px;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:#fff;cursor:grab;user-select:none;touch-action:none}
+  .lcat span:nth-child(2){flex:1;font-weight:600}
+  .lcat.sel{background:var(--accent-bg);border-color:var(--accent)}
+  .lcols{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;padding-bottom:8px}
+  .lcol{flex:0 0 250px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px}
+  .lcolh{display:flex;gap:6px;align-items:center;margin-bottom:8px;min-height:34px}
+  .lcolh input{font-weight:600;padding:5px 7px}
+  .lcolh button{flex:none;padding:5px 9px}
+  .lcolh .grip{cursor:grab;touch-action:none}
+  .cards{min-height:60px}
+  .lcard{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:6px;background:#fff;cursor:grab;user-select:none;touch-action:none}
+  .lcard.off{background:#f5f1ea}
+  .lcard.off .lrow{opacity:.55}
+  .lmain{min-width:0}
+  .lrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .lrow .ln{flex:1;font-weight:600}
+  .grip{color:#b9aea0;font-size:16px}
+  .lmore{margin-top:8px;cursor:default;touch-action:auto}
+  .dragging{opacity:.35}
 </style>
 </head>
 <body>
@@ -105,6 +127,7 @@
     <nav id="tabs">
       <button data-tab="items" class="on">Items</button>
       <button data-tab="sheet">Spreadsheet</button>
+      <button data-tab="layout">Layout</button>
       <button data-tab="groups">Modifier groups</button>
       <button data-tab="settings">Settings</button>
     </nav>
@@ -115,6 +138,7 @@
     <div class="card" id="editPane"></div>
   </div>
   <div id="sheetPane" class="hidden"></div>
+  <div id="layoutPane" class="hidden"></div>
 </div>
 
 <script type="module">
@@ -193,8 +217,9 @@ async function reload(){ S = await store.loadAll(); S.items.sort((a,b) => a.name
 // ---------- Rendering ----------
 function render(){
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  $('#wrap').classList.toggle('hidden', tab === 'sheet'); $('#sheetPane').classList.toggle('hidden', tab !== 'sheet');
+  $('#wrap').classList.toggle('hidden', tab === 'sheet' || tab === 'layout'); $('#sheetPane').classList.toggle('hidden', tab !== 'sheet'); $('#layoutPane').classList.toggle('hidden', tab !== 'layout');
   if (tab === 'sheet') { renderSheet(); return; }
+  if (tab === 'layout') { renderLayout(); return; }
   if (tab === 'items') { renderItemList(); renderItemEditor(); }
   if (tab === 'groups') { renderGroupList(); renderGroupEditor(); }
   if (tab === 'settings') { $('#listPane').innerHTML = `<div class="listhead"><b>Settings</b><div class="muted">Sizes, credit card surcharge, categories and the starter menu.</div></div>`; renderSettings(); }
@@ -234,6 +259,10 @@ function renderItemEditor(){
     <h2>${esc(it.name)}</h2>
     <div class="row"><div><label>Name</label><input id="f_name" value="${esc(it.name)}"></div><div><label>Category</label><input id="f_cat" list="catlist" value="${esc(it.category)}"><datalist id="catlist">${(S.settings.categories || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>
     <label>Description</label><input id="f_desc" value="${esc(it.description)}">
+    <div class="row"><div><label>Section (column on the register)</label><select id="f_section"><option value="">No section</option>${((S.settings.sections || {})[it.category] || []).map(x => `<option ${x === it.section ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div><div></div></div>
+    <label>Days it's offered (online ordering and the register follow this)</label>
+    <div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !it.days || it.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-fday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}
+      <label class="${it.active !== false ? 'on' : ''}" style="margin-left:12px"><input type="checkbox" id="f_active" ${it.active !== false ? 'checked' : ''}>In season (on the menu)</label></div>
     <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
     <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       <div><label>Weekend reroute to runner</label><select id="f_reroute">${[['none','Off'],['all','All versions'],['iced','Iced only']].map(([k,l]) => `<option value="${k}" ${(it.reroute || 'none') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
@@ -304,6 +333,9 @@ function readItemForm(it){
   out.name = $('#f_name').value.trim() || it.name;
   out.category = $('#f_cat').value.trim();
   out.description = $('#f_desc').value.trim();
+  out.section = $('#f_section').value;
+  { const od = openDays(); const days = [...document.querySelectorAll('[data-fday]')].filter(c => c.checked).map(c => Number(c.dataset.fday)); out.days = od.every(d => days.includes(d)) ? null : days.sort(); }
+  out.active = $('#f_active').checked;
   out.taxable = $('#f_tax').checked;
   out.station = $('#f_station').value;
   out.visible = {}; document.querySelectorAll('[data-vis]').forEach(c => out.visible[c.dataset.vis] = c.checked);
@@ -390,7 +422,7 @@ async function renderSettings(){
     <label>Categories, in menu order, separated by commas</label><input id="s_cats" value="${esc((s.categories || []).join(', '))}">
     <label>Categories that don't need a customer name (an order skips the name only if everything on it is from these)</label>
     <div class="toggles" id="s_noname">${[...new Set([...(s.categories || []), ...S.items.map(i => i.category || 'Other')])].map(c => { const on = (s.noNameCategories || ['Bagels', 'Pastries and bread', 'Retail', 'Bulk Bagels and More']).includes(c); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-noname="${esc(c)}" ${on ? 'checked' : ''}>${esc(c)}</label>`; }).join('')}</div>
-    <label>Sales tax rate (%) — applies only to items marked "Charge sales tax"</label><input id="s_tax" type="number" step="0.001" min="0" value="${esc(((s.taxRate || 0) * 100).toFixed(3))}" style="max-width:140px">
+    <label>Sales tax rate (%) — prices already include it; applies only to items marked "Charge sales tax"</label><input id="s_tax" type="number" step="0.001" min="0" value="${esc(((s.taxRate || 0) * 100).toFixed(3))}" style="max-width:140px">
     <label>Pre-mods offered on any picked modifier (comma separated)</label><input id="s_pre" value="${esc((s.preMods || ['No', 'Light', 'Extra', 'On the side']).join(', '))}">
     <label>Discounts, one per line, like "Staff meal: 50%" or "Bagel token: $1.50"</label><textarea id="s_disc" rows="5">${esc((s.discounts || [{name:'Comp', type:'percent', value:100}, {name:'Donation', type:'percent', value:100}]).map(d => `${d.name}: ${d.type === 'percent' ? d.value + '%' : '$' + d.value}`).join('\n'))}</textarea>
     <label>Category colors, one per line, like "Sandwiches: #f4b860" (blank uses the default colors)</label><textarea id="s_colors" rows="3">${esc(Object.entries(s.categoryColors || {}).map(([k, v]) => `${k}: ${v}`).join('\n'))}</textarea>
@@ -403,6 +435,9 @@ async function renderSettings(){
     <h3>Weekend reroute</h3>
     <p class="muted">Drinks that move to the runner screen when "Weekend reroute" is checked on the KDS: ${S.items.filter(i => i.reroute && i.reroute !== 'none').map(i => esc((i.reroute === 'iced' ? 'iced ' : '') + i.name)).join(', ') || 'none yet'}. Change one on its item page.</p>
     <button id="rrDefaults">Set cold brew, Honeybee, kombucha, lemonade, iced tea and iced chai</button> <span class="status" id="rrStatus"></span>
+    <h3>Bake days</h3>
+    <p class="muted">Sets House Sourdough to Wed–Sat, Red Wheat Sourdough and Donuts to Fri–Sat, and Brioche rolls to Wed and Fri. Change any item later in Layout.</p>
+    <button id="dayDefaults">Set bake days</button> <span class="status" id="dayStatus"></span>
     <h3>Cup charge</h3>
     <p class="muted">Adds a "Cup" group (To go cup +$0.30 pre-selected, Customer cup and For here hidden on kiosk and online) to every drink. Set the customer cup discount on the group afterward.</p>
     <button id="cupDefaults">Add the cup group to drinks</button> <span class="status" id="cupStatus"></span>
@@ -431,7 +466,7 @@ document.addEventListener('change', e => {
 function status(id, msg, kind){ const el = $(id); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }
 document.addEventListener('click', async e => {
   const t = e.target;
-  const tabBtn = t.closest('#tabs button'); if (tabBtn){ if (tab === 'sheet' && sheetDirty() && tabBtn.dataset.tab !== 'sheet'){ sheetMsg('Save or discard your spreadsheet changes first.', 'err'); return; } tab = tabBtn.dataset.tab; selId = null; render(); return; }
+  const tabBtn = t.closest('#tabs button'); if (tabBtn){ if (tab === 'sheet' && sheetDirty() && tabBtn.dataset.tab !== 'sheet'){ sheetMsg('Save or discard your spreadsheet changes first.', 'err'); return; } if (tab === 'layout' && layoutDirty && tabBtn.dataset.tab !== 'layout'){ status('#layoutStatus', 'Save or discard your layout changes first.', 'err'); return; } if (tabBtn.dataset.tab === 'layout') L = null; scrollTo(0, 0); tab = tabBtn.dataset.tab; selId = null; render(); return; }
   const li = t.closest('.li[data-id]'); if (li){ selId = li.dataset.id; renderItemList(); renderItemEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
   const gli = t.closest('.li[data-gid]'); if (gli){ selId = gli.dataset.gid; renderGroupList(); renderGroupEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
   try {
@@ -495,6 +530,12 @@ document.addEventListener('click', async e => {
       const hits = S.items.filter(i => drinkIds.has(i.id) && !(i.modifierGroupIds || []).includes('cup'));
       for (const it of hits) await store.saveItem({...it, modifierGroupIds: [...(it.modifierGroupIds || []), 'cup']});
       await reload(); status('#cupStatus', `Added to ${hits.length} drinks`, 'ok');
+    }
+    if (t.id === 'dayDefaults'){
+      const dd = {'house-sourdough':[3,4,5,6], 'red-wheat-sourdough':[5,6], 'donut':[5,6], 'brioche-sandwich-rolls-half-dozen':[3,5]};
+      const hits = S.items.filter(i => dd[i.id] || /donut/i.test(i.name));
+      for (const it of hits) await store.saveItem({...it, days: dd[it.id] || [5,6]});
+      await reload(); setTimeout(() => status('#dayStatus', `Set on ${hits.length} items`, 'ok'), 300);
     }
     if (t.id === 'rrDefaults'){
       const rr = {'cold-brew':'all','honeybee-coffee':'all','kombucha-on-tap':'all','lemonade':'all','tea':'iced','chai-latte':'iced'};
@@ -583,13 +624,15 @@ function massBar(){
     <select id="mVis"><option value="">Show / hide…</option><option value="kiosk:1">Show on kiosk</option><option value="kiosk:0">Hide from kiosk</option><option value="online:1">Show online</option><option value="online:0">Hide online</option><option value="register:1">Show on register</option><option value="register:0">Hide from register</option></select>
     <input id="mPrice" placeholder="+0.25 or -5%" style="width:110px"><button data-mass="price">Change prices</button>
     <button data-mass="86">86</button><button data-mass="un86">Un-86</button>
+    <span class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => `<label><input type="checkbox" data-mday="${n}">${l}</label>`).join('')}</span><button data-mass="days">Set days</button>
+    <button data-mass="on">In season</button><button data-mass="off">Off season</button>
     <button data-mass="dup">Duplicate</button><button data-mass="del" class="danger">Delete</button>
     <button data-mass="clear">Clear selection</button></div>`;
 }
 function itemsTable(){
   const cols = sizeCols(); const rows = visibleRows();
   const allSel = rows.length && rows.every(r => selRows.has(r.id));
-  return `<table class="sheet"><thead><tr><th><input type="checkbox" id="selAll" ${allSel ? 'checked' : ''} aria-label="Select all shown"></th><th>Item</th><th>Category</th><th>Station</th><th>Price</th>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th>Register</th><th>Kiosk</th><th>Online</th><th>Taxed</th><th>86</th><th></th></tr></thead><tbody>
+  return `<table class="sheet"><thead><tr><th><input type="checkbox" id="selAll" ${allSel ? 'checked' : ''} aria-label="Select all shown"></th><th>Item</th><th>Category</th><th>Station</th><th>Price</th>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th>Register</th><th>Kiosk</th><th>Online</th><th>Taxed</th><th>86</th><th>In season</th><th>Days</th><th></th></tr></thead><tbody>
   ${rows.map(it => {
     const sized = hasSizes(it); const single = !sized ? (it.versions?.[0]?.price ?? '') : '';
     const cls = [!origItem(it.id) ? 'newrow' : draftItems.has(it.id) ? 'chg' : '', selRows.has(it.id) ? 'sel' : ''].join(' ');
@@ -602,6 +645,8 @@ function itemsTable(){
       ${['register', 'kiosk', 'online'].map(k => `<td style="text-align:center"><input type="checkbox" data-sf="vis" data-k="${k}" ${it.visible?.[k] !== false ? 'checked' : ''}></td>`).join('')}
       <td style="text-align:center"><input type="checkbox" data-sf="taxable" ${it.taxable ? 'checked' : ''}></td>
       <td style="text-align:center"><input type="checkbox" data-sf="e86" ${it.eightySixed ? 'checked' : ''}></td>
+      <td style="text-align:center"><input type="checkbox" data-sf="active" ${it.active !== false ? 'checked' : ''}></td>
+      <td class="muted" style="white-space:nowrap">${esc(daysLabel(it.days) || 'Every day')}</td>
       <td><button class="link" data-open="${esc(it.id)}" title="Open the full item page">Open</button></td></tr>`;
   }).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No items match.</td></tr>`}</tbody></table>`;
 }
@@ -633,6 +678,7 @@ function onSheetEdit(e){
       if (f === 'vis'){ it.visible = {...(it.visible || {}), [el.dataset.k]: el.checked}; }
       if (f === 'taxable') it.taxable = el.checked;
       if (f === 'e86') it.eightySixed = el.checked;
+      if (f === 'active') it.active = el.checked;
     });
     el.classList.add('dirty'); row.classList.add(origItem(id) ? 'chg' : 'newrow');
     if (f === 'v'){ const p = row.querySelector('[data-sf=price]'); const sized = hasSizes(itemNow(id)); p.disabled = sized; p.placeholder = sized ? 'sizes →' : ''; if (sized) p.value = ''; }
@@ -708,6 +754,8 @@ $('#sheetPane').addEventListener('click', async e => {
       ids.forEach(id => editItem(id, it => { let any = false; it.versions = (it.versions || []).map(v => { if (v.price === null || v.price === undefined || v.price === '') return v; any = true; return {...v, price: Math.max(0, r2(pct ? v.price * (1 + n / 100) : Number(v.price) + n))}; }); if (!any) missing++; }));
       if (missing) sheetMsg(`${missing} selected item${missing === 1 ? ' has' : 's have'} no price yet, so ${missing === 1 ? 'it was' : 'they were'} skipped.`);
     }
+    if (m === 'days'){ const od = openDays(); const days = [...document.querySelectorAll('[data-mday]')].filter(c => c.checked).map(c => Number(c.dataset.mday)); if (!days.length){ sheetMsg('Tick the days first.', 'err'); return; } ids.forEach(id => editItem(id, it => { it.days = od.every(d => days.includes(d)) ? null : days.sort(); })); }
+    if (m === 'on' || m === 'off') ids.forEach(id => editItem(id, it => { it.active = m === 'on'; }));
     if (m === '86' || m === 'un86') ids.forEach(id => editItem(id, it => { it.eightySixed = m === '86'; }));
     if (m === 'dup'){ const made = []; ids.forEach(id => { const src = itemNow(id); const nid = uniqueId(src.name + ' copy'); draftItems.set(nid, {...structuredClone(src), id: nid, name: src.name + ' copy', review: null, octQtySold: 0, stockCount: null}); made.push(nid); }); selRows.clear(); made.forEach(x => selRows.add(x)); sheetQ = ''; sheetMissing = false; renderSheet(); sheetMsg(`Made ${made.length} cop${made.length === 1 ? 'y' : 'ies'}, selected below. Rename them, then Save.`); return; }
     if (m === 'del'){
@@ -716,6 +764,117 @@ $('#sheetPane').addEventListener('click', async e => {
     }
     renderSheet(); if (m !== 'price' || !$('#sheetStatus').textContent) sheetMsg(`Updated ${ids.length} item${ids.length === 1 ? '' : 's'}. Save to keep it.`);
   } catch (err){ console.error(err); sheetMsg('Could not save: ' + (err.message || err), 'err'); }
+});
+
+// ---------- Layout (sections, order, days, season) ----------
+const DAYS = [['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0],['Mon',1],['Tue',2]];
+const openDays = () => S.settings.openDays || [3,4,5,6,0];
+function daysLabel(days){
+  if (!days || !days.length) return '';
+  const od = openDays(); if (od.every(d => days.includes(d))) return '';
+  return DAYS.filter(([, n]) => days.includes(n)).map(([l]) => l).join(', ');
+}
+let layoutCat = '', layoutOpen = null, layoutDirty = false;
+let L = null; // working copy: {cats:[], sections:{cat:[...]}, items: Map(id -> {section, sortOrder, days, active})}
+function layoutInit(){
+  const cats = [...new Set([...(S.settings.categories || []), ...S.items.map(i => i.category).filter(Boolean)])];
+  const sections = structuredClone(S.settings.sections || {});
+  const items = new Map(S.items.map(i => [i.id, {section: i.section || '', sortOrder: i.sortOrder ?? 999, days: i.days || null, active: i.active !== false}]));
+  L = {cats, sections, items}; layoutDirty = false;
+}
+const layoutItemsIn = (cat, sec) => S.items.filter(i => (i.category || '') === cat && (L.items.get(i.id).section || '') === sec).sort((a, b) => L.items.get(a.id).sortOrder - L.items.get(b.id).sortOrder || a.name.localeCompare(b.name));
+function renderLayout(){
+  if (!L) layoutInit();
+  if (!layoutCat || !L.cats.includes(layoutCat)) layoutCat = L.cats[0] || '';
+  const secs = L.sections[layoutCat] || [];
+  // items whose section no longer exists fall back to "no section"
+  for (const i of S.items) if (i.category === layoutCat){ const x = L.items.get(i.id); if (x.section && !secs.includes(x.section)) x.section = ''; }
+  const cols = [...(layoutItemsIn(layoutCat, '').length || !secs.length ? [''] : []), ...secs];
+  const card = it => { const x = L.items.get(it.id); const dl = daysLabel(x.days); const open = layoutOpen === it.id;
+    return `<div class="lcard ${x.active ? '' : 'off'}" data-lid="${esc(it.id)}"><div class="lrow"><span class="grip" aria-hidden="true">⠿</span><span class="ln">${esc(it.name)}</span>${!x.active ? '<span class="pill p-86">Off season</span>' : ''}${dl ? `<span class="pill p-rev">${esc(dl)}</span>` : ''}</div>
+      ${open ? `<div class="lmore"><div class="muted">Days it's offered (all = every day you're open)</div><div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !x.days || x.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-lday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}</div>
+        <div class="toggles" style="margin-top:6px"><label class="${x.active ? 'on' : ''}"><input type="checkbox" data-lactive ${x.active ? 'checked' : ''}>In season (on the menu)</label></div>
+        ${secs.length ? `<div class="row" style="margin-top:6px"><select data-lsec><option value="">No section</option>${secs.map(s => `<option ${s === x.section ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>` : ''}</div>` : ''}</div>`; };
+  $('#layoutPane').innerHTML = `<div class="sbar"><b>Layout</b><span class="muted">Drag to reorder categories, sections and items. Tap an item for its days and season.</span><span class="sp"></span><span class="status" id="layoutStatus"></span>
+      <button id="layoutDiscard" ${layoutDirty ? '' : 'disabled'}>Discard</button><button class="primary" id="layoutSave" ${layoutDirty ? '' : 'disabled'}>Save layout</button></div>
+    <div class="lwrap"><div class="card lcats"><div class="muted" style="margin-bottom:6px">Categories (register button order)</div><div class="dz" data-dz="cats">${L.cats.map(c => `<div class="lcat ${c === layoutCat ? 'sel' : ''}" data-lcat="${esc(c)}"><span class="grip" aria-hidden="true">⠿</span><span>${esc(c)}</span><span class="muted">${S.items.filter(i => i.category === c).length}</span></div>`).join('')}</div></div>
+      <div class="lmain"><div class="sbar"><b>${esc(layoutCat)}</b><span class="muted">Sections become columns on the register, like Toast.</span><span class="sp"></span><input id="newSec" placeholder="New section, like Breakfast" style="width:220px"><button id="addSec">Add section</button></div>
+        <div class="lcols dz" data-dz="secs">${cols.map(sec => `<div class="lcol" data-lsecname="${esc(sec)}"><div class="lcolh">${sec ? `<span class="grip" aria-hidden="true">⠿</span><input data-rensec="${esc(sec)}" value="${esc(sec)}"><button data-delsec="${esc(sec)}" aria-label="Delete section" title="Delete section (items move to No section)">✕</button>` : `<b>${secs.length ? 'No section' : 'Items'}</b>`}</div><div class="dz cards" data-dz="items" data-sec="${esc(sec)}">${layoutItemsIn(layoutCat, sec).map(card).join('')}</div></div>`).join('')}</div></div></div>`;
+}
+function layoutMark(){ layoutDirty = true; const s = $('#layoutSave'), d = $('#layoutDiscard'); if (s) s.disabled = false; if (d) d.disabled = false; }
+function layoutReadDom(){
+  L.cats = [...document.querySelectorAll('[data-dz=cats] .lcat')].map(e => e.dataset.lcat);
+  const named = [...document.querySelectorAll('.lcol')].map(e => e.dataset.lsecname).filter(Boolean);
+  L.sections[layoutCat] = named;
+  document.querySelectorAll('.dz.cards').forEach(z => [...z.querySelectorAll('.lcard')].forEach((c, i) => { const x = L.items.get(c.dataset.lid); x.section = z.dataset.sec; x.sortOrder = i; }));
+}
+// Pointer drag: works with mouse and touch. A short move starts a drag; a tap still taps.
+let drag = null;
+$('#layoutPane').addEventListener('pointerdown', e => {
+  if (e.target.closest('input,select,button,.lmore')) return;
+  const el = e.target.closest('.lcard, .lcat, .lcol'); if (!el) return;
+  if (el.classList.contains('lcol') && !e.target.closest('.lcolh .grip')) return; // sections drag by their handle
+  if (el.classList.contains('lcol') && !el.dataset.lsecname) return;
+  drag = {el, x: e.clientX, y: e.clientY, on: false, id: e.pointerId};
+});
+$('#layoutPane').addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (!drag.on){ if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+    drag.on = true; const r = drag.el.getBoundingClientRect();
+    drag.ghost = drag.el.cloneNode(true); Object.assign(drag.ghost.style, {position:'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', pointerEvents:'none', opacity:.9, zIndex:50, boxShadow:'0 8px 24px rgba(0,0,0,.18)'});
+    drag.dx = e.clientX - r.left; drag.dy = e.clientY - r.top; document.body.appendChild(drag.ghost); drag.el.classList.add('dragging');
+    try { $('#layoutPane').setPointerCapture(drag.id); } catch {}
+  }
+  e.preventDefault();
+  if (e.clientY < 70) scrollBy(0, -18); else if (e.clientY > innerHeight - 70) scrollBy(0, 18); // auto-scroll near the edges
+  drag.ghost.style.left = (e.clientX - drag.dx) + 'px'; drag.ghost.style.top = (e.clientY - drag.dy) + 'px';
+  const kind = drag.el.classList.contains('lcard') ? 'items' : drag.el.classList.contains('lcat') ? 'cats' : 'secs';
+  const under = document.elementFromPoint(e.clientX, e.clientY); if (!under) return;
+  let zone = kind === 'items' ? (under.closest('.dz.cards') || under.closest('.lcol')?.querySelector('.dz.cards')) : under.closest(`[data-dz=${kind}]`);
+  if (!zone) return;
+  const sel = kind === 'items' ? '.lcard' : kind === 'cats' ? '.lcat' : '.lcol[data-lsecname]:not([data-lsecname=""])';
+  const sibs = [...zone.querySelectorAll(':scope > ' + sel)].filter(x => x !== drag.el);
+  const horizontal = kind === 'secs';
+  const before = sibs.find(s => { const r = s.getBoundingClientRect(); return horizontal ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2; });
+  if (before) zone.insertBefore(drag.el, before); else zone.appendChild(drag.el);
+});
+function endDrag(){
+  if (!drag) return; const d = drag; drag = null;
+  if (!d.on){ // a tap
+    if (d.el.classList.contains('lcat')){ layoutReadDom(); layoutCat = d.el.dataset.lcat; layoutOpen = null; renderLayout(); }
+    else if (d.el.classList.contains('lcard')){ layoutOpen = layoutOpen === d.el.dataset.lid ? null : d.el.dataset.lid; layoutReadDom(); renderLayout(); }
+    return;
+  }
+  d.ghost.remove(); d.el.classList.remove('dragging');
+  // dropping an item on a category moves it to that category
+  layoutReadDom(); layoutMark(); renderLayout();
+}
+$('#layoutPane').addEventListener('pointerup', endDrag);
+$('#layoutPane').addEventListener('pointercancel', endDrag);
+$('#layoutPane').addEventListener('change', e => {
+  const t = e.target; const card = t.closest('.lcard'); const x = card && L.items.get(card.dataset.lid);
+  if (t.dataset.lday !== undefined && x){ const n = Number(t.dataset.lday); const od = openDays(); let days = x.days ? [...x.days] : [...od]; days = t.checked ? [...new Set([...days, n])] : days.filter(d => d !== n); x.days = od.every(d => days.includes(d)) ? null : days.sort(); layoutMark(); renderLayout(); }
+  if (t.dataset.lactive !== undefined && x){ x.active = t.checked; layoutMark(); renderLayout(); }
+  if (t.dataset.lsec !== undefined && x){ x.section = t.value; x.sortOrder = 9999; layoutMark(); renderLayout(); }
+  if (t.dataset.rensec){ const old = t.dataset.rensec, nu = t.value.trim(); const secs = L.sections[layoutCat] || [];
+    if (!nu || (nu !== old && secs.includes(nu))){ status('#layoutStatus', nu ? 'There is already a section with that name.' : 'A section needs a name.', 'err'); renderLayout(); return; }
+    L.sections[layoutCat] = secs.map(s => s === old ? nu : s); for (const i of S.items) if (i.category === layoutCat && L.items.get(i.id).section === old) L.items.get(i.id).section = nu; layoutMark(); renderLayout(); }
+});
+$('#layoutPane').addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'addSec'){ const n = $('#newSec').value.trim(); const secs = L.sections[layoutCat] || []; if (!n || secs.includes(n)) return; layoutReadDom(); L.sections[layoutCat] = [...secs, n]; layoutMark(); renderLayout(); return; }
+  if (t.dataset.delsec){ layoutReadDom(); const s = t.dataset.delsec; L.sections[layoutCat] = (L.sections[layoutCat] || []).filter(x => x !== s); for (const i of S.items) if (i.category === layoutCat && L.items.get(i.id).section === s) L.items.get(i.id).section = ''; layoutMark(); renderLayout(); return; }
+  if (t.id === 'layoutDiscard'){ layoutInit(); renderLayout(); status('#layoutStatus', 'Changes discarded.'); return; }
+  if (t.id === 'layoutSave'){
+    try {
+      layoutReadDom(); status('#layoutStatus', 'Saving…');
+      const changed = S.items.filter(i => { const x = L.items.get(i.id); return (i.section || '') !== x.section || (i.sortOrder ?? 999) !== x.sortOrder || JSON.stringify(i.days || null) !== JSON.stringify(x.days) || (i.active !== false) !== x.active; })
+        .map(i => { const x = L.items.get(i.id); return {...i, section: x.section, sortOrder: x.sortOrder, days: x.days, active: x.active}; });
+      if (changed.length) await store.saveItems(changed);
+      await store.saveSettings({...S.settings, categories: L.cats, sections: L.sections});
+      await reload(); layoutInit(); renderLayout(); status('#layoutStatus', `Saved (${changed.length} item${changed.length === 1 ? '' : 's'}).`, 'ok');
+    } catch (err){ console.error(err); status('#layoutStatus', 'Could not save: ' + (err.message || err), 'err'); }
+  }
 });
 
 // ---------- CSV ----------

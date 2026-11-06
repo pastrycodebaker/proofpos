@@ -113,6 +113,14 @@
   .pin button{min-height:60px;font-size:22px}
   .banner{background:var(--crit);color:#fff;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-weight:600}
   .opt button.noinc span:first-child{color:#b42318;text-decoration:none}
+  .secs{overflow:auto;display:flex;gap:10px;align-items:flex-start}
+  .sec{flex:1 1 0;min-width:150px;display:flex;flex-direction:column;gap:8px}
+  .sech{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--quiet);padding:2px 4px}
+  .sec button{min-height:64px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;background:var(--tint, #fff);border-color:transparent}
+  .sec button small{color:var(--quiet);font-size:12px;display:flex;justify-content:space-between;gap:6px;width:100%}
+  .sec button.out{opacity:.45;background:repeating-linear-gradient(135deg,#fff,#fff 6px,#f2f2f2 6px,#f2f2f2 12px)}
+  .sec button.out small b{color:var(--crit)}
+  .items button.notday,.sec button.notday{opacity:.5;filter:grayscale(.6)}
 </style>
 </head>
 <body>
@@ -233,7 +241,7 @@ const settings = () => MENU.settings || {};
 const preMods = () => settings().preMods || DEFAULT_PREMODS;
 const modKey = (g, o) => g + '~' + o;
 const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
-const cats = () => { const order = settings().categories || []; const set = [...new Set(MENU.items.filter(i => i.visible?.register !== false).map(i => i.category || 'Other'))]; return set.sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99)); };
+const cats = () => { const order = settings().categories || []; const set = [...new Set(MENU.items.filter(i => i.visible?.register !== false && i.active !== false).map(i => i.category || 'Other'))]; return set.sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99)); };
 const catColor = c => (settings().categoryColors || {})[c] || PALETTE[cats().indexOf(c) % PALETTE.length];
 
 // ---------- Pricing ----------
@@ -264,11 +272,14 @@ function totals(){
   let disc = 0; const d = check.discount;
   if (d) disc = r2(d.type === 'percent' ? sub * d.value / 100 : Math.min(sub, d.value));
   const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + l.price, 0) * (sub ? (sub - disc) / sub : 0));
-  const tax = check.taxExempt ? 0 : r2(taxable * Number(settings().taxRate || 0));
-  const total = r2(sub - disc + tax);
+  // Prices are tax-inclusive: tax is the part of taxable prices that is tax. Tax exempt takes that part off.
+  const rate = Number(settings().taxRate || 0);
+  const inTax = r2(taxable * rate / (1 + rate));
+  const tax = check.taxExempt ? 0 : inTax;
+  const total = r2(sub - disc - (check.taxExempt ? inTax : 0));
   const paid = r2(check.payments.reduce((s, p) => s + p.amount, 0));
   const surcharge = r2(check.payments.reduce((s, p) => s + (p.surcharge || 0), 0));
-  return {sub, disc, tax, total, paid, surcharge, due: r2(total - paid)};
+  return {sub, disc, tax, inTax, total, paid, surcharge, due: r2(total - paid)};
 }
 
 // ---------- Check panel ----------
@@ -288,7 +299,7 @@ function renderCheck(){
     return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}</span><span class="p">${money(l.price)}</span>${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
-  $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}<div><span>Tax${check.taxExempt ? ' (exempt)' : ''}</span><span>${money(t.tax)}</span></div>${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
+  $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
   const unsent = check.lines.some(l => !l.sent && !l.removed);
   $('#btnStay').disabled = !unsent || !!draft;
   $('#btnPay').disabled = !lines.length || !!draft || view === 'pay';
@@ -308,13 +319,27 @@ function renderTop(){
   const off = !!STATUS.onlinePaused;
   return `${off ? '<div class="banner">Online ordering is OFF</div>' : ''}<div class="top"><input id="search" placeholder="Search items" value="${esc(search)}"><span class="sp"></span><button class="pill ${off ? 'off' : ''}" id="online">Online ordering: ${off ? 'OFF' : 'on'}</button><span class="who">${esc(user ? user.name : '')}</span><button class="pill" id="switchUser">Switch user</button>${document.fullscreenElement ? '' : '<button class="pill" id="goFull">Full screen</button>'}</div>`;
 }
+const DAYN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const offToday = i => Array.isArray(i.days) && i.days.length && !i.days.includes(new Date().getDay());
+const daysText = i => [3,4,5,6,0,1,2].filter(d => i.days.includes(d)).map(d => DAYN[d]).join(', ');
+function itemBtn(i, tint){
+  const out = i.eightySixed || (typeof i.stockCount === 'number' && i.stockCount <= 0); const nd = offToday(i);
+  return `<button class="${out ? 'out' : ''} ${nd ? 'notday' : ''}" style="--tint:${tint(i.category || 'Other')}" data-item="${esc(i.id)}"><span>${esc(i.name)}</span><small><span>${nd ? esc(daysText(i)) : ''}</span>${out ? "<b>86'd</b>" : typeof i.stockCount === 'number' ? `<span>${i.stockCount} left</span>` : ''}</small></button>`;
+}
 function renderMenu(){
   const cs = cats(); if (!cat || !cs.includes(cat)) cat = cs[0];
   const q = search.trim().toLowerCase();
-  const list = MENU.items.filter(i => i.visible?.register !== false && (q ? i.name.toLowerCase().includes(q) : (i.category || 'Other') === cat)).sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name));
+  const byOrder = (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name);
+  const list = MENU.items.filter(i => i.visible?.register !== false && i.active !== false && (q ? i.name.toLowerCase().includes(q) : (i.category || 'Other') === cat)).sort(byOrder);
   const tint = c => `${catColor(c)}33`;
-  $('#main').innerHTML = renderTop() + `<div class="menuwrap"><div class="cats">${cs.map(c => `<button class="${c === cat && !q ? 'on' : ''}" style="--c:${catColor(c)};background:${tint(c)}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-    <div class="items">${list.map(i => { const out = i.eightySixed || (typeof i.stockCount === 'number' && i.stockCount <= 0);       return `<button class="${out ? 'out' : ''}" style="--tint:${tint(i.category || 'Other')}" data-item="${esc(i.id)}"><span>${esc(i.name)}</span><small><span></span>${out ? "<b>86'd</b>" : typeof i.stockCount === 'number' ? `<span>${i.stockCount} left</span>` : ''}</small></button>`; }).join('') || '<p class="muted">No items.</p>'}</div></div>`;
+  const secs = q ? [] : ((settings().sections || {})[cat] || []);
+  let body;
+  if (secs.length){
+    const cols = secs.map(sec => [sec, list.filter(i => i.section === sec)]);
+    const rest = list.filter(i => !secs.includes(i.section)); if (rest.length) cols.push(['More', rest]);
+    body = `<div class="secs">${cols.filter(([, l]) => l.length).map(([sec, l]) => `<div class="sec"><div class="sech">${esc(sec)}</div>${l.map(i => itemBtn(i, tint)).join('')}</div>`).join('')}</div>`;
+  } else body = `<div class="items">${list.map(i => itemBtn(i, tint)).join('') || '<p class="muted">No items.</p>'}</div>`;
+  $('#main').innerHTML = renderTop() + `<div class="menuwrap"><div class="cats">${cs.map(c => `<button class="${c === cat && !q ? 'on' : ''}" style="--c:${catColor(c)};background:${tint(c)}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>${body}</div>`;
 }
 
 // ---------- Modifier view ----------
