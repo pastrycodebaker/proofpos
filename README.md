@@ -112,3 +112,9 @@ Prices are tax-inclusive. The check shows "Includes tax" (taxable × rate ÷ (1 
 
 ## KDS
 Removed items never show on tickets.
+
+## Integrations plan (Proof Box ↔ Proof POS ↔ ProofBooks) — not built yet
+Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proofpos-90500`. Plan: each app opens a second, read-mostly Firebase connection to the other, matched by a shared item id.
+1. **Production plan → counts.** Proof Box's daily production plan writes planned quantities to POS `stockCount` (items) and `menu/modStock` (bread modifiers) for that day. Bakers confirm or adjust each morning; the register and KDS already 86 at zero.
+2. **Menu ↔ recipe book.** Each POS item links to a Proof Box recipe (`item.recipeId`). Proof Box shows the live POS sale price (cash and credit) next to recipe cost, so food cost % is always current; price changes made in either place update the other.
+3. **Food cost reporting.** POS sales × recipe cost per item (and per modifier ingredient for built sandwiches) → food cost by item, category and day; totals flow to ProofBooks.
