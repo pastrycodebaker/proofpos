@@ -57,6 +57,36 @@
   .login{max-width:360px;margin:12vh auto}
   .hidden{display:none}
   .chips{display:flex;flex-wrap:wrap;gap:6px}
+  #sheetPane{padding:12px 16px}
+  .sbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+  .sbar input[type=search],.sbar select{width:auto;min-width:160px}
+  .sbar .sp{flex:1}
+  .sbar input[type=radio],.sbar input[type=checkbox]{width:auto}
+  .sbar .toggles label{white-space:nowrap}
+  table.sheet select[data-sf=station]{min-width:120px}
+  label.btnlike{font-size:inherit;color:inherit}
+  .mass{background:var(--accent-bg);border:1px solid var(--accent);border-radius:10px;padding:8px 10px}
+  .mass input,.mass select{width:auto;min-width:120px;padding:5px 8px}
+  .mass b{margin-right:4px}
+  .sheetwrap{overflow:auto;max-height:calc(100vh - 190px);border:1px solid var(--line);border-radius:10px;background:#fff}
+  table.sheet{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+  table.sheet th{position:sticky;top:0;background:#f4efe7;z-index:2;text-align:left;font-weight:600;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.sheet td{padding:2px 4px;border-bottom:1px solid #f0ebe3;vertical-align:middle}
+  table.sheet td:nth-child(2),table.sheet th:nth-child(2){position:sticky;left:0;background:inherit;z-index:1}
+  table.sheet th:nth-child(2){z-index:3;background:#f4efe7}
+  table.sheet tr{background:#fff}
+  table.sheet tr.chg{background:#fffaf0}
+  table.sheet tr.newrow{background:#eef8f0}
+  table.sheet tr.sel{background:var(--accent-bg)}
+  table.sheet input,table.sheet select{border:1px solid transparent;border-radius:6px;padding:5px 6px;background:transparent;font-size:13px}
+  table.sheet input:hover,table.sheet select:hover{border-color:var(--line)}
+  table.sheet input:focus,table.sheet select:focus{border-color:var(--accent);background:#fff;outline:none}
+  table.sheet input.dirty{background:#fff1c9}
+  table.sheet input[type=number]{width:76px;text-align:right}
+  table.sheet input[data-sf=name],table.sheet input[data-mf=name]{min-width:200px}
+  table.sheet input[data-sf=category]{min-width:150px}
+  table.sheet input:disabled{color:#b9aea0}
+  table.sheet .grp{font-weight:600;color:var(--quiet)}
   .countrow{display:grid;grid-template-columns:1fr 70px 120px 36px;gap:6px;margin-bottom:6px}
 </style>
 </head>
@@ -74,15 +104,17 @@
     <h1>Menu editor</h1>
     <nav id="tabs">
       <button data-tab="items" class="on">Items</button>
+      <button data-tab="sheet">Spreadsheet</button>
       <button data-tab="groups">Modifier groups</button>
       <button data-tab="settings">Settings</button>
     </nav>
     <div class="who"><span id="whoName"></span><button id="signOut">Sign out</button></div>
   </header>
-  <div class="wrap">
+  <div class="wrap" id="wrap">
     <div class="card list" id="listPane"></div>
     <div class="card" id="editPane"></div>
   </div>
+  <div id="sheetPane" class="hidden"></div>
 </div>
 
 <script type="module">
@@ -113,6 +145,8 @@ function memoryStore(){
     async getStaff(){ return structuredClone(data.staff || {members:[], sleepMinutes:5}); },
     async saveStaff(x){ data.staff = structuredClone(x); },
     async loadSeed(seed){ data = {settings:seed.settings, items:seed.items, groups:seed.modifierGroups}; },
+    async saveItems(list){ for (const it of list) await this.saveItem(it); },
+    async saveGroups(list){ for (const g of list) await this.saveGroup(g); },
   };
 }
 async function firestoreStore(app){
@@ -136,6 +170,8 @@ async function firestoreStore(app){
     async setModStock(key, n){ await fs.setDoc(fs.doc(db, 'menu', 'modStock'), {counts: {[key]: n === null ? fs.deleteField() : n}}, {merge: true}); },
     async getStaff(){ const d = await fs.getDoc(fs.doc(db, 'settings', 'staff')); return d.exists() ? d.data() : {members:[], sleepMinutes:5}; },
     saveStaff: x => fs.setDoc(fs.doc(db, 'settings', 'staff'), x),
+    async saveItems(list){ for (let i = 0; i < list.length; i += 400){ const b = fs.writeBatch(db); list.slice(i, i + 400).forEach(it => b.set(fs.doc(items, it.id), it)); await b.commit(); } },
+    async saveGroups(list){ for (let i = 0; i < list.length; i += 400){ const b = fs.writeBatch(db); list.slice(i, i + 400).forEach(g => b.set(fs.doc(groups, g.id), g)); await b.commit(); } },
     async loadSeed(seed){
       let batch = fs.writeBatch(db), n = 0;
       const flush = async () => { await batch.commit(); batch = fs.writeBatch(db); n = 0; };
@@ -157,6 +193,8 @@ async function reload(){ S = await store.loadAll(); S.items.sort((a,b) => a.name
 // ---------- Rendering ----------
 function render(){
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $('#wrap').classList.toggle('hidden', tab === 'sheet'); $('#sheetPane').classList.toggle('hidden', tab !== 'sheet');
+  if (tab === 'sheet') { renderSheet(); return; }
   if (tab === 'items') { renderItemList(); renderItemEditor(); }
   if (tab === 'groups') { renderGroupList(); renderGroupEditor(); }
   if (tab === 'settings') { $('#listPane').innerHTML = `<div class="listhead"><b>Settings</b><div class="muted">Sizes, credit card surcharge, categories and the starter menu.</div></div>`; renderSettings(); }
@@ -223,7 +261,7 @@ function renderItemEditor(){
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
     <div id="counts">${(it.counts || []).map(c => countRow(c, sizes)).join('')}</div>
     <button id="addCount">Add count</button>
-    <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button class="danger" id="delItem">Delete item</button></div>
+    <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button id="dupItem">Duplicate</button><button class="danger" id="delItem">Delete item</button></div>
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
   grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id)); renderGrpOrder();
 }
@@ -363,7 +401,7 @@ document.addEventListener('change', e => {
 function status(id, msg, kind){ const el = $(id); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }
 document.addEventListener('click', async e => {
   const t = e.target;
-  const tabBtn = t.closest('#tabs button'); if (tabBtn){ tab = tabBtn.dataset.tab; selId = null; render(); return; }
+  const tabBtn = t.closest('#tabs button'); if (tabBtn){ if (tab === 'sheet' && sheetDirty() && tabBtn.dataset.tab !== 'sheet'){ sheetMsg('Save or discard your spreadsheet changes first.', 'err'); return; } tab = tabBtn.dataset.tab; selId = null; render(); return; }
   const li = t.closest('.li[data-id]'); if (li){ selId = li.dataset.id; renderItemList(); renderItemEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
   const gli = t.closest('.li[data-gid]'); if (gli){ selId = gli.dataset.gid; renderGroupList(); renderGroupEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
   try {
@@ -378,6 +416,10 @@ document.addEventListener('click', async e => {
     if (t.id === 'saveItem'){
       const it = S.items.find(i => i.id === selId); const out = readItemForm(it);
       status('#itemStatus', 'Saving…'); await store.saveItem(out); await reload(); status('#itemStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'dupItem'){
+      const src = S.items.find(i => i.id === selId); let id = slug(src.name + ' copy'), n = 1; while (S.items.some(i => i.id === id)) id = slug(src.name + ' copy') + '-' + (++n);
+      await store.saveItem({...structuredClone(src), id, name: src.name + ' copy', review: null, octQtySold: 0, stockCount: null}); selId = id; await reload(); status('#itemStatus', 'Copy made. Rename it and save.', 'ok');
     }
     if (t.id === 'delItem'){
       if (t.dataset.armed){ await store.deleteItem(selId); selId = null; await reload(); }
@@ -436,6 +478,273 @@ document.addEventListener('click', async e => {
     }
   } catch (err){ console.error(err); const s = document.querySelector('.status'); if (s){ s.textContent = 'Could not save: ' + (err.message || err); s.className = 'status err'; } }
 });
+
+// ---------- Spreadsheet ----------
+let sheetMode = 'items', sheetCat = '', sheetQ = '', sheetMissing = false;
+const draftItems = new Map(), draftGroups = new Map(), deletes = new Set(), selRows = new Set();
+const sheetDirty = () => draftItems.size + draftGroups.size + deletes.size > 0;
+const origItem = id => S.items.find(i => i.id === id);
+const itemNow = id => draftItems.get(id) || origItem(id);
+const groupNow = id => draftGroups.get(id) || S.groups.find(g => g.id === id);
+const hasSizes = it => (it.versions || []).some(v => v.size || v.temp);
+const hasPrice = it => (it.versions || []).some(v => v.price !== null && v.price !== undefined && v.price !== '');
+const r2 = n => Math.round(Number(n) * 100) / 100;
+function allItemsNow(){
+  const out = S.items.filter(i => !deletes.has(i.id)).map(i => draftItems.get(i.id) || i);
+  for (const [id, it] of draftItems) if (!origItem(id) && !deletes.has(id)) out.push(it);
+  return out;
+}
+function sizeCols(){
+  const sizes = S.settings.sizes || [];
+  const want = new Set(['hot|12 oz', 'hot|16 oz', 'iced|16 oz', 'iced|20 oz']);
+  for (const it of allItemsNow()) for (const v of it.versions || []) if (v.size || v.temp) want.add(`${v.temp}|${v.size}`);
+  const tOrder = {hot:0, iced:1, '':2};
+  return [...want].map(k => k.split('|')).sort((a, b) => (tOrder[a[0]] - tOrder[b[0]]) || (sizes.indexOf(a[1]) - sizes.indexOf(b[1])))
+    .map(([t, sz]) => ({t, s: sz, label: [t === 'hot' ? 'Hot' : t === 'iced' ? 'Iced' : '', sz].filter(Boolean).join(' ')}));
+}
+function editItem(id, fn){ const cur = structuredClone(itemNow(id)); fn(cur); draftItems.set(id, cur); }
+function editGroup(id, fn){ const cur = structuredClone(groupNow(id)); fn(cur); draftGroups.set(id, cur); }
+function setPrice(it, t, sz, val){
+  const v = val === '' || val === null ? null : r2(val);
+  if (!t && !sz){ it.versions = [{temp:'', size:'', price:v}]; }
+  else {
+    let vers = (it.versions || []).filter(x => (x.size || x.temp) && !(x.temp === t && x.size === sz));
+    if (v !== null) vers.push({temp:t, size:sz, price:v});
+    it.versions = vers.length ? vers : [{temp:'', size:'', price:null}];
+  }
+  it.review = null;
+}
+function sortVersions(vers){ const cols = sizeCols(); const idx = v => cols.findIndex(c => c.t === v.temp && c.s === v.size); return [...(vers || [])].sort((a, b) => idx(a) - idx(b)); }
+function uniqueId(base){ let id = slug(base), n = 1; const taken = new Set(allItemsNow().map(i => i.id)); while (taken.has(id)) id = slug(base) + '-' + (++n); return id; }
+function sheetMsg(msg, kind){ const el = $('#sheetStatus'); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }
+function catOptions(){ return [...new Set([...(S.settings.categories || []), ...allItemsNow().map(i => i.category).filter(Boolean)])]; }
+
+function renderSheet(){
+  const n = draftItems.size + draftGroups.size + deletes.size;
+  const cats = catOptions();
+  $('#sheetPane').innerHTML = `
+    <div class="sbar">
+      <span class="toggles"><label class="${sheetMode === 'items' ? 'on' : ''}"><input type="radio" name="smode" value="items" ${sheetMode === 'items' ? 'checked' : ''}>Items</label><label class="${sheetMode === 'mods' ? 'on' : ''}"><input type="radio" name="smode" value="mods" ${sheetMode === 'mods' ? 'checked' : ''}>Modifier prices</label></span>
+      <input type="search" id="sheetQ" placeholder="Search" value="${esc(sheetQ)}">
+      ${sheetMode === 'items' ? `<select id="sheetCat"><option value="">All categories</option>${cats.map(c => `<option ${c === sheetCat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      <label style="display:flex;gap:6px;align-items:center;margin:0;color:var(--ink);font-size:14px"><input type="checkbox" id="sheetMissing" ${sheetMissing ? 'checked' : ''}>Missing a price</label>
+      <button id="sheetAdd">Add item</button>` : ''}
+      <span class="sp"></span>
+      ${sheetMode === 'items' ? `<button id="csvOut">Download CSV</button><label class="btnlike" style="margin:0"><button id="csvInBtn" type="button">Upload CSV</button><input type="file" id="csvIn" accept=".csv,text/csv" class="hidden"></label>` : ''}
+      <button id="sheetDiscard" ${n ? '' : 'disabled'}>Discard</button>
+      <button class="primary" id="sheetSave" ${n ? '' : 'disabled'}>Save ${n || ''} change${n === 1 ? '' : 's'}</button>
+    </div>
+    <div class="sbar"><span class="status" id="sheetStatus"></span></div>
+    ${sheetMode === 'items' ? massBar() : ''}
+    <datalist id="sheetCats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="sheetwrap">${sheetMode === 'items' ? itemsTable() : modsTable()}</div>`;
+}
+function visibleRows(){
+  const q = sheetQ.trim().toLowerCase(); const order = S.settings.categories || [];
+  return allItemsNow().filter(i => (!sheetCat || i.category === sheetCat) && (!q || i.name.toLowerCase().includes(q)) && (!sheetMissing || !hasPrice(i)))
+    .sort((a, b) => (((order.indexOf(a.category) + 1) || 99) - ((order.indexOf(b.category) + 1) || 99)) || (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name));
+}
+function massBar(){
+  if (!selRows.size) return `<p class="muted" style="margin:0 0 8px">Tick rows to change many at once. Press Enter in a price to jump down the column.</p>`;
+  return `<div class="sbar mass"><b>${selRows.size} selected</b>
+    <input id="mCat" list="sheetCats" placeholder="Category"><button data-mass="cat">Move</button>
+    <select id="mSt"><option value="">Station…</option>${Object.entries(STATIONS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+    <select id="mGrp"><option value="">Modifier group…</option>${S.groups.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select><button data-mass="addGrp">Add</button><button data-mass="rmGrp">Remove</button>
+    <select id="mVis"><option value="">Show / hide…</option><option value="kiosk:1">Show on kiosk</option><option value="kiosk:0">Hide from kiosk</option><option value="online:1">Show online</option><option value="online:0">Hide online</option><option value="register:1">Show on register</option><option value="register:0">Hide from register</option></select>
+    <input id="mPrice" placeholder="+0.25 or -5%" style="width:110px"><button data-mass="price">Change prices</button>
+    <button data-mass="86">86</button><button data-mass="un86">Un-86</button>
+    <button data-mass="dup">Duplicate</button><button data-mass="del" class="danger">Delete</button>
+    <button data-mass="clear">Clear selection</button></div>`;
+}
+function itemsTable(){
+  const cols = sizeCols(); const rows = visibleRows();
+  const allSel = rows.length && rows.every(r => selRows.has(r.id));
+  return `<table class="sheet"><thead><tr><th><input type="checkbox" id="selAll" ${allSel ? 'checked' : ''} aria-label="Select all shown"></th><th>Item</th><th>Category</th><th>Station</th><th>Price</th>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th>Register</th><th>Kiosk</th><th>Online</th><th>Taxed</th><th>86</th><th></th></tr></thead><tbody>
+  ${rows.map(it => {
+    const sized = hasSizes(it); const single = !sized ? (it.versions?.[0]?.price ?? '') : '';
+    const cls = [!origItem(it.id) ? 'newrow' : draftItems.has(it.id) ? 'chg' : '', selRows.has(it.id) ? 'sel' : ''].join(' ');
+    return `<tr data-sid="${esc(it.id)}" class="${cls}"><td><input type="checkbox" data-sel="${esc(it.id)}" ${selRows.has(it.id) ? 'checked' : ''}></td>
+      <td><input data-sf="name" value="${esc(it.name)}"></td>
+      <td><input data-sf="category" list="sheetCats" value="${esc(it.category)}"></td>
+      <td><select data-sf="station">${Object.entries(STATIONS).map(([k, v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v.split(' (')[0]}</option>`).join('')}</select></td>
+      <td><input type="number" step="0.01" min="0" data-sf="price" ${sized ? 'disabled placeholder="sizes →"' : ''} value="${single !== '' && single !== null && single !== undefined ? Number(single).toFixed(2) : ''}"></td>
+      ${cols.map(c => { const v = (it.versions || []).find(x => x.temp === c.t && x.size === c.s); return `<td><input type="number" step="0.01" min="0" data-sf="v" data-t="${c.t}" data-s="${esc(c.s)}" value="${v && v.price !== null && v.price !== undefined ? Number(v.price).toFixed(2) : ''}"></td>`; }).join('')}
+      ${['register', 'kiosk', 'online'].map(k => `<td style="text-align:center"><input type="checkbox" data-sf="vis" data-k="${k}" ${it.visible?.[k] !== false ? 'checked' : ''}></td>`).join('')}
+      <td style="text-align:center"><input type="checkbox" data-sf="taxable" ${it.taxable ? 'checked' : ''}></td>
+      <td style="text-align:center"><input type="checkbox" data-sf="e86" ${it.eightySixed ? 'checked' : ''}></td>
+      <td><button class="link" data-open="${esc(it.id)}" title="Open the full item page">Open</button></td></tr>`;
+  }).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No items match.</td></tr>`}</tbody></table>`;
+}
+function modsTable(){
+  const sizes = S.settings.sizes || []; const q = sheetQ.trim().toLowerCase();
+  const groups = S.groups.map(g => groupNow(g.id));
+  const rows = [];
+  for (const g of groups) g.options.forEach((o, oi) => { if (!q || o.name.toLowerCase().includes(q) || g.name.toLowerCase().includes(q)) rows.push({g, o, oi}); });
+  return `<table class="sheet"><thead><tr><th>Group</th><th>Option</th><th>Pricing</th><th>Price</th>${sizes.map(sz => `<th>${esc(sz)}</th>`).join('')}<th>Hide on kiosk and online</th></tr></thead><tbody>
+  ${rows.map(({g, o, oi}) => `<tr data-g="${esc(g.id)}" data-oi="${oi}" class="${draftGroups.has(g.id) ? 'chg' : ''}"><td class="grp">${esc(g.name)}</td>
+    <td><input data-mf="name" value="${esc(o.name)}"></td>
+    <td><select data-mf="pricing"><option value="flat" ${o.pricing !== 'bySize' ? 'selected' : ''}>Flat</option><option value="bySize" ${o.pricing === 'bySize' ? 'selected' : ''}>By size</option></select></td>
+    <td><input type="number" step="0.01" data-mf="price" value="${Number(o.price || 0).toFixed(2)}"></td>
+    ${sizes.map(sz => `<td><input type="number" step="0.01" data-mf="bs" data-s="${esc(sz)}" ${o.pricing === 'bySize' ? '' : 'disabled'} value="${esc(o.bySize?.[sz] ?? '')}"></td>`).join('')}
+    <td style="text-align:center"><input type="checkbox" data-mf="hide" ${o.hideOnline ? 'checked' : ''}></td></tr>`).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No modifiers match.</td></tr>`}</tbody></table>`;
+}
+function refreshSaveBtn(){ const n = draftItems.size + draftGroups.size + deletes.size; const b = $('#sheetSave'); if (b){ b.disabled = !n; b.textContent = `Save ${n || ''} change${n === 1 ? '' : 's'}`; } const d = $('#sheetDiscard'); if (d) d.disabled = !n; }
+
+function onSheetEdit(e){
+  const el = e.target; const row = el.closest('tr');
+  if (el.dataset.sf && row?.dataset.sid){
+    const id = row.dataset.sid; const f = el.dataset.sf;
+    editItem(id, it => {
+      if (f === 'name') it.name = el.value;
+      if (f === 'category') it.category = el.value.trim();
+      if (f === 'station') it.station = el.value;
+      if (f === 'price') setPrice(it, '', '', el.value);
+      if (f === 'v') setPrice(it, el.dataset.t, el.dataset.s, el.value);
+      if (f === 'vis'){ it.visible = {...(it.visible || {}), [el.dataset.k]: el.checked}; }
+      if (f === 'taxable') it.taxable = el.checked;
+      if (f === 'e86') it.eightySixed = el.checked;
+    });
+    el.classList.add('dirty'); row.classList.add(origItem(id) ? 'chg' : 'newrow');
+    if (f === 'v'){ const p = row.querySelector('[data-sf=price]'); const sized = hasSizes(itemNow(id)); p.disabled = sized; p.placeholder = sized ? 'sizes →' : ''; if (sized) p.value = ''; }
+    refreshSaveBtn(); return;
+  }
+  if (el.dataset.mf && row?.dataset.g){
+    const gid = row.dataset.g, oi = Number(row.dataset.oi), f = el.dataset.mf;
+    editGroup(gid, g => { const o = g.options[oi];
+      if (f === 'name') o.name = el.value;
+      if (f === 'pricing'){ o.pricing = el.value; row.querySelectorAll('[data-mf=bs]').forEach(x => { x.disabled = el.value !== 'bySize'; }); }
+      if (f === 'price') o.price = el.value === '' ? 0 : r2(el.value);
+      if (f === 'bs'){ o.bySize = {...(o.bySize || {})}; if (el.value === '') delete o.bySize[el.dataset.s]; else o.bySize[el.dataset.s] = r2(el.value); }
+      if (f === 'hide') o.hideOnline = el.checked;
+      g.review = null;
+    });
+    el.classList.add('dirty'); row.classList.add('chg'); refreshSaveBtn();
+  }
+}
+$('#sheetPane').addEventListener('input', e => {
+  if (e.target.id === 'sheetQ'){ sheetQ = e.target.value; const pos = e.target.selectionStart; renderSheet(); const q = $('#sheetQ'); q.focus(); q.setSelectionRange(pos, pos); return; }
+  if (e.target.type !== 'checkbox' && e.target.tagName !== 'SELECT') onSheetEdit(e);
+});
+$('#sheetPane').addEventListener('change', e => {
+  const t = e.target;
+  if (t.name === 'smode'){ sheetMode = t.value; selRows.clear(); renderSheet(); return; }
+  if (t.id === 'sheetCat'){ sheetCat = t.value; renderSheet(); return; }
+  if (t.id === 'sheetMissing'){ sheetMissing = t.checked; renderSheet(); return; }
+  if (t.id === 'selAll'){ for (const r of visibleRows()) t.checked ? selRows.add(r.id) : selRows.delete(r.id); renderSheet(); return; }
+  if (t.dataset.sel){ t.checked ? selRows.add(t.dataset.sel) : selRows.delete(t.dataset.sel); renderSheet(); return; }
+  if (t.id === 'mSt' && t.value){ for (const id of selRows) editItem(id, it => { it.station = t.value; }); renderSheet(); sheetMsg(`Station set on ${selRows.size} items. Save to keep it.`); return; }
+  if (t.id === 'mVis' && t.value){ const [k, on] = t.value.split(':'); for (const id of selRows) editItem(id, it => { it.visible = {...(it.visible || {}), [k]: on === '1'}; }); renderSheet(); sheetMsg(`Updated ${selRows.size} items. Save to keep it.`); return; }
+  if (t.id === 'csvIn' && t.files[0]){ importCsv(t.files[0]); return; }
+  if (t.type === 'checkbox' || t.tagName === 'SELECT') onSheetEdit(e);
+});
+$('#sheetPane').addEventListener('keydown', e => {
+  const el = e.target; if (e.key !== 'Enter' || !(el.dataset.sf || el.dataset.mf)) return;
+  e.preventDefault();
+  const row = el.closest('tr'); let next = row.nextElementSibling;
+  const sel = el.dataset.sf ? `[data-sf="${el.dataset.sf}"]` + (el.dataset.t !== undefined ? `[data-t="${el.dataset.t}"][data-s="${el.dataset.s}"]` : el.dataset.k ? `[data-k="${el.dataset.k}"]` : '') : `[data-mf="${el.dataset.mf}"]` + (el.dataset.s ? `[data-s="${el.dataset.s}"]` : '');
+  while (next){ const n = next.querySelector(sel); if (n && !n.disabled){ n.focus(); n.select?.(); return; } next = next.nextElementSibling; }
+});
+$('#sheetPane').addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  try {
+    if (t.dataset.open){ if (sheetDirty()){ sheetMsg('Save or discard changes before opening an item page.', 'err'); return; } tab = 'items'; selId = t.dataset.open; render(); return; }
+    if (t.id === 'csvInBtn'){ $('#csvIn').click(); return; }
+    if (t.id === 'csvOut'){ exportCsv(); return; }
+    if (t.id === 'sheetAdd'){
+      const id = uniqueId('new item'); const cat = sheetCat || (S.settings.categories || [])[0] || '';
+      draftItems.set(id, {id, name:'New item', description:'', category:cat, station:'none', visible:{register:true, kiosk:true, online:true}, alcohol:false, eightySixed:false, versions:[{temp:'', size:'', price:null}], modifierGroupIds:[], counts:[], review:null, taxable:false});
+      sheetQ = ''; sheetMissing = false; renderSheet(); const inp = document.querySelector(`tr[data-sid="${id}"] [data-sf=name]`); inp?.focus(); inp?.select(); return;
+    }
+    if (t.id === 'sheetDiscard'){ if (t.dataset.armed){ draftItems.clear(); draftGroups.clear(); deletes.clear(); selRows.clear(); renderSheet(); sheetMsg('Changes discarded.'); } else { t.dataset.armed = '1'; t.textContent = 'Tap again to discard'; } return; }
+    if (t.id === 'sheetSave'){
+      sheetMsg('Saving…');
+      const items = [...draftItems.entries()].filter(([id]) => !deletes.has(id)).map(([, it]) => ({...it, name: it.name.trim() || 'Untitled', versions: sortVersions(it.versions)}));
+      if (items.length) await store.saveItems(items);
+      for (const id of deletes) if (origItem(id)) await store.deleteItem(id);
+      if (draftGroups.size) await store.saveGroups([...draftGroups.values()]);
+      const n = items.length + deletes.size + draftGroups.size;
+      draftItems.clear(); draftGroups.clear(); deletes.clear(); selRows.clear();
+      await reload(); sheetMsg(`Saved ${n} change${n === 1 ? '' : 's'}.`, 'ok'); return;
+    }
+    const m = t.dataset.mass; if (!m) return;
+    const ids = [...selRows];
+    if (m === 'clear'){ selRows.clear(); renderSheet(); return; }
+    if (m === 'cat'){ const c = $('#mCat').value.trim(); if (!c){ sheetMsg('Type a category first.', 'err'); return; } ids.forEach(id => editItem(id, it => { it.category = c; })); }
+    if (m === 'addGrp' || m === 'rmGrp'){ const g = $('#mGrp').value; if (!g){ sheetMsg('Pick a modifier group first.', 'err'); return; } ids.forEach(id => editItem(id, it => { const l = (it.modifierGroupIds || []).filter(x => x !== g); it.modifierGroupIds = m === 'addGrp' ? [...l, g] : l; })); }
+    if (m === 'price'){
+      const raw = $('#mPrice').value.trim().replace('$', ''); const pct = raw.endsWith('%'); const n = parseFloat(raw);
+      if (isNaN(n)){ sheetMsg('Enter an amount like +0.25, -0.50 or 5%.', 'err'); return; }
+      let missing = 0;
+      ids.forEach(id => editItem(id, it => { let any = false; it.versions = (it.versions || []).map(v => { if (v.price === null || v.price === undefined || v.price === '') return v; any = true; return {...v, price: Math.max(0, r2(pct ? v.price * (1 + n / 100) : Number(v.price) + n))}; }); if (!any) missing++; }));
+      if (missing) sheetMsg(`${missing} selected item${missing === 1 ? ' has' : 's have'} no price yet, so ${missing === 1 ? 'it was' : 'they were'} skipped.`);
+    }
+    if (m === '86' || m === 'un86') ids.forEach(id => editItem(id, it => { it.eightySixed = m === '86'; }));
+    if (m === 'dup'){ const made = []; ids.forEach(id => { const src = itemNow(id); const nid = uniqueId(src.name + ' copy'); draftItems.set(nid, {...structuredClone(src), id: nid, name: src.name + ' copy', review: null, octQtySold: 0, stockCount: null}); made.push(nid); }); selRows.clear(); made.forEach(x => selRows.add(x)); sheetQ = ''; sheetMissing = false; renderSheet(); sheetMsg(`Made ${made.length} cop${made.length === 1 ? 'y' : 'ies'}, selected below. Rename them, then Save.`); return; }
+    if (m === 'del'){
+      if (!t.dataset.armed){ t.dataset.armed = '1'; t.textContent = `Tap again to delete ${ids.length}`; return; }
+      ids.forEach(id => { if (origItem(id)) deletes.add(id); draftItems.delete(id); }); selRows.clear();
+    }
+    renderSheet(); if (m !== 'price' || !$('#sheetStatus').textContent) sheetMsg(`Updated ${ids.length} item${ids.length === 1 ? '' : 's'}. Save to keep it.`);
+  } catch (err){ console.error(err); sheetMsg('Could not save: ' + (err.message || err), 'err'); }
+});
+
+// ---------- CSV ----------
+function csvCell(v){ const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCsv(){
+  const cols = sizeCols();
+  const head = ['id', 'name', 'category', 'station', 'price', ...cols.map(c => c.label), 'register', 'kiosk', 'online', 'taxed'];
+  const lines = [head.map(csvCell).join(',')];
+  for (const it of visibleRows()){
+    const sized = hasSizes(it);
+    lines.push([it.id, it.name, it.category, it.station, sized ? '' : (it.versions?.[0]?.price ?? ''),
+      ...cols.map(c => { const v = (it.versions || []).find(x => x.temp === c.t && x.size === c.s); return v && v.price !== null ? v.price : ''; }),
+      ...['register', 'kiosk', 'online'].map(k => it.visible?.[k] === false ? 'no' : 'yes'), it.taxable ? 'yes' : 'no'].map(csvCell).join(','));
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'})); a.download = 'proofpos-menu.csv'; document.body.appendChild(a); a.click(); a.remove();
+  sheetMsg('Downloaded proofpos-menu.csv. Fill it in, then Upload CSV.', 'ok');
+}
+function parseCsv(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){ if (c === '"' && text[i + 1] === '"'){ cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true; else if (c === ','){ row.push(cell); cell = ''; } else if (c === '\n' || c === '\r'){ if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; } else cell += c;
+  }
+  if (cell || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ''));
+}
+async function importCsv(file){
+  const rows = parseCsv(await file.text()); if (rows.length < 2){ sheetMsg('That file has no rows.', 'err'); return; }
+  const head = rows[0].map(h => h.trim().toLowerCase()); const col = name => head.indexOf(name);
+  const sizes = S.settings.sizes || [];
+  const sizeHeads = head.map((h, i) => { const m = h.match(/^(hot|iced)?\s*(.+)$/); if (!m) return null; const sz = sizes.find(x => x.toLowerCase() === m[2].trim()); return sz ? {i, t: m[1] || '', s: sz} : null; }).filter(Boolean);
+  const yes = v => /^(y|yes|true|1|x)$/i.test(String(v).trim());
+  let changed = 0, created = 0, skipped = 0;
+  for (const r of rows.slice(1)){
+    const get = n => { const i = col(n); return i < 0 ? undefined : (r[i] ?? '').trim(); };
+    const name = get('name'); let id = get('id');
+    let it = id && itemNow(id);
+    if (!it && name){ it = allItemsNow().find(x => x.name.trim().toLowerCase() === name.toLowerCase()); }
+    let isNewRow = false;
+    if (!it){ if (!name){ skipped++; continue; } id = uniqueId(name); draftItems.set(id, {id, name, description:'', category:'', station:'none', visible:{register:true, kiosk:true, online:true}, alcohol:false, eightySixed:false, versions:[{temp:'', size:'', price:null}], modifierGroupIds:[], counts:[], review:null, taxable:false}); it = itemNow(id); created++; isNewRow = true; }
+    const hadDraft = draftItems.has(it.id); const before = JSON.stringify({...itemNow(it.id), review: null});
+    editItem(it.id, x => {
+      if (name) x.name = name;
+      const c = get('category'); if (c) x.category = c;
+      const st = get('station'); if (st && STATIONS[st]) x.station = st;
+      for (const sh of sizeHeads){ const v = (r[sh.i] ?? '').trim().replace('$', ''); if (v !== '') setPrice(x, sh.t, sh.s, v); }
+      const p = get('price'); if (p !== undefined && p !== '' && !hasSizes(x)) setPrice(x, '', '', p.replace('$', ''));
+      for (const k of ['register', 'kiosk', 'online']){ const v = get(k); if (v !== undefined && v !== '') x.visible = {...(x.visible || {}), [k]: yes(v)}; }
+      const tx = get('taxed'); if (tx !== undefined && tx !== '') x.taxable = yes(tx);
+    });
+    if (!isNewRow){
+      const after = JSON.stringify({...itemNow(it.id), review: null});
+      if (after === before){ if (!hadDraft) draftItems.delete(it.id); } else changed++;
+    }
+  }
+  $('#csvIn').value = '';
+  renderSheet(); sheetMsg(`Read the file: ${changed} items updated, ${created} new${skipped ? `, ${skipped} rows skipped (no name)` : ''}. Check the highlighted rows, then Save.`, 'ok');
+}
 
 // ---------- Start ----------
 if (DEMO){

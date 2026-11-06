@@ -54,6 +54,8 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - Items: name, category, station, where it shows (register, kiosk, online), alcohol, 86, price, modifier groups, production counts.
 - Drinks use a hot/iced × size grid instead of separate items per size. Blank cells mean that version isn't sold. The credit card price shows under each.
 - Modifier groups: each option is a flat price or priced by size, and can add to a production count.
+- Spreadsheet: every item in one editable table, with a price column for single-price items and a column per size (Hot 12 oz, Iced 20 oz…). Filter by category, search, or show only items missing a price; Enter jumps down the column. Tick rows to move category, set station, add or remove a modifier group, show/hide on register/kiosk/online, change prices (+0.25 or 5%), 86, duplicate or delete. Nothing saves until "Save changes". "Modifier prices" switches to every add-on, flat or by size. Download CSV / Upload CSV round-trips the menu through Google Sheets or Excel (matches rows by id, then name; new names become new items).
+- Duplicate button on each item page.
 - Settings: sizes, credit card surcharge rate, category order, and the starter menu (`data/seed-menu.json`).
 - Data lives in Firestore under `menu/main` (settings), `menu/main/items`, `menu/main/modifierGroups`.
 
