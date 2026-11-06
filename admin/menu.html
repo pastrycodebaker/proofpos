@@ -110,6 +110,8 @@
   .grip{color:#b9aea0;font-size:16px}
   .lmore{margin-top:8px;cursor:default;touch-action:auto}
   .dragging{opacity:.35}
+  label.req{display:flex;gap:5px;align-items:center;margin:0;flex:none;font-size:13px;color:var(--ink);padding:4px 8px;border:1px solid var(--line);border-radius:999px}
+  label.req.on{background:var(--accent-bg);border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -288,6 +290,9 @@ function renderItemEditor(){
     <h3>Built from (included ingredients)</h3>
     <p class="muted">For sandwiches like the BLT: add the groups above, then tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
     <div id="incBox"></div>
+    <h3>Price by count</h3>
+    <p class="muted">For bulk bagels: staff tap flavors as the customer lists them, and the price works itself out. 8 bagels = half dozen price + 2 singles. The single price is the item price above.</p>
+    <div id="cpBox"></div>
     <h3>Production counts</h3>
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
     <div id="counts">${(it.counts || []).map(c => countRow(c, sizes)).join('')}</div>
@@ -295,14 +300,37 @@ function renderItemEditor(){
     <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button id="dupItem">Duplicate</button><button class="danger" id="delItem">Delete item</button></div>
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
   grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id));
-  incSel = (it.included || []).map(x => ({...x})); renderGrpOrder();
+  incSel = (it.included || []).map(x => ({...x}));
+  reqSel = {...(it.required || {})}; cpSel = it.countPricing ? structuredClone(it.countPricing) : null; renderGrpOrder();
 }
-let grpOrder = [], incSel = [];
+let grpOrder = [], incSel = [], reqSel = {}, cpSel = null;
+// Required on this item: falls back to the group's own rule until set here.
+const reqOn = id => reqSel[id] ?? ((S.groups.find(g => g.id === id) || {}).min >= 1);
 const isIncl = (g, o) => incSel.some(x => x.g === g && x.o === o);
 function basePriceNow(){
   const single = document.querySelector('input[name=pmode]:checked')?.value !== 'sizes';
   if (single){ const v = $('#f_price')?.value; return v === '' || v === undefined ? 0 : Number(v); }
   const ps = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => Number(i.value)); return ps.length ? Math.min(...ps) : 0;
+}
+function readTiers(keepBlank){
+  const rows = [...document.querySelectorAll('#cpBox .tier')].map(r => ({name: r.querySelector('[data-tn]').value.trim(), qty: Math.floor(Number(r.querySelector('[data-tq]').value || 0)), price: r.querySelector('[data-tp]').value === '' ? null : Number(r.querySelector('[data-tp]').value)})).filter(t => keepBlank || (t.qty > 0 && t.price !== null));
+  return {group: $('#cp_group') ? $('#cp_group').value : cpSel.group, tiers: rows};
+}
+function renderCount(){
+  const box = $('#cpBox'); if (!box) return;
+  if (cpSel && box.querySelector('.tier')) cpSel = readTiers(true); // keep what was typed
+  const on = !!cpSel;
+  const groups = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
+  box.innerHTML = `<div class="toggles"><label class="${on ? 'on' : ''}"><input type="checkbox" id="cp_on" ${on ? 'checked' : ''}>Price this item by count</label></div>` + (!on ? '' : !groups.length ? '<p class="muted">Add the flavor group above first (set it to "Pick any number").</p>' :
+    `<label>Count the picks in this group</label><select id="cp_group" style="max-width:320px">${groups.map(g => `<option value="${esc(g.id)}" ${g.id === cpSel.group ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
+    <label>Bundle prices (cash/debit)</label>${cpSel.tiers.map(t => `<div class="row tier" style="max-width:480px;margin-bottom:6px"><input data-tn placeholder="Name, like Dozen" value="${esc(t.name || '')}"><input data-tq type="number" min="1" step="1" placeholder="Count" value="${esc(t.qty)}" style="max-width:90px"><input data-tp type="number" min="0" step="0.01" placeholder="Price" value="${t.price ?? ''}" style="max-width:110px"></div>`).join('')}
+    <button id="cp_addTier">Add a bundle size</button><div class="muted" id="cpEx" style="margin-top:6px"></div>`);
+  cpExample();
+}
+function cpExample(){
+  const ex = $('#cpEx'); if (!ex || !cpSel) return; const t = readTiers().tiers.sort((a, b) => b.qty - a.qty); const unit = basePriceNow();
+  const ex8 = n => { let left = n, p = 0; for (const x of t){ const k = Math.floor(left / x.qty); p += k * x.price; left -= k * x.qty; } return p + left * unit; };
+  ex.textContent = t.length && unit ? `Examples: 4 = ${money(ex8(4))} · 8 = ${money(ex8(8))} · 13 = ${money(ex8(13))}` : 'Set the single price above and the bundle prices to see examples.';
 }
 function renderInc(){
   const box = $('#incBox'); if (!box) return;
@@ -310,10 +338,10 @@ function renderInc(){
   const groups = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
   if (!groups.length){ box.innerHTML = '<span class="muted">Add the groups first (bread, protein, produce…), then tap what comes on it.</span>'; return; }
   const optP = o => Number(o.pricing === 'bySize' ? 0 : (o.price || 0));
-  box.innerHTML = groups.map(g => `<div style="margin-bottom:8px"><div class="muted" style="font-size:13px">${esc(g.name)}${g.min ? ' · customer picks' : ''}</div><div class="toggles">${g.options.map(o => `<label class="${isIncl(g.id, o.name) ? 'on' : ''}"><input type="checkbox" data-inc="${esc(g.id)}|${esc(o.name)}" ${isIncl(g.id, o.name) ? 'checked' : ''}>${esc(o.name)}${optP(o) ? ' · ' + money(optP(o)) : ''}</label>`).join('')}</div></div>`).join('');
+  box.innerHTML = groups.map(g => `<div style="margin-bottom:8px"><div class="muted" style="font-size:13px">${esc(g.name)}${reqOn(g.id) ? ' · customer picks' : ''}</div><div class="toggles">${g.options.map(o => `<label class="${isIncl(g.id, o.name) ? 'on' : ''}"><input type="checkbox" data-inc="${esc(g.id)}|${esc(o.name)}" ${isIncl(g.id, o.name) ? 'checked' : ''}>${esc(o.name)}${optP(o) ? ' · ' + money(optP(o)) : ''}</label>`).join('')}</div></div>`).join('');
   // Price breakdown: base + each required group's pre-selected (or cheapest) pick + included ingredients
   const parts = []; let total = basePriceNow(); if (total) parts.push(['Item price', total]);
-  for (const g of groups) if (g.min >= 1 && g.options.length){
+  for (const g of groups) if (reqOn(g.id) && g.options.length){
     const pick = g.options.find(o => o.name === g.default) || g.options.slice().sort((a, b) => optP(a) - optP(b))[0];
     if (!isIncl(g.id, pick.name)){ parts.push([pick.name + ' (cheapest pick)', optP(pick)]); total += optP(pick); }
   }
@@ -325,9 +353,8 @@ function renderGrpOrder(){
   const avail = S.groups.filter(g => !grpOrder.includes(g.id));
   const add = `<div class="row" style="max-width:420px;margin-top:6px"><select id="addGrpSel"><option value="">Add a modifier group…</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select></div>`;
   if (!grpOrder.length){ $('#grpOrder').innerHTML = '<span class="muted">No modifier groups on this item yet.</span>' + add; return; }
-  $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
-  return;
-  $('#grpOrder').innerHTML = grpOrder.length ? grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></div>`; }).join('') : '<span class="muted">Turn on a group above to set its order.</span>';
+  $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><label class="req ${reqOn(id) ? 'on' : ''}"><input type="checkbox" data-req="${esc(id)}" ${reqOn(id) ? 'checked' : ''}>Required</label><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
+  renderCount();
 }
 function countRow(c, sizes){
   return `<div class="countrow"><input placeholder="Eggs, shots..." data-c="name" value="${esc(c.name)}"><input type="number" step="1" min="0" data-c="qty" value="${esc(c.qty)}"><select data-c="size"><option value="">All sizes</option>${sizes.map(s => `<option ${c.size === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select><button data-c="del" aria-label="Remove count">✕</button></div>`;
@@ -352,6 +379,8 @@ function readItemForm(it){
   else out.versions = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => ({temp:i.dataset.t, size:i.dataset.s, price:Number(i.value)}));
   out.modifierGroupIds = grpOrder.slice();
   out.included = incSel.filter(x => out.modifierGroupIds.includes(x.g));
+  out.required = Object.fromEntries(out.modifierGroupIds.map(id => [id, reqOn(id)]));
+  out.countPricing = cpSel && cpSel.group && out.modifierGroupIds.includes(cpSel.group) ? readTiers() : null;
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
   if (it.review && $('#f_reviewed')?.checked) out.review = null;
@@ -455,6 +484,7 @@ async function renderSettings(){
 document.addEventListener('input', e => {
   if (e.target.id === 'search'){ search = e.target.value; renderItemList(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
   if (e.target.id === 'f_price' || e.target.closest?.('#sizesBox')) renderInc();
+  if (e.target.closest?.('#cpBox') || e.target.id === 'f_price') cpExample();
   if (e.target.id === 'f_price'){ const v = e.target.value; $('#singleCC').textContent = v !== '' ? 'Credit card ' + money(credit(Number(v))) : ''; }
   if (e.target.dataset?.s !== undefined && e.target.closest('#sizesBox')){ e.target.nextElementSibling.textContent = e.target.value !== '' ? money(credit(Number(e.target.value))) : ''; }
 });
@@ -465,6 +495,9 @@ document.addEventListener('change', e => {
   if (t.type === 'checkbox' || t.type === 'radio'){ const l = t.closest('.toggles label'); if (l){ if (t.type === 'radio') l.parentElement.querySelectorAll('label').forEach(x => x.classList.remove('on')); l.classList.toggle('on', t.checked); } }
   if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
   if (t.dataset?.inc){ const [g, o] = t.dataset.inc.split('|'); incSel = incSel.filter(x => !(x.g === g && x.o === o)); if (t.checked) incSel.push({g, o, q:1}); renderInc(); }
+  if (t.dataset?.req){ reqSel[t.dataset.req] = t.checked; renderGrpOrder(); }
+  if (t.id === 'cp_on'){ cpSel = t.checked ? {group: grpOrder[0] || '', tiers: [{qty:6, name:'Half dozen', price:null}, {qty:12, name:'Dozen', price:null}]} : null; renderCount(); }
+  if (t.id === 'cp_group' && cpSel){ cpSel.group = t.value; }
   if (t.id === 'addGrpSel' && t.value){ grpOrder.push(t.value); renderGrpOrder(); }
   if (t.dataset?.grp){ grpOrder = grpOrder.filter(x => x !== t.dataset.grp); if (t.checked) grpOrder.push(t.dataset.grp); renderGrpOrder(); }
 });
@@ -482,6 +515,7 @@ document.addEventListener('click', async e => {
     }
     if (t.id === 'addCount'){ $('#counts').insertAdjacentHTML('beforeend', countRow({name:'', qty:1, size:''}, S.settings.sizes || [])); }
     if (t.dataset?.c === 'del'){ t.closest('.countrow').remove(); }
+    if (t.id === 'cp_addTier'){ cpSel = readTiers(true); cpSel.tiers.push({qty:'', name:'', price:null}); renderCount(); }
     if (t.dataset?.rmgrp){ grpOrder = grpOrder.filter(x => x !== t.dataset.rmgrp); renderGrpOrder(); }
     if (t.dataset?.up !== undefined || t.dataset?.down !== undefined){ const i = Number(t.dataset.up ?? t.dataset.down), j = t.dataset.up !== undefined ? i - 1 : i + 1; [grpOrder[i], grpOrder[j]] = [grpOrder[j], grpOrder[i]]; renderGrpOrder(); }
     if (t.id === 'saveItem'){

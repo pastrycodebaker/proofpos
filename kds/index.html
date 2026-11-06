@@ -529,7 +529,7 @@ $('#dRush').addEventListener('click', () => { rush = !rush; renderCart(); });
 $('#menuBtns').addEventListener('click', e => {
   const b = e.target.closest('button[data-add]'); if (!b) return;
   const it = itemById(b.dataset.add); const mods = [];
-  for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (g.min >= 1 && g.options[0]) mods.push({g: g.id, o: g.options[0].name});
+  for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (((it.required || {})[g.id] ?? g.min >= 1) && g.options[0]) mods.push({g: g.id, o: g.options[0].name});
   for (const x of it.included || []) if (!mods.some(m => m.g === x.g && m.o === x.o)) mods.push({g: x.g, o: x.o, q: x.q || 1});
   cart.push(buildLine(it.id, 0, mods)); renderCart();
 });
