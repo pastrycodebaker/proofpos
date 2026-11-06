@@ -29,7 +29,10 @@
   .chip{display:inline-flex;gap:6px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
   .chip b{font-size:20px}
   main{padding:14px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start}
+  /* Tickets run left to right; staff swipe through them. */
+  .grid{display:flex;gap:12px;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;height:calc(100vh - var(--top, 150px));height:calc(100dvh - var(--top, 150px));padding-bottom:10px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  .grid > .ticket{flex:0 0 260px;max-height:100%;overflow-y:auto;scroll-snap-align:start}
+  .grid > .pasthead{flex:0 0 auto;writing-mode:vertical-rl;transform:rotate(180deg);margin:0;padding:0 6px;border-top:none;border-left:1px solid var(--line);align-self:stretch;text-align:center}
   .empty{color:var(--quiet);text-align:center;padding:60px 0}
   .ticket{background:var(--card);border:2px solid var(--line);border-radius:12px;overflow:hidden}
   .ticket.rush{border-color:var(--rush);box-shadow:0 0 0 2px var(--rush) inset}
@@ -365,6 +368,8 @@ document.addEventListener('pointerdown', () => { pressing = true; });
 document.addEventListener('pointerup', () => setTimeout(() => { pressing = false; }, 150));
 function render(){
   lastFull = Date.now();
+  requestAnimationFrame(() => { const h = ($('#appView header')?.offsetHeight || 0) + ($('#counts')?.offsetHeight || 0) + ($('#rerouteBanner')?.offsetHeight || 0) + ($('#onlineBanner')?.offsetHeight || 0) + 34; document.documentElement.style.setProperty('--top', h + 'px'); });
+  const keepX = $('#board .grid')?.scrollLeft || 0;
   const v = view();
   const nUp = ORDERS.filter(o => !o.cleared && fireAt(o) > Date.now()).length; $('#btnUpcoming').textContent = nUp ? `Upcoming (${nUp})` : 'Upcoming';
   const n86 = MENU.items.filter(i => i.eightySixed).length; $('#btn86').textContent = n86 ? `86 (${n86} out)` : '86';
@@ -375,6 +380,7 @@ function render(){
   $('#btnDone').classList.toggle('on', showDone);
   const pastHtml = past.length ? `<div class="pasthead">Recently done · last ${DONE_MIN} minutes</div>` + past.map(o => ticketHtml(o, v, true)).join('') : (showDone ? `<div class="pasthead">Nothing done in the last ${DONE_MIN} minutes</div>` : '');
   $('#board').innerHTML = (orders.length || showDone) ? `<div class="${v.layout}">${orders.map(o => ticketHtml(o, v)).join('')}${pastHtml}</div>` : `<div class="empty">No open tickets for ${v.label}</div>`;
+  const g = $('#board .grid'); if (g) g.scrollLeft = keepX;
   const rrOn = settings.reroute && (v.shows === 'espresso' || v.shows === 'all');
   $('#rerouteBanner').classList.toggle('hidden', !rrOn);
   if (rrOn) $('#rerouteBanner').textContent = 'Weekend reroute is on: ' + (MENU.items.filter(i => i.reroute && i.reroute !== 'none').map(i => (i.reroute === 'iced' ? 'iced ' : '') + i.name.toLowerCase()).join(', ') || 'no drinks are set to reroute') + (v.shows === 'all' ? ' come to the runner.' : ' go to the runner.');
