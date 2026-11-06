@@ -257,16 +257,43 @@ function renderItemEditor(){
     <div class="toggles">${S.groups.map(g => { const on = (it.modifierGroupIds || []).includes(g.id); return `<label class="${on?'on':''}"><input type="checkbox" data-grp="${esc(g.id)}" ${on?'checked':''}>${esc(g.name)}</label>`; }).join('') || '<span class="muted">No modifier groups yet.</span>'}</div>
     <label>Order on tickets and the register</label>
     <div id="grpOrder"></div>
+    <h3>Built from (included ingredients)</h3>
+    <p class="muted">For sandwiches like the BLT: tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
+    <div id="incBox"></div>
     <h3>Production counts</h3>
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
     <div id="counts">${(it.counts || []).map(c => countRow(c, sizes)).join('')}</div>
     <button id="addCount">Add count</button>
     <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button id="dupItem">Duplicate</button><button class="danger" id="delItem">Delete item</button></div>
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
-  grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id)); renderGrpOrder();
+  grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id));
+  incSel = (it.included || []).map(x => ({...x})); renderGrpOrder();
 }
-let grpOrder = [];
+let grpOrder = [], incSel = [];
+const isIncl = (g, o) => incSel.some(x => x.g === g && x.o === o);
+function basePriceNow(){
+  const single = document.querySelector('input[name=pmode]:checked')?.value !== 'sizes';
+  if (single){ const v = $('#f_price')?.value; return v === '' || v === undefined ? 0 : Number(v); }
+  const ps = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => Number(i.value)); return ps.length ? Math.min(...ps) : 0;
+}
+function renderInc(){
+  const box = $('#incBox'); if (!box) return;
+  incSel = incSel.filter(x => grpOrder.includes(x.g));
+  const groups = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
+  if (!groups.length){ box.innerHTML = '<span class="muted">Turn on the groups first (bread, protein, produce…), then tap what comes on it.</span>'; return; }
+  const optP = o => Number(o.pricing === 'bySize' ? 0 : (o.price || 0));
+  box.innerHTML = groups.map(g => `<div style="margin-bottom:8px"><div class="muted" style="font-size:13px">${esc(g.name)}${g.min ? ' · customer picks' : ''}</div><div class="toggles">${g.options.map(o => `<label class="${isIncl(g.id, o.name) ? 'on' : ''}"><input type="checkbox" data-inc="${esc(g.id)}|${esc(o.name)}" ${isIncl(g.id, o.name) ? 'checked' : ''}>${esc(o.name)}${optP(o) ? ' · ' + money(optP(o)) : ''}</label>`).join('')}</div></div>`).join('');
+  // Price breakdown: base + each required group's pre-selected (or cheapest) pick + included ingredients
+  const parts = []; let total = basePriceNow(); if (total) parts.push(['Item price', total]);
+  for (const g of groups) if (g.min >= 1 && g.options.length){
+    const pick = g.options.find(o => o.name === g.default) || g.options.slice().sort((a, b) => optP(a) - optP(b))[0];
+    if (!isIncl(g.id, pick.name)){ parts.push([pick.name + ' (cheapest pick)', optP(pick)]); total += optP(pick); }
+  }
+  for (const x of incSel){ const g = S.groups.find(gg => gg.id === x.g); const o = g && g.options.find(oo => oo.name === x.o); if (o){ parts.push([o.name, optP(o) * (x.q || 1)]); total += optP(o) * (x.q || 1); } }
+  box.innerHTML += incSel.length ? `<div class="banner" style="display:block;margin-top:6px"><b>Rings up at ${money(total)}</b> (credit ${money(credit(total))}): ${parts.map(([n, v]) => esc(n) + ' ' + money(v)).join(' + ')}</div>` : '';
+}
 function renderGrpOrder(){
+  setTimeout(renderInc, 0);
   $('#grpOrder').innerHTML = grpOrder.length ? grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></div>`; }).join('') : '<span class="muted">Turn on a group above to set its order.</span>';
 }
 function countRow(c, sizes){
@@ -288,6 +315,7 @@ function readItemForm(it){
   if (mode === 'single'){ const p = $('#f_price').value; out.versions = [{temp:'', size:'', price: p === '' ? null : Number(p)}]; }
   else out.versions = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => ({temp:i.dataset.t, size:i.dataset.s, price:Number(i.value)}));
   out.modifierGroupIds = grpOrder.slice();
+  out.included = incSel.filter(x => out.modifierGroupIds.includes(x.g));
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
   if (it.review && $('#f_reviewed')?.checked) out.review = null;
@@ -387,6 +415,7 @@ async function renderSettings(){
 // ---------- Events ----------
 document.addEventListener('input', e => {
   if (e.target.id === 'search'){ search = e.target.value; renderItemList(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+  if (e.target.id === 'f_price' || e.target.closest?.('#sizesBox')) renderInc();
   if (e.target.id === 'f_price'){ const v = e.target.value; $('#singleCC').textContent = v !== '' ? 'Credit card ' + money(credit(Number(v))) : ''; }
   if (e.target.dataset?.s !== undefined && e.target.closest('#sizesBox')){ e.target.nextElementSibling.textContent = e.target.value !== '' ? money(credit(Number(e.target.value))) : ''; }
 });
@@ -396,6 +425,7 @@ document.addEventListener('change', e => {
   if (t.name === 'pmode'){ $('#singleBox').classList.toggle('hidden', t.value !== 'single'); $('#sizesBox').classList.toggle('hidden', t.value !== 'sizes'); }
   if (t.type === 'checkbox' || t.type === 'radio'){ const l = t.closest('.toggles label'); if (l){ if (t.type === 'radio') l.parentElement.querySelectorAll('label').forEach(x => x.classList.remove('on')); l.classList.toggle('on', t.checked); } }
   if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
+  if (t.dataset?.inc){ const [g, o] = t.dataset.inc.split('|'); incSel = incSel.filter(x => !(x.g === g && x.o === o)); if (t.checked) incSel.push({g, o, q:1}); renderInc(); }
   if (t.dataset?.grp){ grpOrder = grpOrder.filter(x => x !== t.dataset.grp); if (t.checked) grpOrder.push(t.dataset.grp); renderGrpOrder(); }
 });
 function status(id, msg, kind){ const el = $(id); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }

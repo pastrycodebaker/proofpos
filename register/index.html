@@ -112,6 +112,7 @@
   .pin{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
   .pin button{min-height:60px;font-size:22px}
   .banner{background:var(--crit);color:#fff;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-weight:600}
+  .opt button.noinc span:first-child{color:#b42318;text-decoration:none}
 </style>
 </head>
 <body>
@@ -246,11 +247,16 @@ function lineFrom(d){
     const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o);
     if (m.pre !== 'No') { price += optPrice(o, v.size) * (m.q || 1); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
   }
+  const inc = it.included || [];
+  const isInc = m => inc.some(x => x.g === m.g && x.o === m.o);
+  const noMods = inc.filter(x => !d.mods.some(m => m.g === x.g && m.o === x.o)).map(x => ({g: x.g, o: x.o}));
   const rr = KDS.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
   return {lid: d.lid || uid(), itemId: it.id, name: d.openName || it.name, station: d.openStation || (rr ? 'none' : (it.station || 'none')), rerouted: !!rr,
-    versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods: d.mods.map(m => ({...m})), counts, price: r2(price),
+    versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods: d.mods.map(m => { const c = {...m}; if (isInc(m)) c.inc = true; else delete c.inc; return c; }), noMods, counts, price: r2(price),
     taxable: !!it.taxable, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
 }
+// What a ticket or check shows: changes only. Kept included ingredients stay hidden unless changed (light, 2×, style).
+const shownMods = l => [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub)];
 function modText(m){ return [m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''); }
 function totals(){
   const live = check.lines.filter(l => !l.removed);
@@ -279,7 +285,7 @@ function renderCheck(){
   $('#cLines').innerHTML = lines.length ? lines.map((l, i) => {
     const idx = check.lines.indexOf(l);
     const editing = draft && draft.editIdx === idx;
-    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}</span><span class="p">${money(l.price)}</span>${l.mods.length ? `<span class="m">${l.mods.map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}</span><span class="p">${money(l.price)}</span>${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
   $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}<div><span>Tax${check.taxExempt ? ' (exempt)' : ''}</span><span>${money(t.tax)}</span></div>${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
@@ -326,10 +332,10 @@ function renderMods(){
     const st = groupStatus(g);
     cols.push(`<div class="col"><div class="colh ${st.need ? 'need' : (g.min ? 'ok' : '')}"><span>${esc(g.name)}</span><span class="st">${st.need ? '✕ ' + (g.min - st.n) : g.min ? '✓' : ''}</span></div><div class="opts">${g.options.map(o => {
       const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const cnt = MODSTOCK[modKey(g.id, o.name)]; const out = typeof cnt === 'number' && cnt <= 0;
-      const p = optPrice(o, size);
+      const p = optPrice(o, size); const incl = (it.included || []).some(x => x.g === g.id && x.o === o.name);
       const label = m ? modText(m) : o.name;
-      const tools = m ? `<div class="tools">${g.max !== 1 ? `<button data-minus="${esc(g.id)}|${esc(o.name)}">−</button>` : ''}<button data-more="${esc(g.id)}|${esc(o.name)}">Light, extra…</button></div>` : '';
-      return `<div class="opt"><button class="${m ? 'on' : ''} ${out ? 'out' : ''}" data-mod="${esc(g.id)}|${esc(o.name)}"><span>${esc(label)}</span><small><span>${p ? (p > 0 ? '+' : '') + money(p) : ''}</span>${typeof cnt === 'number' ? (out ? '<b>0</b>' : `<span>${cnt}</span>`) : ''}</small></button>${tools}</div>`;
+      const tools = m ? `<div class="tools">${g.max !== 1 ? `<button data-minus="${esc(g.id)}|${esc(o.name)}">−</button>` : ''}${incl && g.max !== 1 ? `<button data-plus="${esc(g.id)}|${esc(o.name)}">+</button>` : ''}<button data-more="${esc(g.id)}|${esc(o.name)}">Light, extra…</button></div>` : '';
+      return `<div class="opt"><button class="${m ? 'on' : ''} ${out ? 'out' : ''} ${incl && !m ? 'noinc' : ''}" data-mod="${esc(g.id)}|${esc(o.name)}"><span>${esc(m || !incl ? label : 'No ' + o.name)}</span><small><span>${incl ? (m ? 'Included' : '−' + money(p)) : p ? (p > 0 ? '+' : '') + money(p) : ''}</span>${typeof cnt === 'number' ? (out ? '<b>0</b>' : `<span>${cnt}</span>`) : ''}</small></button>${tools}</div>`;
     }).join('')}</div></div>`);
   }
   const ready = draftReady();
@@ -340,6 +346,7 @@ function startDraft(itemId){
   const it = itemById(itemId);
   draft = {itemId, versionIdx: (it.versions || []).length > 1 ? null : 0, mods: [], qty: 1, editIdx: null};
   for (const g of draftGroups()) if (g.default && g.options.some(o => o.name === g.default)) draft.mods.push({g: g.id, o: g.default, q: 1});
+  for (const x of it.included || []) if (groupById(x.g) && !draft.mods.some(m => m.g === x.g && m.o === x.o)) draft.mods.push({g: x.g, o: x.o, q: x.q || 1, inc: true});
   if ((it.versions || []).length <= 1 && !draftGroups().length){ commitDraft(); return; }
   view = 'mods'; render();
 }
@@ -490,11 +497,15 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.ver !== undefined){ draft.versionIdx = Number(t.dataset.ver); renderMods(); return; }
   if (t.dataset.mod){
     const [gid, name] = t.dataset.mod.split('|'); const g = groupById(gid); const cur = draft.mods.find(m => m.g === gid && m.o === name);
-    if (g.max === 1){ draft.mods = draft.mods.filter(m => m.g !== gid); if (!cur) draft.mods.push({g:gid, o:name, q:1}); }
+    const incl = (itemById(draft.itemId).included || []).some(x => x.g === gid && x.o === name);
+    if (incl && cur && (cur.q || 1) === 1){ draft.mods = draft.mods.filter(m => m !== cur); }
+    else if (incl && !cur){ draft.mods.push({g:gid, o:name, q:1, inc:true}); }
+    else if (g.max === 1){ draft.mods = draft.mods.filter(m => m.g !== gid); if (!cur) draft.mods.push({g:gid, o:name, q:1}); }
     else if (cur){ const total = draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0); if (total < (g.max || 99)) cur.q = (cur.q || 1) + 1; }
     else { const total = draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0); if (total < (g.max || 99)) draft.mods.push({g:gid, o:name, q:1}); }
     renderMods(); return;
   }
+  if (t.dataset.plus){ const [gid, name] = t.dataset.plus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur) cur.q = (cur.q || 1) + 1; renderMods(); return; }
   if (t.dataset.minus){ const [gid, name] = t.dataset.minus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur.q > 1) cur.q -= 1; else draft.mods = draft.mods.filter(m => m !== cur); renderMods(); return; }
   if (t.dataset.more){ openMore(...t.dataset.more.split('|')); return; }
   if (t.id === 'qMinus'){ draft.qty = Math.max(1, draft.qty - 1); renderMods(); return; }

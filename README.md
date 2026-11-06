@@ -95,3 +95,9 @@ Latest Stripe API version per Stripe's guide: `2026-10-28.endive`. Node SDK 23.
 - ⋮: tax exempt (Colgate), schedule, open item, no sale (logged), void (before payment), discounts from Settings.
 - Press and hold any item or modifier to edit its stock: In stock, Out of stock, or set a count (it goes out of stock by itself at zero).
 - Cup group: To go cup +$0.30 pre-selected; Customer cup and For here are hidden on kiosk and online.
+
+## Built-from items (BLT-style pricing)
+On an item, turn on the shared groups (bread, protein, produce, sauces), then tap the ingredients that come on it under "Built from". They're saved as `item.included = [{g, o, q}]`.
+- Register: included ingredients start selected and add their price. Tapping one off ("No tomato") drops its price; extras add on top.
+- Check and KDS: only changes show (bread pick, "No Tomato", "+ Avocado", "Light Mayo"). Lines carry `mods[].inc` and `noMods`.
+- One price per ingredient: changing bacon's price reprices every sandwich built with it.

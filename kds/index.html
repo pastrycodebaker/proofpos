@@ -311,16 +311,21 @@ function buildLine(itemId, versionIdx, mods, lid){
   const it = itemById(itemId); const v = (it.versions || [])[versionIdx] || {};
   const counts = {};
   for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
-  for (const m of mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
+  const inc = it.included || [];
+  mods = mods.map(m => { const c = {...m}; if (inc.some(x => x.g === m.g && x.o === m.o)) c.inc = true; else delete c.inc; return c; });
+  const noMods = inc.filter(x => !mods.some(m => m.g === x.g && m.o === x.o)).map(x => ({g: x.g, o: x.o}));
+  for (const m of mods){ if (m.pre === 'No') continue; const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
   const rr = settings.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
-  return {lid: lid || uid(), itemId, name: it.name, station: rr ? 'none' : (it.station || 'none'), rerouted: !!rr, versionIdx, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods, counts, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
+  return {lid: lid || uid(), itemId, name: it.name, station: rr ? 'none' : (it.station || 'none'), rerouted: !!rr, versionIdx, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods, noMods, counts, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
 }
 const live = l => !l.removed;
 function sortedMods(l){
   const it = itemById(l.itemId); const order = (it && it.modifierGroupIds) || [];
   const gi = g => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
   const oi = m => { const g = groupById(m.g); const i = g ? g.options.findIndex(o => o.name === m.o) : -1; return i < 0 ? 999 : i; };
-  return l.mods.slice().sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
+  // Built-from items: hide kept included ingredients, show "No X" for removed ones.
+  const shown = [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub)];
+  return shown.sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
 }
 const linesFor = (o, v) => v.shows === 'all' ? o.lines : o.lines.filter(l => l.station === v.shows);
 
@@ -353,7 +358,7 @@ function ticketHtml(o, v, past){
     const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : ''].join(' ');
     const tag = l.removed ? '<span class="tag rem">REMOVED</span>' : fresh ? `<span class="tag new">${l.changed === 'added' ? 'NEW' : 'CHANGED'}</span>` : '';
     const where = v.shows === 'all' ? `<div class="where">${l.rerouted ? 'rerouted to runner' : l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
-    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${l.mods.length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc([m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''))}</div>`).join('')}</div>` : ''}${where}</div></li>`;
+    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${sortedMods(l).length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc([m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''))}</div>`).join('')}</div>` : ''}${where}</div></li>`;
   }).join('');
   const edited = o.lines.some(l => l.changed && now - l.changedAt < 90000);
   const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', o.scheduled ? `<span class="badge b-sched">Scheduled ${new Date(fireAt(o)).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
@@ -525,6 +530,7 @@ $('#menuBtns').addEventListener('click', e => {
   const b = e.target.closest('button[data-add]'); if (!b) return;
   const it = itemById(b.dataset.add); const mods = [];
   for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (g.min >= 1 && g.options[0]) mods.push({g: g.id, o: g.options[0].name});
+  for (const x of it.included || []) if (!mods.some(m => m.g === x.g && m.o === x.o)) mods.push({g: x.g, o: x.o, q: x.q || 1});
   cart.push(buildLine(it.id, 0, mods)); renderCart();
 });
 $('#cart').addEventListener('click', e => {
