@@ -4,3 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# The Firebase web config key is public by design (Firestore rules protect the data), so the secret scan skips it.
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY"
