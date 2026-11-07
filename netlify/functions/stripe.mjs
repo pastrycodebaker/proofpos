@@ -59,7 +59,8 @@ async function handle(action, b){
       const pi = b.paymentIntent ? await stripe('GET', `payment_intents/${b.paymentIntent}?expand[]=payment_method`) : null;
       const a = reader.action || {};
       return {readerStatus: reader.status, action: a.type || null, actionStatus: a.status || null, failure: a.failure_message || null,
-        collected: !!(a.type === 'collect_payment_method' && a.status === 'succeeded'),
+        // After the card is read, the reader keeps the action open and attaches the card; the PaymentIntent waits for confirmation.
+        collected: !!(a.type === 'collect_payment_method' && (a.status === 'succeeded' || a.collect_payment_method?.payment_method)) || pi?.status === 'requires_confirmation',
         pi: pi && {id: pi.id, status: pi.status, amount: pi.amount, tip: pi.amount_details?.tip?.amount || 0, error: pi.last_payment_error?.message || null}};
     }
     case 'confirm': {
