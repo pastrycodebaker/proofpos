@@ -50,7 +50,7 @@ async function handle(action, b){
       if (!(amount >= 50)) throw new Error('Card payments must be at least $0.50.');
       const pi = b.paymentIntent
         ? await stripe('POST', `payment_intents/${b.paymentIntent}`, {amount})
-        : await stripe('POST', 'payment_intents', {amount, currency: 'usd', payment_method_types: ['card_present'], capture_method: 'automatic', description: b.description || 'Proof POS', metadata: {source: b.source || 'register', order: b.orderRef || '', base_amount: amount}});
+        : await stripe('POST', 'payment_intents', {amount, currency: 'usd', allowed_payment_method_types: ['card_present'], capture_method: 'automatic', description: b.description || 'Proof POS', metadata: {source: b.source || 'register', order: b.orderRef || '', base_amount: amount}});
       await stripe('POST', `terminal/readers/${b.reader}/collect_payment_method`, {payment_intent: pi.id, collect_config: {skip_tipping: b.tipOnReader ? 'false' : 'true', tipping: b.tipOnReader ? {amount_eligible: amount} : undefined}});
       return {paymentIntent: pi.id};
     }
