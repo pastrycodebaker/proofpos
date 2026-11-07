@@ -348,9 +348,9 @@ function renderPay(err){
   $('#sheetRoot').innerHTML = `<div class="scrim" id="payScrim"><div class="sheet" role="dialog" aria-label="Review and pay"><div class="hd"><h2>Review and pay</h2></div><div class="bd">
     <div><label for="custName" style="font-weight:700;display:block;margin-bottom:6px">Your name, so we can call you</label><input id="custName" autocomplete="off" value="${esc(nameVal)}" placeholder="First name"></div>
     <div><div style="font-weight:700;margin-bottom:6px">Add a tip for the team?</div><div class="tips">${tips.map(([p, l]) => `<button class="${(tipPct || 0) === (p === '' ? 0 : p) && tipPct !== null ? 'on' : ''}" data-tip="${p}">${l}${p !== '' ? `<small>${money(r2(t.sub * p))}</small>` : ''}</button>`).join('')}</div></div>
-    <div class="sum"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div class="muted"><span>Credit card fee (3%, debit cards pay less)</span><span>${money(t.surcharge)}</span></div><div style="font-weight:800;font-size:22px"><span>Total</span><span>${money(t.total)}</span></div><div class="muted" style="font-size:14px"><span>Prices include sales tax (${money(t.tax)})</span></div></div>
+    <div class="sum"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:22px"><span>Total</span><span>${money(r2(t.sub + t.tip))}</span></div><div class="muted" style="font-size:15px"><span>Credit cards add 3% (${money(t.surcharge)}). Debit cards don't.</span></div><div class="muted" style="font-size:14px"><span>Prices include sales tax (${money(t.tax)})</span></div></div>
     <div class="err" id="payErr">${esc(err || '')}</div></div>
-    <div class="ft"><button id="payCancel">Back</button><span class="sp"></span><button class="primary" id="payBtn" style="font-size:20px;padding:18px 26px">Pay ${money(t.total)}</button></div></div></div>`;
+    <div class="ft"><button id="payCancel">Back</button><span class="sp"></span><button class="primary" id="payBtn" style="font-size:20px;padding:18px 26px">Pay with card</button></div></div></div>`;
   $('#custName').addEventListener('input', e => { custName = e.target.value; });
 }
 let paying = false;
@@ -361,16 +361,18 @@ async function pay(){
   if (tipPct === null){ renderPay('Please pick a tip option (No tip is fine).'); return; }
   if (!navigator.onLine){ renderPay('This kiosk is offline. Please order at the register.'); return; }
   if (cart.some(l => whyNot(itemById(l.itemId) || {}))){ $('#sheetRoot').innerHTML = ''; renderShop(); return; }
-  paying = true; $('#payBtn').disabled = true; $('#payBtn').textContent = 'Paying…';
+  paying = true;
   const t = totals(); const now = Date.now();
-  // Card payment: test mode until the Stripe reader is connected.
-  const payment = {method:'card', label:'Card (test)', amount: r2(t.sub + t.tip), tip: t.tip, surcharge: t.surcharge, at: now, staff: 'Kiosk', note: 'Test payment, no card charged'};
+  let result;
+  try { result = await cardOnReader(r2(t.sub + t.tip)); }
+  catch (e){ paying = false; if (e.message !== 'Canceled') renderPay(e.message); else renderPay(); return; }
+  const payment = {method:'card', label: `${result.brand ? result.brand[0].toUpperCase() + result.brand.slice(1) : 'Card'} ${result.funding || ''} ••${result.last4 || ''}`, amount: r2(t.sub + t.tip), tip: t.tip, surcharge: result.surcharge, charged: result.amount, funding: result.funding, paymentIntent: result.paymentIntent, at: now, staff: 'Kiosk'};
   try {
-    const r = await store.createOrder({name: custName, staff: 'Kiosk', source: 'kiosk', rush: false, scheduled: false, cleared: false, clearedAt: 0, status: 'paid', createdAtMs: now, fireAtMs: now, lines: cart, payments: [payment], totals: {sub: t.sub, tax: t.tax, tip: t.tip, surcharge: t.surcharge, total: t.total, due: 0}, paidAt: now, taxExempt: false, discount: null});
+    const r = await store.createOrder({name: custName, staff: 'Kiosk', source: 'kiosk', rush: false, scheduled: false, cleared: false, clearedAt: 0, status: 'paid', createdAtMs: now, fireAtMs: now, lines: cart, payments: [payment], totals: {sub: t.sub, tax: t.tax, tip: t.tip, surcharge: result.surcharge, total: result.amount, due: 0}, paidAt: now, taxExempt: false, discount: null});
     adjustStock(cart);
     $('#sheetRoot').innerHTML = ''; $('#thanksName').textContent = `Thank you, ${custName}!`; $('#thanksNum').textContent = 'Order #' + r.num; show('thanks');
     thanksTimer = setTimeout(reset, 12000);
-  } catch (e){ console.error(e); renderPay('Something went wrong. Please try again or order at the register.'); }
+  } catch (e){ console.error(e); renderPay('Your card was charged but the order did not save. Please show this screen at the register.'); }
   paying = false;
 }
 function adjustStock(lines){
@@ -378,6 +380,24 @@ function adjustStock(lines){
   for (const l of lines){ items[l.itemId] = (items[l.itemId] || 0) + 1; for (const m of l.mods){ const k = modKey(m.g, m.o); mods[k] = (mods[k] || 0) + (m.q || 1); } }
   for (const [id, n] of Object.entries(items)){ const it = itemById(id); if (it && typeof it.stockCount === 'number') store.adjustItem(id, -n, it.stockCount - n <= 0).catch(console.error); }
   for (const [k, n] of Object.entries(mods)) if (typeof MODSTOCK[k] === 'number') store.adjustMod(k, -n).catch(console.error);
+}
+// Card reader: waits for the customer to tap, shows test buttons on a test reader.
+let PAY = null;
+function cardOnReader(amount){
+  return new Promise((resolve, reject) => {
+    let msg = 'Sending to the card reader…', sim = false, ctl;
+    const draw = () => { $('#sheetRoot').innerHTML = `<div class="scrim"><div class="sheet" role="dialog" aria-label="Pay with card"><div class="hd"><h2>Pay ${money(amount)}</h2></div><div class="bd"><p style="font-size:24px;margin:0">${esc(msg)}</p><p class="muted" style="margin:0">Credit cards add 3%. The reader shows the final total.</p>
+      ${sim ? `<div class="muted">Test reader: pretend the customer…</div><div class="opts"><button data-csim="credit">Taps a credit card</button><button data-csim="debit">Taps a debit card</button><button data-csim="decline">Card is declined</button></div>` : ''}</div>
+      <div class="ft"><button id="cardStop">Cancel</button></div></div></div>`; };
+    const onClick = e => { const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.csim){ e.stopPropagation(); ctl.simulate(b.dataset.csim).catch(console.error); msg = 'Card presented…'; draw(); }
+      if (b.id === 'cardStop'){ e.stopPropagation(); ctl.cancel(); cleanup(); reject(new Error('Canceled')); } };
+    const cleanup = () => $('#sheetRoot').removeEventListener('click', onClick, true);
+    $('#sheetRoot').addEventListener('click', onClick, true);
+    draw();
+    ctl = PAY.cardPayment({amount, tipOnReader: false, source: 'kiosk', description: 'Kiosk ' + custName, onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
+    ctl.done.then(r => { cleanup(); resolve(r); }).catch(e => { cleanup(); reject(e); });
+  });
 }
 let thanksTimer = null;
 function reset(){ clearTimeout(thanksTimer); cart = []; cat = null; draft = null; tipPct = null; custName = ''; $('#sheetRoot').innerHTML = ''; renderWelcome(); show('welcome'); }
@@ -424,11 +444,13 @@ async function boot(){
   renderWelcome(); show('welcome');
   if (DEMO) window.__kiosk = {pause: ms => store._setStatus({kioskDrinksPausedUntil: Date.now() + (ms ?? PAUSE_MS)}), resume: () => store._setStatus({kioskDrinksPausedUntil: 0})};
 }
-if (DEMO){ store = demoStore(); boot(); }
+const {createPayments} = await import('../payments.js');
+if (DEMO){ PAY = createPayments({demo: true}); store = demoStore(); boot(); }
 else {
   const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  PAY = createPayments({getToken: () => auth.currentUser.getIdToken()});
   store = await firebaseStore(app); let booted = false;
   A.onAuthStateChanged(auth, u => { if (u && !booted){ booted = true; boot().catch(e => { console.error(e); }); } if (!u) $('#login').classList.remove('hidden'); });
   $('#signIn').addEventListener('click', async () => { try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); } catch (e){ $('#loginErr').textContent = 'That email and password did not work.'; } });

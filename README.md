@@ -125,3 +125,9 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 - Kiosk drinks pause: "Kiosk drinks" on the register and every KDS sets `menu/status.kioskDrinksPausedUntil` to 10 minutes from now; the kiosk disables made-to-order drinks (espresso station or Coffee and drinks) until then. Bottled drinks stay on. Online ordering has its own switch.
 - Owner sign-ins (menu editor → Settings): emails in `settings/owners`. Firestore rules let only owners change the menu, prices, settings, staff codes and the owner list; other signed-in tablets can ring orders, 86 and change counts. Until the list has an email, every signed-in tablet counts as an owner.
 - Register shows a red banner when it's offline.
+
+## Card payments (Stripe Terminal, server-driven)
+- `netlify/functions/stripe.mjs` holds all Stripe calls; the key is the Netlify env var `STRIPE_SECRET_KEY` (restricted: PaymentIntents, Charges and Refunds, Terminal = Write). Calls must carry a Proof POS Firebase sign-in token.
+- Flow: create PaymentIntent → reader collects the card (tip on the reader at the register, 18/20/22%; the kiosk asks for tip on screen) → we read credit vs debit → add 3% for credit, capped at 2.7% + 5¢ → reader confirms.
+- `payments.js` is the shared client. With a test key, the first payment creates the "Flour & Salt" location and a simulated S700; the register and kiosk show "pretend the customer…" buttons. Each tablet can use a specific reader via `localStorage['proof.reader']`.
+- Before going live: check Stripe's US surcharging requirements for Terminal (customer notice on the reader).

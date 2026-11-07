@@ -496,19 +496,41 @@ $('#btnPay').addEventListener('click', () => { if (!finishDraft()) return; rende
 $('#btnPay').addEventListener('click', () => needName(() => { tender = ''; view = 'pay'; render(); }));
 $('#cName').addEventListener('click', () => needName(() => { if (check.orderId) store.updateOrder(check.orderId, {name: check.name}).catch(console.error); }, true));
 
+// ---------- Card reader (Stripe Terminal) ----------
+let PAY = null;
+async function takeCard(amt){
+  return new Promise(resolve => {
+    let ctl, sim = false, msg = 'Sending to the card reader…', err = '';
+    const draw = () => sheet(`<h3 style="margin-top:0">Card · ${money(amt)}</h3><p style="font-size:18px">${esc(msg)}</p>${err ? `<p class="err">${esc(err)}</p>` : ''}
+      ${sim && !err ? `<p class="muted" style="margin-bottom:6px">Test reader: pretend the customer…</p><div class="row" style="flex-wrap:wrap;gap:8px"><button data-sim="credit">Taps a credit card</button><button data-sim="credit" data-tip="20">Credit + 20% tip</button><button data-sim="debit">Taps a debit card</button><button data-sim="decline">Card is declined</button></div>` : ''}
+      <div class="row" style="margin-top:12px">${err ? '<button class="primary" id="cardRetry">Try again</button>' : ''}<button id="cardCancel">${err ? 'Close' : 'Cancel'}</button></div>`); $('#sheetRoot').onclick = null;
+    const finish = v => { $('#sheetRoot').removeEventListener('click', onClick, true); closeSheet(); resolve(v); };
+    const onClick = async e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.sim){ e.stopPropagation(); const tip = b.dataset.tip ? Math.round(amt * Number(b.dataset.tip)) : 0; ctl.simulate(b.dataset.sim, tip).catch(x => { err = x.message; draw(); }); msg = 'Card presented…'; draw(); }
+      if (b.id === 'cardCancel'){ e.stopPropagation(); if (ctl && !err) await ctl.cancel(); finish(null); }
+      if (b.id === 'cardRetry'){ e.stopPropagation(); err = ''; run(); }
+    };
+    $('#sheetRoot').addEventListener('click', onClick, true);
+    const run = () => {
+      msg = 'Sending to the card reader…'; draw();
+      ctl = PAY.cardPayment({amount: amt, tipOnReader: true, source: 'register', description: 'Register ' + (check.name || ''), onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
+      ctl.done.then(r => {
+        finish({method: 'card', label: `${r.brand ? r.brand[0].toUpperCase() + r.brand.slice(1) : 'Card'} ${r.funding || ''} ••${r.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: r2(amt), tip: r.tip, surcharge: r.surcharge, charged: r.amount, funding: r.funding, paymentIntent: r.paymentIntent, at: Date.now(), staff: user ? user.name : ''});
+      }).catch(x => { if (x.message === 'Canceled') return; err = x.message; draw(); });
+    };
+    run();
+  });
+}
 async function takePayment(method){
   const t = totals(); let amt = tender ? Number(tender) / 100 : t.due; tender = '';
   if (amt <= 0) return;
   let change = 0;
   if (method === 'cash'){ if (amt > t.due){ change = r2(amt - t.due); } amt = Math.min(amt, t.due); }
   else amt = Math.min(amt, t.due);
-  const label = method === 'card' ? 'Card (test)' : (METHODS.find(m => m[0] === method) || [, method])[1];
-  const p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
-  if (method === 'card'){
-    const rate = Number(settings().surchargeRate ?? 0.03);
-    // Credit cards only once Stripe reports the card type; capped at Stripe's in-person fee (2.7% + 5¢).
-    p.surcharge = r2(Math.min(amt * rate, amt * 0.027 + 0.05)); p.note = 'Test payment, no card charged';
-  }
+  const label = (METHODS.find(m => m[0] === method) || [, method])[1];
+  let p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
+  if (method === 'card'){ p = await takeCard(amt); if (!p) return; }
   if (change) p.tendered = r2(amt + change);
   check.payments.push(p);
   const after = totals();
@@ -699,11 +721,13 @@ async function boot(){
   store.watchOrders(list => { ORDERS = list; renderCheck(); });
   lockNow(); render();
 }
-if (DEMO){ store = demoStore(); boot(); }
+const {createPayments} = await import('../payments.js');
+if (DEMO){ PAY = createPayments({demo: true}); store = demoStore(); boot(); }
 else {
   const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  PAY = createPayments({getToken: () => auth.currentUser.getIdToken()});
   store = await firebaseStore(app); let booted = false;
   A.onAuthStateChanged(auth, u => { if (u && !booted){ booted = true; boot().catch(e => alertSheet('Could not load: ' + e.message)); } if (!u) $('#login').classList.remove('hidden'); });
   $('#signIn').addEventListener('click', async () => { try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); } catch (e){ $('#loginErr').textContent = 'That email and password did not work.'; } });
