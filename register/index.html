@@ -124,6 +124,7 @@
   .needmsg{color:var(--crit);font-size:14px;font-weight:600}
   .cl .n em.inc{color:var(--crit);font-style:normal;font-size:12px;font-weight:600}
   .cl .m.hint{color:#9a6700;font-weight:600}
+  a.pill{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--line);color:inherit}
 </style>
 </head>
 <body>
@@ -339,8 +340,8 @@ $('#cLines').addEventListener('click', e => {
 
 // ---------- Menu view ----------
 function renderTop(){
-  const off = !!STATUS.onlinePaused;
-  return `${off ? '<div class="banner">Online ordering is OFF</div>' : ''}<div class="top"><input id="search" placeholder="Search items" value="${esc(search)}"><span class="sp"></span><button class="pill ${off ? 'off' : ''}" id="online">Online ordering: ${off ? 'OFF' : 'on'}</button><span class="who">${esc(user ? user.name : '')}</span><button class="pill" id="switchUser">Switch user</button>${document.fullscreenElement ? '' : '<button class="pill" id="goFull">Full screen</button>'}</div>`;
+  const off = !!STATUS.onlinePaused; const left = Number(STATUS.kioskDrinksPausedUntil || 0) - Date.now();
+  return `${!navigator.onLine ? '<div class="banner">This register is OFFLINE. Orders are saved here and will reach the kitchen when the connection is back.</div>' : ''}${off ? '<div class="banner">Online ordering is OFF</div>' : ''}<div class="top"><input id="search" placeholder="Search items" value="${esc(search)}"><span class="sp"></span><button class="pill ${off ? 'off' : ''}" id="online">Online ordering: ${off ? 'OFF' : 'on'}</button><button class="pill ${left > 0 ? 'off' : ''}" id="kioskDrinks">Kiosk drinks: ${left > 0 ? 'paused · ' + Math.ceil(left / 60000) + ' min' : 'on'}</button><a class="pill" href="../?pick${DEMO ? '&demo' : ''}" style="text-decoration:none">Switch screen</a><span class="who">${esc(user ? user.name : '')}</span><button class="pill" id="switchUser">Switch user</button>${document.fullscreenElement ? '' : '<button class="pill" id="goFull">Full screen</button>'}</div>`;
 }
 const DAYN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const offToday = i => Array.isArray(i.days) && i.days.length && !i.days.includes(new Date().getDay());
@@ -561,6 +562,7 @@ function stockSheet(ref){
 $('#main').addEventListener('input', e => { if (e.target.id === 'search'){ search = e.target.value; renderMenu(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); } });
 $('#main').addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'kioskDrinks'){ const paused = Number(STATUS.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; STATUS = {...STATUS, kioskDrinksPausedUntil: v}; render(); store.setStatus({kioskDrinksPausedUntil: v, kioskChangedAt: Date.now()}).catch(console.error); return; }
   if (t.id === 'online'){ const v = !STATUS.onlinePaused; STATUS = {...STATUS, onlinePaused: v}; render(); store.setStatus({onlinePaused: v, changedAt: Date.now()}).catch(console.error); return; }
   if (t.id === 'switchUser'){ lockNow(); return; }
   if (t.id === 'goFull'){ document.documentElement.requestFullscreen?.().then(render).catch(() => {}); return; }
@@ -691,6 +693,8 @@ async function boot(){
   await new Promise(res => { let first = true; store.watchMenu(m => { MENU = m; if (first){ first = false; res(); } else if (view !== 'pay') render(); }); });
   store.watchModStock(s => { MODSTOCK = s; if (view === 'mods') renderMods(); });
   store.watchStatus(s => { STATUS = {onlinePaused:false, ...s}; if (view !== 'mods') render(); });
+  setInterval(() => { if (view === 'menu' && Number(STATUS.kioskDrinksPausedUntil || 0) > Date.now() - 60000 && document.activeElement?.id !== 'search') render(); }, 30000);
+  addEventListener('online', () => { if (view !== 'mods') render(); }); addEventListener('offline', () => { if (view !== 'mods') render(); });
   store.watchKds(s => { KDS = s || {}; });
   store.watchOrders(list => { ORDERS = list; renderCheck(); });
   lockNow(); render();

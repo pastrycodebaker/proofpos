@@ -121,6 +121,7 @@
   .login input{width:100%;margin-bottom:10px}
   .hidden{display:none !important}
   .err{color:#ffb3a8}
+  .btnlink{display:inline-flex;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid currentColor;color:inherit;text-decoration:none;opacity:.85}
 </style>
 </head>
 <body>
@@ -143,11 +144,13 @@
     <button id="btnDone">Show done</button>
     <button id="btn86">86</button>
     <button id="btnOnline">Online ordering: on</button>
+    <button id="btnKiosk">Kiosk drinks: on</button>
     <button id="btnUpcoming">Upcoming</button>
     <button class="primary" id="btnRegister">Test register</button>
     <button id="btnRecall">Recall</button>
     <button id="btnTiming">Timing</button>
     <button id="btnFull">Full screen</button>
+    <a class="btnlink" id="btnSwitch" href="../?pick">Switch screen</a>
   </div>
 </header>
 <div class="banner off hidden" id="onlineBanner">Online ordering is OFF. Tap "Online ordering" to turn it back on.</div>
@@ -300,7 +303,7 @@ async function firebaseStore(app){
 
 // ---------- State ----------
 let store, MENU = {items:[], groups:[]}, ORDERS = [], settings = {thresholds: DEFAULT_T};
-let viewId = (() => { try { return localStorage.getItem('kds-view') || 'kitchen1'; } catch(e){ return 'kitchen1'; } })();
+let viewId = (() => { const u = new URLSearchParams(location.search).get('view'); if (u){ try { localStorage.setItem('kds-view', u); } catch(e){} return u; } try { return localStorage.getItem('kds-view') || 'kitchen1'; } catch(e){ return 'kitchen1'; } })();
 const view = () => VIEWS.find(v => v.id === viewId) || VIEWS[1];
 const itemById = id => MENU.items.find(i => i.id === id);
 const groupById = id => MENU.groups.find(g => g.id === id);
@@ -613,7 +616,14 @@ function renderStatus(){
   $('#btnOnline').textContent = 'Online ordering: ' + (off ? 'OFF' : 'on');
   $('#btnOnline').classList.toggle('onlineoff', off);
   $('#onlineBanner').classList.toggle('hidden', !off);
+  const until = Number(status.kioskDrinksPausedUntil || 0), left = until - Date.now();
+  $('#btnKiosk').textContent = left > 0 ? `Kiosk drinks: paused · back on in ${Math.ceil(left / 60000)} min` : 'Kiosk drinks: on';
+  $('#btnKiosk').classList.toggle('onlineoff', left > 0);
 }
+// Pausing kiosk drinks lasts 10 minutes, then turns itself back on. Tap while paused to turn drinks back on now.
+$('#btnKiosk').addEventListener('click', () => { const paused = Number(status.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; status = {...status, kioskDrinksPausedUntil: v}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: v, kioskChangedAt: Date.now()})); });
+setInterval(() => renderStatus(), 15000);
+if (DEMO) $('#btnSwitch').href = '../?pick&demo';
 $('#btnOnline').addEventListener('click', () => { status = {...status, onlinePaused: !status.onlinePaused}; renderStatus(); act(store.setStatus({onlinePaused: status.onlinePaused, changedAt: Date.now()})); });
 
 $('#btnFull').addEventListener('click', () => document.documentElement.requestFullscreen?.().catch(() => {}));

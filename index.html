@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="/icons/icon-192.png">
+<title>Proof POS · Start</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:#eef1f4;color:#1f2328;font:17px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:32px 20px}
+  main{width:min(900px,100%)}
+  h1{margin:0 0 4px;font-size:30px}
+  p{margin:0 0 20px;color:#5b6470}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:#5b6470;margin:26px 0 10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+  a.tile{display:flex;flex-direction:column;gap:4px;background:#fff;border:2px solid #dfe3e8;border-radius:16px;padding:20px;text-decoration:none;color:inherit;min-height:96px}
+  a.tile:hover,a.tile:focus{border-color:#1a5fb4;outline:none}
+  a.tile b{font-size:20px}
+  a.tile span{color:#5b6470;font-size:15px}
+  a.tile.home{border-color:#1a5fb4;background:#e7f0fb}
+  label{display:flex;gap:10px;align-items:center;margin-top:24px;background:#fff;border-radius:14px;padding:14px 16px;border:1px solid #dfe3e8}
+  input{width:22px;height:22px}
+</style>
+</head>
+<body>
+<main>
+  <h1>What is this tablet for?</h1>
+  <p>Pick a screen. Staff can come back here from any screen with "Switch screen" (the kiosk asks for a staff code first).</p>
+  <h2>Front of house</h2>
+  <div class="grid" id="foh"></div>
+  <h2>Kitchen and bar</h2>
+  <div class="grid" id="boh"></div>
+  <h2>Back office</h2>
+  <div class="grid" id="office"></div>
+  <label><input type="checkbox" id="remember"> Open this tablet's screen automatically next time</label>
+</main>
+<script>
+const demo = new URLSearchParams(location.search).has('demo') ? '?demo' : '';
+const q = (u) => u + (demo ? (u.includes('?') ? '&demo' : '?demo') : '');
+const SCREENS = {
+  foh: [['register', 'Register', 'Ring orders and take payment', 'register/'], ['kiosk', 'Kiosk', 'Express line for customers, locked with a staff code', 'kiosk/'], ['runner', 'Runner KDS', 'Whole tickets, the only screen that clears them', 'kds/?view=runner']],
+  boh: [['espresso', 'Espresso bar KDS', 'Drinks', 'kds/?view=espresso'], ['kitchen1', 'Kitchen KDS 1', 'Grid view', 'kds/?view=kitchen1'], ['kitchen2', 'Kitchen KDS 2', 'Rail view', 'kds/?view=kitchen2']],
+  office: [['menu', 'Menu editor', 'Items, prices, layout and settings', 'admin/menu.html']],
+};
+let home = null; try { home = localStorage.getItem('proof.home'); } catch (e) {}
+const all = Object.values(SCREENS).flat();
+// Remembered screen: go straight there unless someone asked to pick (?pick).
+if (home && !new URLSearchParams(location.search).has('pick')){ const s = all.find(x => x[0] === home); if (s) location.replace(q(s[3])); }
+for (const [box, list] of Object.entries(SCREENS)) document.getElementById(box).innerHTML = list.map(([id, t, d, u]) => `<a class="tile ${id === home ? 'home' : ''}" href="${q(u)}" data-id="${id}"><b>${t}</b><span>${d}</span></a>`).join('');
+const rem = document.getElementById('remember'); rem.checked = !!home;
+rem.addEventListener('change', () => { if (!rem.checked){ try { localStorage.removeItem('proof.home'); } catch (e) {} document.querySelectorAll('.tile.home').forEach(t => t.classList.remove('home')); } });
+document.addEventListener('click', e => { const a = e.target.closest('a.tile'); if (!a) return; try { if (rem.checked) localStorage.setItem('proof.home', a.dataset.id); } catch (err) {} });
+</script>
+</body>
+</html>

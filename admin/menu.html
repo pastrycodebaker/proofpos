@@ -170,6 +170,8 @@ function memoryStore(){
     async setModStock(key, n){ data.modStock = data.modStock || {}; if (n === null) delete data.modStock[key]; else data.modStock[key] = n; },
     async getStaff(){ return structuredClone(data.staff || {members:[], sleepMinutes:5}); },
     async saveStaff(x){ data.staff = structuredClone(x); },
+    async getOwners(){ return structuredClone(data.owners || {emails:[]}); },
+    async saveOwners(x){ data.owners = structuredClone(x); },
     async loadSeed(seed){ data = {settings:seed.settings, items:seed.items, groups:seed.modifierGroups}; },
     async saveItems(list){ for (const it of list) await this.saveItem(it); },
     async saveGroups(list){ for (const g of list) await this.saveGroup(g); },
@@ -196,6 +198,8 @@ async function firestoreStore(app){
     async setModStock(key, n){ await fs.setDoc(fs.doc(db, 'menu', 'modStock'), {counts: {[key]: n === null ? fs.deleteField() : n}}, {merge: true}); },
     async getStaff(){ const d = await fs.getDoc(fs.doc(db, 'settings', 'staff')); return d.exists() ? d.data() : {members:[], sleepMinutes:5}; },
     saveStaff: x => fs.setDoc(fs.doc(db, 'settings', 'staff'), x),
+    async getOwners(){ const d = await fs.getDoc(fs.doc(db, 'settings', 'owners')); return d.exists() ? d.data() : {emails:[]}; },
+    saveOwners: x => fs.setDoc(fs.doc(db, 'settings', 'owners'), x),
     async saveItems(list){ for (let i = 0; i < list.length; i += 400){ const b = fs.writeBatch(db); list.slice(i, i + 400).forEach(it => b.set(fs.doc(items, it.id), it)); await b.commit(); } },
     async saveGroups(list){ for (let i = 0; i < list.length; i += 400){ const b = fs.writeBatch(db); list.slice(i, i + 400).forEach(g => b.set(fs.doc(groups, g.id), g)); await b.commit(); } },
     async loadSeed(seed){
@@ -444,9 +448,11 @@ function readGroupForm(g){
 }
 
 // ---------- Settings ----------
+let ownersNow = {emails:[]}, signedInEmail = '';
 let staffNow = {members:[], sleepMinutes:5};
 async function renderSettings(){
   staffNow = await store.getStaff().catch(() => staffNow);
+  ownersNow = await store.getOwners().catch(() => ownersNow);
   const s = S.settings;
   $('#editPane').innerHTML = `<h2>Settings</h2>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
@@ -465,6 +471,10 @@ async function renderSettings(){
     <label>Staff, one per line, like "Britty O: 1234"</label><textarea id="s_staff" rows="5" placeholder="Britty O: 1234">${esc((staffNow.members || []).map(m => `${m.name}: ${m.pin}`).join('\n'))}</textarea>
     <label>Lock after this many idle minutes</label><input id="s_sleep" type="number" min="1" step="1" value="${esc(staffNow.sleepMinutes || 5)}" style="max-width:140px">
     <div class="bar"><button class="primary" id="saveStaff">Save sign-in</button><span class="status" id="staffStatus"></span></div>
+    <h3>Owner sign-ins</h3>
+    <p class="muted">Only these sign-ins can change the menu, prices, discounts, staff codes and settings. Every other signed-in tablet can still ring orders, 86 items and change counts. ${(ownersNow.emails || []).length ? '' : '<b>No owners yet, so every signed-in tablet can change everything.</b> Add your own sign-in first.'} You're signed in as <b>${esc(signedInEmail || 'demo')}</b>.</p>
+    <label>Owner emails, one per line</label><textarea id="s_owners" rows="3" placeholder="you@example.com">${esc((ownersNow.emails || []).join('\n'))}</textarea>
+    <div class="bar"><button class="primary" id="saveOwners">Save owners</button><span class="status" id="ownStatus"></span></div>
     <h3>Weekend reroute</h3>
     <p class="muted">Drinks that move to the runner screen when "Weekend reroute" is checked on the KDS: ${S.items.filter(i => i.reroute && i.reroute !== 'none').map(i => esc((i.reroute === 'iced' ? 'iced ' : '') + i.name)).join(', ') || 'none yet'}. Change one on its item page.</p>
     <button id="rrDefaults">Set cold brew, Honeybee, kombucha, lemonade, iced tea and iced chai</button> <span class="status" id="rrStatus"></span>
@@ -501,7 +511,7 @@ document.addEventListener('change', e => {
   if (t.id === 'addGrpSel' && t.value){ grpOrder.push(t.value); renderGrpOrder(); }
   if (t.dataset?.grp){ grpOrder = grpOrder.filter(x => x !== t.dataset.grp); if (t.checked) grpOrder.push(t.dataset.grp); renderGrpOrder(); }
 });
-function status(id, msg, kind){ const el = $(id); if (el){ el.textContent = msg; el.className = 'status ' + (kind || ''); } }
+function status(id, msg, kind){ const el = $(id); if (el){ if (/insufficient permissions|permission-denied/i.test(msg)) msg = 'You do not have permission to change this. Sign in with an owner account.'; el.textContent = msg; el.className = 'status ' + (kind || ''); } }
 document.addEventListener('click', async e => {
   const t = e.target;
   const tabBtn = t.closest('#tabs button'); if (tabBtn){ if (tab === 'sheet' && sheetDirty() && tabBtn.dataset.tab !== 'sheet'){ sheetMsg('Save or discard your spreadsheet changes first.', 'err'); return; } if (tab === 'layout' && layoutDirty && tabBtn.dataset.tab !== 'layout'){ status('#layoutStatus', 'Save or discard your layout changes first.', 'err'); return; } if (tabBtn.dataset.tab === 'layout') L = null; scrollTo(0, 0); tab = tabBtn.dataset.tab; selId = null; render(); return; }
@@ -546,6 +556,12 @@ document.addEventListener('click', async e => {
       if (used){ status('#groupStatus', `Used by ${used} items. Remove it from those items first.`, 'err'); return; }
       if (t.dataset.armed){ await store.deleteGroup(selId); selId = null; await reload(); }
       else { t.dataset.armed = '1'; t.textContent = 'Tap again to delete'; }
+    }
+    if (t.id === 'saveOwners'){
+      const emails = [...new Set($('#s_owners').value.split(/[\s,]+/).map(x => x.trim().toLowerCase()).filter(x => x.includes('@')))];
+      if (emails.length && signedInEmail && !emails.includes(signedInEmail.toLowerCase())){ status('#ownStatus', 'Include your own sign-in, or you will lock yourself out of the menu editor.', 'err'); return; }
+      try { await store.saveOwners({emails}); ownersNow = {emails}; status('#ownStatus', 'Saved', 'ok'); } catch (err){ status('#ownStatus', err.message, 'err'); }
+      return;
     }
     if (t.id === 'saveStaff'){
       const lines = $('#s_staff').value.split('\n').map(l => l.trim()).filter(Boolean);
@@ -985,7 +1001,7 @@ if (DEMO){
   store = await firestoreStore(app);
   A.onAuthStateChanged(auth, user => {
     $('#loginView').classList.toggle('hidden', !!user); $('#appView').classList.toggle('hidden', !user);
-    if (user){ $('#whoName').textContent = user.email; reload().catch(err => { $('#editPane').innerHTML = `<p class="status err">Could not load the menu: ${esc(err.message)}</p>`; }); }
+    if (user){ signedInEmail = user.email || ''; $('#whoName').textContent = user.email; reload().catch(err => { $('#editPane').innerHTML = `<p class="status err">Could not load the menu: ${esc(err.message)}</p>`; }); }
   });
   $('#signIn').addEventListener('click', async () => {
     status('#loginStatus', 'Signing in…');

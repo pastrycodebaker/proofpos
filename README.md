@@ -118,3 +118,10 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 1. **Production plan → counts.** Proof Box's daily production plan writes planned quantities to POS `stockCount` (items) and `menu/modStock` (bread modifiers) for that day. Bakers confirm or adjust each morning; the register and KDS already 86 at zero.
 2. **Menu ↔ recipe book.** Each POS item links to a Proof Box recipe (`item.recipeId`). Proof Box shows the live POS sale price (cash and credit) next to recipe cost, so food cost % is always current; price changes made in either place update the other.
 3. **Food cost reporting.** POS sales × recipe cost per item (and per modifier ingredient for built sandwiches) → food cost by item, category and day; totals flow to ProofBooks.
+
+## Start page, kiosk and owner sign-ins
+- `/` is the start page: staff pick what the tablet is (register, kiosk, a KDS station, menu editor). "Open automatically next time" remembers it on that tablet; `/?pick` always shows the choices. Register and KDS have a "Switch screen" button.
+- `/kiosk/` is the customer express line: no sandwiches or alcohol (`settings.kioskHideCategories`, default Sandwiches and Beer, wine and cocktails, plus each item's kiosk visibility), sold-out and not-today items disabled, name and tip at checkout, card in test mode until Stripe is connected. Returns to the welcome screen after 90 seconds idle. The small "Staff" button takes any staff code and goes to the start page.
+- Kiosk drinks pause: "Kiosk drinks" on the register and every KDS sets `menu/status.kioskDrinksPausedUntil` to 10 minutes from now; the kiosk disables made-to-order drinks (espresso station or Coffee and drinks) until then. Bottled drinks stay on. Online ordering has its own switch.
+- Owner sign-ins (menu editor → Settings): emails in `settings/owners`. Firestore rules let only owners change the menu, prices, settings, staff codes and the owner list; other signed-in tablets can ring orders, 86 and change counts. Until the list has an email, every signed-in tablet counts as an owner.
+- Register shows a red banner when it's offline.

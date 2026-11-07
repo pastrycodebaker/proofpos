@@ -1,14 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Menu: anyone can read (kiosk and online ordering), only signed-in staff can change it.
+    function signedIn() { return request.auth != null; }
+    function ownersDoc() { return /databases/$(database)/documents/settings/owners; }
+    // Owners are listed in settings/owners. Until that list exists, every signed-in tablet counts as an owner.
+    function isOwner() {
+      return signedIn() && (!exists(ownersDoc()) || get(ownersDoc()).data.emails.size() == 0
+        || (request.auth.token.email != null && request.auth.token.email.lower() in get(ownersDoc()).data.emails));
+    }
+
+    // Menu: anyone can read (kiosk and online ordering).
     match /menu/{doc=**} {
       allow read: if true;
-      allow write: if request.auth != null;
     }
-    // Everything else: signed-in staff only. Tightened to per-role rules as features land.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Menu settings, modifier groups: owners only.
+    match /menu/main { allow write: if isOwner(); }
+    match /menu/main/modifierGroups/{id} { allow write: if isOwner(); }
+    // Items: owners change anything; any signed-in tablet can 86 or change counts.
+    match /menu/main/items/{id} {
+      allow create, delete: if isOwner();
+      allow update: if isOwner() || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['eightySixed', 'stockCount']));
     }
+    // Live counts and on/off switches (online ordering, kiosk drinks): any signed-in tablet.
+    match /menu/modStock { allow write: if signedIn(); }
+    match /menu/status { allow write: if signedIn(); }
+
+    // Owner list and staff codes: owners change them; signed-in tablets read staff codes to unlock.
+    match /settings/owners { allow read: if signedIn(); allow write: if isOwner(); }
+    match /settings/staff { allow read: if signedIn(); allow write: if isOwner(); }
+
+    // Everything else (orders, counters, KDS settings, events): signed-in tablets.
+    match /orders/{doc=**} { allow read, write: if signedIn(); }
+    match /counters/{doc=**} { allow read, write: if signedIn(); }
+    match /settings/kds { allow read, write: if signedIn(); }
+    match /events/{doc=**} { allow read, write: if signedIn(); }
   }
 }
