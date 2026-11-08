@@ -19,7 +19,7 @@ export function createPayments({demo = false, getToken}){
   }
   // amount in dollars, before any credit surcharge. onUpdate({stage, message, simulated}).
   // Resolves {amount, base, tip, surcharge, funding, brand, last4, paymentIntent} in dollars, or throws (message 'Canceled' when canceled).
-  function cardPayment({amount, tipOnReader = false, source = 'register', description = '', onUpdate = () => {}}){
+  function cardPayment({amount, tipOnReader = false, surcharge = false, source = 'register', description = '', onUpdate = () => {}}){
     let canceled = false, rd = null, pi = null;
     const ctl = {
       async simulate(card, tipCents){ if (rd && pi) await api('simulate', {reader: rd.id, card, tip: tipCents}); },
@@ -28,7 +28,7 @@ export function createPayments({demo = false, getToken}){
     ctl.done = (async () => {
       rd = await reader();
       onUpdate({stage: 'starting', message: 'Sending to the card reader…', simulated: rd.simulated || rd.testMode});
-      pi = (await api('start', {reader: rd.id, amount: Math.round(amount * 100), tipOnReader, source, description})).paymentIntent;
+      pi = (await api('start', {reader: rd.id, amount: Math.round(amount * 100), tipOnReader, surcharge, source, description})).paymentIntent;
       onUpdate({stage: 'waiting', message: tipOnReader ? 'Customer: pick a tip, then tap, insert or swipe.' : 'Customer: tap, insert or swipe your card.', simulated: rd.simulated || rd.testMode});
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       let result = null, confirmed = false;
@@ -57,10 +57,10 @@ export function createPayments({demo = false, getToken}){
 let demoState = {};
 async function demoApi(action, b){
   if (action === 'setup') return {testMode: true, readers: [{id: 'demo_reader', label: 'Demo reader', simulated: true}]};
-  if (action === 'start'){ demoState = {amount: b.amount, collected: false, done: false}; return {paymentIntent: 'pi_demo_' + Date.now()}; }
+  if (action === 'start'){ demoState = {amount: b.amount, surcharge: !!b.surcharge, collected: false, done: false}; return {paymentIntent: 'pi_demo_' + Date.now()}; }
   if (action === 'simulate'){ if (b.card === 'decline'){ demoState.failed = true; return {}; } demoState.collected = true; demoState.funding = b.card === 'debit' ? 'debit' : 'credit'; demoState.tip = b.tip || 0; return {}; }
   if (action === 'status') return {collected: demoState.collected, actionStatus: demoState.failed ? 'failed' : null, failure: demoState.failed ? 'Card declined (demo)' : null, pi: {status: demoState.done ? 'succeeded' : 'requires_payment_method'}};
-  if (action === 'confirm'){ const base = demoState.amount + demoState.tip; const s = demoState.funding === 'credit' ? Math.min(Math.round(base * 0.03), Math.round(base * 0.027) + 5) : 0; demoState.done = true; return {amount: base + s, base: demoState.amount, tip: demoState.tip, surcharge: s, funding: demoState.funding, brand: 'visa', last4: demoState.funding === 'debit' ? '5556' : '4242'}; }
+  if (action === 'confirm'){ const base = demoState.amount + demoState.tip; const s = demoState.surcharge && demoState.funding === 'credit' ? Math.min(Math.round(base * 0.03), Math.round(base * 0.027) + 5) : 0; demoState.done = true; return {amount: base + s, base: demoState.amount, tip: demoState.tip, surcharge: s, funding: demoState.funding, brand: 'visa', last4: demoState.funding === 'debit' ? '5556' : '4242'}; }
   if (action === 'cancel') return {ok: true};
   if (action === 'refund') return {id: 're_demo', amount: b.amount, status: 'succeeded'};
   throw new Error('demo: ' + action);

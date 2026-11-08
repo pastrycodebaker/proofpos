@@ -50,7 +50,7 @@ async function handle(action, b){
       if (!(amount >= 50)) throw new Error('Card payments must be at least $0.50.');
       const pi = b.paymentIntent
         ? await stripe('POST', `payment_intents/${b.paymentIntent}`, {amount})
-        : await stripe('POST', 'payment_intents', {amount, currency: 'usd', allowed_payment_method_types: ['card_present'], capture_method: 'automatic', description: b.description || 'Proof POS', metadata: {source: b.source || 'register', order: b.orderRef || '', base_amount: amount}});
+        : await stripe('POST', 'payment_intents', {amount, currency: 'usd', allowed_payment_method_types: ['card_present'], capture_method: 'automatic', description: b.description || 'Proof POS', metadata: {source: b.source || 'register', order: b.orderRef || '', base_amount: amount, surcharge_on: b.surcharge ? '1' : '0'}});
       await stripe('POST', `terminal/readers/${b.reader}/collect_payment_method`, {payment_intent: pi.id, collect_config: {skip_tipping: b.tipOnReader ? 'false' : 'true', tipping: b.tipOnReader ? {amount_eligible: amount} : undefined}});
       return {paymentIntent: pi.id};
     }
@@ -69,7 +69,7 @@ async function handle(action, b){
       const card = pi.payment_method?.card_present || {};
       const tip = pi.amount_details?.tip?.amount || 0;
       const base = pi.amount; // includes any tip picked on the reader
-      const surcharge = surchargeFor(base, card.funding);
+      const surcharge = pi.metadata?.surcharge_on === '1' ? surchargeFor(base, card.funding) : 0; // only where the surcharge is turned on
       if (surcharge) await stripe('POST', `payment_intents/${pi.id}`, {amount: base + surcharge, metadata: {surcharge, tip, funding: card.funding || ''}});
       else await stripe('POST', `payment_intents/${pi.id}`, {metadata: {surcharge: 0, tip, funding: card.funding || ''}});
       await stripe('POST', `terminal/readers/${b.reader}/confirm_payment_intent`, {payment_intent: pi.id});

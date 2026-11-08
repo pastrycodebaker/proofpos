@@ -437,7 +437,7 @@ function renderPay(){
     <div class="keypad">${[1,2,3].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[0] ?? ''}">${qc[0] !== undefined ? '$' + qc[0] : ''}</button>${[4,5,6].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[1] ?? ''}">${qc[1] !== undefined ? '$' + qc[1] : ''}</button>${[7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[2] ?? ''}">${qc[2] !== undefined ? '$' + qc[2] : ''}</button><button data-k="C">C</button><button data-k="0">0</button><button data-k="00">00</button><button data-k="B">⌫</button></div>
     ${check.payments.length ? `<div class="paid">${check.payments.map(p => `<div><span>${esc(p.label)}</span><span>${money(p.amount)}${p.surcharge ? ' + ' + money(p.surcharge) + ' surcharge' : ''}</span></div>`).join('')}</div>` : ''}
     <div class="row" style="margin-top:10px;display:flex;gap:8px"><button id="payBack" style="flex:1;min-height:50px">Back to order</button></div></div>
-    <div class="methods"><button class="card" data-pay="card">Card${rate ? ` · credit adds up to ${(rate * 100).toFixed(1)}%` : ''}<br><small style="font-weight:400">Customer taps or inserts on the reader</small></button>${METHODS.map(([k, l]) => `<button data-pay="${k}" ${k === 'gift' ? 'disabled title="Gift cards are not built yet"' : ''}>${l}${k === 'gift' ? ' (soon)' : ''}</button>`).join('')}</div></div>`;
+    <div class="methods"><button class="card" data-pay="card">Card${rate && surchargeHere() ? ` · credit adds up to ${(rate * 100).toFixed(1)}%` : ''}<br><small style="font-weight:400">Customer taps or inserts on the reader</small></button>${METHODS.map(([k, l]) => `<button data-pay="${k}" ${k === 'gift' ? 'disabled title="Gift cards are not built yet"' : ''}>${l}${k === 'gift' ? ' (soon)' : ''}</button>`).join('')}</div></div>`;
 }
 function renderDone(change){
   const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
@@ -498,6 +498,7 @@ $('#cName').addEventListener('click', () => needName(() => { if (check.orderId) 
 
 // ---------- Card reader (Stripe Terminal) ----------
 let PAY = null;
+const surchargeHere = () => { const c = settings().surchargeChannels; return c ? !!c.register : true; };
 async function takeCard(amt){
   return new Promise(resolve => {
     let ctl, sim = false, msg = 'Sending to the card reader…', err = '';
@@ -514,7 +515,7 @@ async function takeCard(amt){
     $('#sheetRoot').addEventListener('click', onClick, true);
     const run = () => {
       msg = 'Sending to the card reader…'; draw();
-      ctl = PAY.cardPayment({amount: amt, tipOnReader: true, source: 'register', description: 'Register ' + (check.name || ''), onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
+      ctl = PAY.cardPayment({amount: amt, tipOnReader: true, surcharge: surchargeHere(), source: 'register', description: 'Register ' + (check.name || ''), onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
       ctl.done.then(r => {
         finish({method: 'card', label: `${r.brand ? r.brand[0].toUpperCase() + r.brand.slice(1) : 'Card'} ${r.funding || ''} ••${r.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: r2(amt), tip: r.tip, surcharge: r.surcharge, charged: r.amount, funding: r.funding, paymentIntent: r.paymentIntent, at: Date.now(), staff: user ? user.name : ''});
       }).catch(x => { if (x.message === 'Canceled') return; err = x.message; draw(); });

@@ -348,7 +348,7 @@ function renderPay(err){
   $('#sheetRoot').innerHTML = `<div class="scrim" id="payScrim"><div class="sheet" role="dialog" aria-label="Review and pay"><div class="hd"><h2>Review and pay</h2></div><div class="bd">
     <div><label for="custName" style="font-weight:700;display:block;margin-bottom:6px">Your name, so we can call you</label><input id="custName" autocomplete="off" value="${esc(nameVal)}" placeholder="First name"></div>
     <div><div style="font-weight:700;margin-bottom:6px">Add a tip for the team?</div><div class="tips">${tips.map(([p, l]) => `<button class="${(tipPct || 0) === (p === '' ? 0 : p) && tipPct !== null ? 'on' : ''}" data-tip="${p}">${l}${p !== '' ? `<small>${money(r2(t.sub * p))}</small>` : ''}</button>`).join('')}</div></div>
-    <div class="sum"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:22px"><span>Total</span><span>${money(r2(t.sub + t.tip))}</span></div><div class="muted" style="font-size:15px"><span>Credit cards add 3% (${money(t.surcharge)}). Debit cards don't.</span></div><div class="muted" style="font-size:14px"><span>Prices include sales tax (${money(t.tax)})</span></div></div>
+    <div class="sum"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:22px"><span>Total</span><span>${money(r2(t.sub + t.tip))}</span></div>${surchargeHere() ? `<div class="muted" style="font-size:15px"><span>Credit cards add 3% (${money(t.surcharge)}). Debit cards don't.</span></div>` : ''}<div class="muted" style="font-size:14px"><span>Prices include sales tax (${money(t.tax)})</span></div></div>
     <div class="err" id="payErr">${esc(err || '')}</div></div>
     <div class="ft"><button id="payCancel">Back</button><span class="sp"></span><button class="primary" id="payBtn" style="font-size:20px;padding:18px 26px">Pay with card</button></div></div></div>`;
   $('#custName').addEventListener('input', e => { custName = e.target.value; });
@@ -383,10 +383,11 @@ function adjustStock(lines){
 }
 // Card reader: waits for the customer to tap, shows test buttons on a test reader.
 let PAY = null;
+const surchargeHere = () => !!(S().surchargeChannels || {}).kiosk; // off unless turned on in the menu editor
 function cardOnReader(amount){
   return new Promise((resolve, reject) => {
     let msg = 'Sending to the card reader…', sim = false, ctl;
-    const draw = () => { $('#sheetRoot').innerHTML = `<div class="scrim"><div class="sheet" role="dialog" aria-label="Pay with card"><div class="hd"><h2>Pay ${money(amount)}</h2></div><div class="bd"><p style="font-size:24px;margin:0">${esc(msg)}</p><p class="muted" style="margin:0">Credit cards add 3%. The reader shows the final total.</p>
+    const draw = () => { $('#sheetRoot').innerHTML = `<div class="scrim"><div class="sheet" role="dialog" aria-label="Pay with card"><div class="hd"><h2>Pay ${money(amount)}</h2></div><div class="bd"><p style="font-size:24px;margin:0">${esc(msg)}</p>${surchargeHere() ? '<p class="muted" style="margin:0">Credit cards add 3%. The reader shows the final total.</p>' : ''}
       ${sim ? `<div class="muted">Test reader: pretend the customer…</div><div class="opts"><button data-csim="credit">Taps a credit card</button><button data-csim="debit">Taps a debit card</button><button data-csim="decline">Card is declined</button></div>` : ''}</div>
       <div class="ft"><button id="cardStop">Cancel</button></div></div></div>`; };
     const onClick = e => { const b = e.target.closest('button'); if (!b) return;
@@ -395,7 +396,7 @@ function cardOnReader(amount){
     const cleanup = () => $('#sheetRoot').removeEventListener('click', onClick, true);
     $('#sheetRoot').addEventListener('click', onClick, true);
     draw();
-    ctl = PAY.cardPayment({amount, tipOnReader: false, source: 'kiosk', description: 'Kiosk ' + custName, onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
+    ctl = PAY.cardPayment({amount, tipOnReader: false, surcharge: surchargeHere(), source: 'kiosk', description: 'Kiosk ' + custName, onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
     ctl.done.then(r => { cleanup(); resolve(r); }).catch(e => { cleanup(); reject(e); });
   });
 }
