@@ -125,6 +125,9 @@
   .cl .n em.inc{color:var(--crit);font-style:normal;font-size:12px;font-weight:600}
   .cl .m.hint{color:#9a6700;font-weight:600}
   a.pill{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--line);color:inherit}
+  .cl .qn{color:var(--accent,#1a5fb4)}
+  .cl .qbtns{display:flex;gap:6px;justify-content:flex-end}
+  .cl .qbtns .x{min-width:40px}
 </style>
 </head>
 <body>
@@ -243,7 +246,8 @@ const itemById = id => MENU.items.find(i => i.id === id);
 const groupById = id => MENU.groups.find(g => g.id === id);
 const settings = () => MENU.settings || {};
 const preMods = () => settings().preMods || DEFAULT_PREMODS;
-const modKey = (g, o) => g + '~' + o;
+// Stock key: an option that shares stock with another group's modifier uses that one's key.
+const modKey = (g, o) => { const opt = (MENU.groups.find(x => x.id === g)?.options || []).find(x => x.name === o); return (opt && opt.stockAs) || g + '~' + o; };
 const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
 const cats = () => { const order = settings().categories || []; const set = [...new Set(MENU.items.filter(i => i.visible?.register !== false && i.active !== false).map(i => i.category || 'Other'))]; return set.sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99)); };
 const catColor = c => (settings().categoryColors || {})[c] || PALETTE[cats().indexOf(c) % PALETTE.length];
@@ -301,7 +305,7 @@ function totals(){
   const total = r2(sub - disc - (check.taxExempt ? inTax : 0));
   const paid = r2(check.payments.reduce((s, p) => s + p.amount, 0));
   const surcharge = r2(check.payments.reduce((s, p) => s + (p.surcharge || 0), 0));
-  return {sub, disc, tax, inTax, total, paid, surcharge, due: r2(total - paid)};
+  return {sub, disc, taxable, tax, inTax, total, paid, surcharge, tips: r2(check.payments.reduce((s, p) => s + (p.tip || 0), 0)), due: r2(total - paid)};
 }
 
 // ---------- Check panel ----------
@@ -315,10 +319,15 @@ function renderCheck(){
   if (check.fireAtMs) tags.push(`<span class="warn">Scheduled ${new Date(check.fireAtMs).toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'})}</span>`);
   $('#cTags').innerHTML = tags.join(''); $('#cTags').classList.toggle('hidden', !tags.length);
   const lines = check.lines.filter(l => !l.removed);
-  $('#cLines').innerHTML = lines.length ? lines.map((l, i) => {
-    const idx = check.lines.indexOf(l);
+  // Identical lines show as one row with a count (2× House Sourdough). Each is still its own line for the kitchen.
+  const sig = l => JSON.stringify([l.itemId, l.versionIdx, l.mods, l.noMods || [], l.price, !!l.sent, l.openName || '', l.openPrice ?? '']);
+  const groups = []; const byKey = new Map();
+  for (const l of lines){ const idx = check.lines.indexOf(l); const editing = draft && draft.editIdx === idx; const k = editing || l.incomplete ? 'e' + idx : sig(l);
+    if (byKey.has(k)) byKey.get(k).idxs.push(idx); else { const g = {l, idxs: [idx]}; byKey.set(k, g); groups.push(g); } }
+  $('#cLines').innerHTML = lines.length ? groups.map(({l, idxs}) => {
+    const idx = idxs[0], n = idxs.length, last = idxs[idxs.length - 1];
     const editing = draft && draft.editIdx === idx;
-    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || 1))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent ? '<span class="s">Sent</span>' : `<button class="x" data-del="${idx}">Remove</button>`}</div>`;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
   $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
@@ -329,6 +338,8 @@ function renderCheck(){
   $('#btnPay').textContent = lines.length ? `${lines.length} item${lines.length > 1 ? 's' : ''} · Pay ${money(t.paid ? t.due : t.total)}` : 'Pay';
 }
 $('#cLines').addEventListener('click', e => {
+  const dup = e.target.closest('button[data-dup]');
+  if (dup){ e.stopPropagation(); if (draft && !finishDraft()){ renderMods(); return; } const i = Number(dup.dataset.dup); const c = structuredClone(check.lines[i]); c.lid = uid(); c.sent = false; check.lines.splice(i + 1, 0, c); render(); return; }
   const del = e.target.closest('button[data-del]');
   if (del){ e.stopPropagation(); const i = Number(del.dataset.del); check.lines.splice(i, 1); if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } else if (draft && i < draft.editIdx) draft.editIdx--; render(); return; }
   const row = e.target.closest('.cl'); if (!row || row.classList.contains('sent') || view === 'pay') return;
@@ -367,12 +378,17 @@ function renderMenu(){
 }
 
 // ---------- Modifier view ----------
-function draftGroups(){ const it = itemById(draft.itemId); return (it.modifierGroupIds || []).map(groupById).filter(Boolean); }
+// A group can show only after a choice in another group (item.showWhen[groupId] = {g, o}), like Bagel flavors after Bagel.
+const groupShown = (it, gid, mods) => { const w = (it.showWhen || {})[gid]; return !w || mods.some(m => m.g === w.g && m.o === w.o && m.pre !== 'No'); };
+function draftGroups(){ const it = itemById(draft.itemId); return (it.modifierGroupIds || []).filter(id => groupShown(it, id, draft.mods)).map(groupById).filter(Boolean); }
+function pruneHidden(){ const it = itemById(draft.itemId); const ids = it.modifierGroupIds || []; let changed = true;
+  while (changed){ const before = draft.mods.length; draft.mods = draft.mods.filter(m => !ids.includes(m.g) || groupShown(it, m.g, draft.mods)); changed = draft.mods.length !== before; } }
 // "Required on this item" (item.required[groupId]) overrides the group's own rule.
 function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 function groupStatus(g){ const n = draft.mods.filter(m => m.g === g.id).reduce((s, m) => s + (m.q || 1), 0); const min = minFor(itemById(draft.itemId), g); return {n, min, need: n < min}; }
 function draftReady(){ const it = itemById(draft.itemId); if ((it.versions || []).length > 1 && draft.versionIdx === null) return false; return draftGroups().every(g => !groupStatus(g).need); }
 function renderMods(){
+  if (draft) pruneHidden();
   const it = itemById(draft.itemId); const vers = it.versions || []; const size = (vers[draft.versionIdx ?? 0] || {}).size;
   const cols = [];
   if (vers.length > 1){
@@ -636,6 +652,7 @@ $('#cMore').addEventListener('click', () => {
     <button data-a="schedule">Schedule</button>
     <button data-a="open">Open item</button>
     <button data-a="nosale">No sale</button>
+    <a href="../admin/orders.html${DEMO ? '?demo' : ''}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none">Past orders and refunds</a>
     <button data-a="void">Void order</button>
     <button data-a="clearDisc" ${check.discount ? '' : 'disabled'}>Remove discount</button></div>
     <div class="muted" style="margin-top:12px">Discounts</div><div class="grid2">${discounts.map((d, i) => `<button data-disc="${i}" class="${check.discount && check.discount.name === d.name ? 'on' : ''}">${esc(d.name)} · ${d.type === 'percent' ? d.value + '%' : money(d.value)}</button>`).join('')}</div>

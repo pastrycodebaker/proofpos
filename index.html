@@ -42,7 +42,7 @@ const q = (u) => u + (demo ? (u.includes('?') ? '&demo' : '?demo') : '');
 const SCREENS = {
   foh: [['register', 'Register', 'Ring orders and take payment', 'register/'], ['kiosk', 'Kiosk', 'Express line for customers, locked with a staff code', 'kiosk/'], ['runner', 'Runner KDS', 'Whole tickets, the only screen that clears them', 'kds/?view=runner']],
   boh: [['espresso', 'Espresso bar KDS', 'Drinks', 'kds/?view=espresso'], ['kitchen1', 'Kitchen KDS 1', 'Grid view', 'kds/?view=kitchen1'], ['kitchen2', 'Kitchen KDS 2', 'Rail view', 'kds/?view=kitchen2']],
-  office: [['menu', 'Menu editor', 'Items, prices, layout and settings', 'admin/menu.html']],
+  office: [['menu', 'Menu editor', 'Items, prices, layout and settings', 'admin/menu.html'], ['orders', 'Orders and reports', 'Past orders, refunds, end of day, sales tax', 'admin/orders.html']],
 };
 let home = null; try { home = localStorage.getItem('proof.home'); } catch (e) {}
 const all = Object.values(SCREENS).flat();

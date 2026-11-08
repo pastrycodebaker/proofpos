@@ -306,9 +306,9 @@ function renderItemEditor(){
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
   grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id));
   incSel = (it.included || []).map(x => ({...x}));
-  reqSel = {...(it.required || {})}; cpSel = it.countPricing ? structuredClone(it.countPricing) : null; renderGrpOrder();
+  reqSel = {...(it.required || {})}; whenSel = structuredClone(it.showWhen || {}); cpSel = it.countPricing ? structuredClone(it.countPricing) : null; renderGrpOrder();
 }
-let grpOrder = [], incSel = [], reqSel = {}, cpSel = null;
+let grpOrder = [], incSel = [], reqSel = {}, cpSel = null, whenSel = {};
 // Required on this item: falls back to the group's own rule until set here.
 const reqOn = id => reqSel[id] ?? ((S.groups.find(g => g.id === id) || {}).min >= 1);
 const isIncl = (g, o) => incSel.some(x => x.g === g && x.o === o);
@@ -358,7 +358,7 @@ function renderGrpOrder(){
   const avail = S.groups.filter(g => !grpOrder.includes(g.id));
   const add = `<div class="row" style="max-width:420px;margin-top:6px"><select id="addGrpSel"><option value="">Add a modifier group…</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select></div>`;
   if (!grpOrder.length){ $('#grpOrder').innerHTML = '<span class="muted">No modifier groups on this item yet.</span>' + add; return; }
-  $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:420px;margin-bottom:4px"><span>${i + 1}. ${esc(g ? g.name : id)}</span><label class="req ${reqOn(id) ? 'on' : ''}"><input type="checkbox" data-req="${esc(id)}" ${reqOn(id) ? 'checked' : ''}>Required</label><button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
+  $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:760px;margin-bottom:4px;flex-wrap:wrap"><span>${i + 1}. ${esc(g ? g.name : id)}</span><label class="req ${reqOn(id) ? 'on' : ''}"><input type="checkbox" data-req="${esc(id)}" ${reqOn(id) ? 'checked' : ''}>Required</label>${i > 0 ? `<select data-when="${esc(id)}" style="max-width:190px" aria-label="Show only after"><option value="">Always show</option>${grpOrder.slice(0, i).map(pid => S.groups.find(x => x.id === pid)).filter(Boolean).map(pg => pg.options.map(o => { const v = pg.id + '|' + o.name; return `<option value="${esc(v)}" ${whenSel[id] && whenSel[id].g === pg.id && whenSel[id].o === o.name ? 'selected' : ''}>Only after ${esc(o.name)}</option>`; }).join('')).join('')}</select>` : ''}<button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
   renderCount();
 }
 function countRow(c, sizes){
@@ -385,6 +385,8 @@ function readItemForm(it){
   out.modifierGroupIds = grpOrder.slice();
   out.included = incSel.filter(x => out.modifierGroupIds.includes(x.g));
   out.required = Object.fromEntries(out.modifierGroupIds.map(id => [id, reqOn(id)]));
+  // A group can show only after a choice in an earlier group (Bagel flavors only after Bagel).
+  out.showWhen = Object.fromEntries(Object.entries(whenSel).filter(([id, w]) => w && out.modifierGroupIds.includes(id) && out.modifierGroupIds.includes(w.g)));
   out.countPricing = cpSel && cpSel.group && out.modifierGroupIds.includes(cpSel.group) ? readTiers() : null;
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
@@ -412,20 +414,25 @@ async function renderGroupEditor(){
     <h3>Options</h3>
     <p class="muted">"By size" lets an add-on cost more in a bigger drink. Blank sizes use the flat price.</p>
     <div id="opts">${g.options.map(o => optRow(o, sizes)).join('')}</div>
-    <button id="addOpt">Add option</button>
+    <div class="row" style="max-width:640px;align-items:end"><button id="addOpt" style="flex:none">Add option</button>
+      <div><label>Or add an existing modifier (shares its stock)</label><select id="addExisting"><option value="">Pick one…</option>${S.groups.filter(x => x.id !== g.id).map(x => `<optgroup label="${esc(x.name)}">${x.options.filter(o => !o.stockAs).map(o => `<option value="${esc(x.id)}|${esc(o.name)}">${esc(o.name)}</option>`).join('')}</optgroup>`).join('')}</select></div></div>
     <div class="bar"><button class="primary" id="saveGroup">Save</button><span class="status" id="groupStatus"></span><span style="flex:1"></span><button class="danger" id="delGroup">Delete group</button></div>`;
 }
 let modStockNow = {}, groupIdNow = '';
+// An option can share stock with the same modifier in another group (o.stockAs = "groupId~Option").
+const stockKeyOf = (gid, o) => o.stockAs || gid + '~' + o.name;
+const stockLabel = key => { const [g, n] = key.split('~'); const grp = S.groups.find(x => x.id === g); return `${n} in ${grp ? grp.name : g}`; };
 function optRow(o, sizes){
   const c = (o.counts || [])[0] || {name:'', qty:''};
-  return `<div class="opt">
+  const linked = !!o.stockAs;
+  return `<div class="opt" data-stockas="${esc(o.stockAs || '')}">${linked ? `<div class="muted" style="font-size:13px;margin-bottom:4px">Shares stock with <b>${esc(stockLabel(o.stockAs))}</b>. Counts and 86 apply everywhere it's used.</div>` : ''}
     <div class="row"><div><label>Option</label><input data-o="name" value="${esc(o.name)}"></div>
       <div><label>Pricing</label><select data-o="pricing"><option value="flat" ${o.pricing!=='bySize'?'selected':''}>Flat</option><option value="bySize" ${o.pricing==='bySize'?'selected':''}>By size</option></select></div>
       <div><label>Price (negative for a discount)</label><input type="number" step="0.01" data-o="price" value="${esc(o.price ?? 0)}"></div>
       <div style="flex:none;align-self:end"><button data-o="del" aria-label="Remove option">✕</button></div></div>
     <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(s)}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
     <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
-      <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[groupIdNow + '~' + o.name] ?? '')}"></div></div>
+      <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[o.stockAs || groupIdNow + '~' + o.name] ?? '')}"></div></div>
     <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
       <div style="flex:none;align-self:end"><label style="display:flex;gap:6px;align-items:center;margin:0 0 8px;color:var(--ink);font-size:14px"><input type="checkbox" data-o="hide" ${o.hideOnline ? 'checked' : ''}>Hide on kiosk and online</label></div></div>
   </div>`;
@@ -442,6 +449,7 @@ function readGroupForm(g){
             counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : [],
             subs: el.querySelector('[data-o=subs]').value.split(',').map(x => x.trim()).filter(Boolean),
             hideOnline: el.querySelector('[data-o=hide]').checked,
+            ...(el.dataset.stockas ? {stockAs: el.dataset.stockas} : {}),
             _stock: el.querySelector('[data-o=stock]').value};
   }).filter(o => o.name);
   if (g.review && $('#g_reviewed')?.checked) out.review = null;
@@ -509,6 +517,9 @@ document.addEventListener('change', e => {
   if (t.type === 'checkbox' || t.type === 'radio'){ const l = t.closest('.toggles label'); if (l){ if (t.type === 'radio') l.parentElement.querySelectorAll('label').forEach(x => x.classList.remove('on')); l.classList.toggle('on', t.checked); } }
   if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
   if (t.dataset?.inc){ const [g, o] = t.dataset.inc.split('|'); incSel = incSel.filter(x => !(x.g === g && x.o === o)); if (t.checked) incSel.push({g, o, q:1}); renderInc(); }
+  if (t.id === 'addExisting' && t.value){ const [gid, name] = t.value.split('|'); const src = S.groups.find(x => x.id === gid).options.find(o => o.name === name);
+    $('#opts').insertAdjacentHTML('beforeend', optRow({...structuredClone(src), stockAs: gid + '~' + name}, S.settings.sizes || [])); t.value = ''; }
+  if (t.dataset?.when !== undefined){ const v = t.value; if (v){ const [g, o] = v.split('|'); whenSel[t.dataset.when] = {g, o}; } else delete whenSel[t.dataset.when]; }
   if (t.dataset?.req){ reqSel[t.dataset.req] = t.checked; renderGrpOrder(); }
   if (t.id === 'cp_on'){ cpSel = t.checked ? {group: grpOrder[0] || '', tiers: [{qty:6, name:'Half dozen', price:null}, {qty:12, name:'Dozen', price:null}]} : null; renderCount(); }
   if (t.id === 'cp_group' && cpSel){ cpSel.group = t.value; }
@@ -552,7 +563,7 @@ document.addEventListener('click', async e => {
     if (t.dataset?.o === 'del'){ t.closest('.opt').remove(); }
     if (t.id === 'saveGroup'){
       const g = S.groups.find(x => x.id === selId); const out = readGroupForm(g);
-      for (const o of out.options){ const v = o._stock; delete o._stock; const key = out.id + '~' + o.name; const cur = modStockNow[key]; const n = v === '' ? null : Math.max(0, Math.floor(Number(v))); if (n !== (cur ?? null)) await store.setModStock(key, n); }
+      for (const o of out.options){ const v = o._stock; delete o._stock; const key = stockKeyOf(out.id, o); const cur = modStockNow[key]; const n = v === '' ? null : Math.max(0, Math.floor(Number(v))); if (n !== (cur ?? null)) await store.setModStock(key, n); }
       status('#groupStatus', 'Saving…'); await store.saveGroup(out); await reload(); status('#groupStatus', 'Saved', 'ok');
     }
     if (t.id === 'delGroup'){

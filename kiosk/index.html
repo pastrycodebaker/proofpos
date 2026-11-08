@@ -221,7 +221,7 @@ let cart = [], cat = null, draft = null, tipPct = null, custName = '', lastTouch
 const S = () => MENU.settings || {};
 const itemById = id => MENU.items.find(i => i.id === id);
 const groupById = id => MENU.groups.find(g => g.id === id);
-const modKey = (g, o) => g + '~' + o;
+const modKey = (g, o) => { const opt = (MENU.groups.find(x => x.id === g)?.options || []).find(x => x.name === o); return (opt && opt.stockAs) || g + '~' + o; };
 const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
 const optPrice = (o, size) => { if (!o) return 0; if (o.pricing === 'bySize' && size && o.bySize && o.bySize[size] !== undefined) return Number(o.bySize[size]); return Number(o.price || 0); };
 const hiddenCats = () => S().kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails'];
@@ -236,7 +236,10 @@ const soldOut = i => i.eightySixed || (typeof i.stockCount === 'number' && i.sto
 const modOut = (g, o) => typeof MODSTOCK[modKey(g, o)] === 'number' && MODSTOCK[modKey(g, o)] <= 0;
 function whyNot(i){ if (soldOut(i)) return 'Sold out'; if (offToday(i)) return daysText(i) + ' only'; if (drinksPaused() && madeDrink(i)) return 'Paused for a few minutes'; return ''; }
 function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
-const itemGroups = it => (it.modifierGroupIds || []).map(groupById).filter(Boolean);
+const groupShown = (it, gid, mods) => { const w = (it.showWhen || {})[gid]; return !w || mods.some(m => m.g === w.g && m.o === w.o); };
+const itemGroups = it => (it.modifierGroupIds || []).filter(id => !draft || draft.itemId !== it.id || groupShown(it, id, draft.mods)).map(groupById).filter(Boolean);
+function pruneHidden(){ const it = itemById(draft.itemId); const ids = it.modifierGroupIds || []; let changed = true;
+  while (changed){ const n = draft.mods.length; draft.mods = draft.mods.filter(m => !ids.includes(m.g) || groupShown(it, m.g, draft.mods)); changed = draft.mods.length !== n; } }
 const visibleOpts = g => g.options.filter(o => !o.hideOnline);
 function countPrice(n, unit, tiersIn){
   const tiers = (tiersIn || []).filter(t => t.qty > 0).sort((a, b) => b.qty - a.qty);
@@ -265,11 +268,12 @@ const modText = m => [m.pre && m.pre !== 'No' ? m.pre : '', (m.q || 1) > 1 ? (m.
 function totals(){
   const rate = Number(S().taxRate || 0);
   const sub = r2(cart.reduce((s, l) => s + l.price, 0));
+  const taxable = r2(cart.filter(l => l.taxable).reduce((s, l) => s + l.price, 0));
   const tax = r2(cart.filter(l => l.taxable).reduce((s, l) => s + l.price, 0) * rate / (1 + rate)); // prices include tax
   const tip = tipPct ? r2(sub * tipPct) : 0;
   const base = r2(sub + tip);
   const surcharge = r2(Math.min(base * Number(S().surchargeRate ?? 0.03), base * 0.027 + 0.05));
-  return {sub, tax, tip, surcharge, total: r2(base + surcharge)};
+  return {sub, taxable, tax, tip, surcharge, total: r2(base + surcharge)};
 }
 
 // ---------- Screens ----------
@@ -303,12 +307,13 @@ function openItem(id){
   draft = {itemId: id, versionIdx: (it.versions || []).length > 1 ? null : 0, mods: []};
   for (const g of itemGroups(it)) if (g.default && visibleOpts(g).some(o => o.name === g.default)) draft.mods.push({g: g.id, o: g.default, q: 1});
   for (const x of it.included || []) if (!draft.mods.some(m => m.g === x.g && m.o === x.o)) draft.mods.push({g: x.g, o: x.o, q: x.q || 1});
-  if ((it.versions || []).length <= 1 && !itemGroups(it).length){ cart.push(lineFrom(draft)); draft = null; renderShop(); return; }
+  if ((it.versions || []).length <= 1 && !(it.modifierGroupIds || []).length){ cart.push(lineFrom(draft)); draft = null; renderShop(); return; }
   renderItem();
 }
 function groupCount(gid){ return draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0); }
 function ready(){ const it = itemById(draft.itemId); if ((it.versions || []).length > 1 && draft.versionIdx === null) return false; return itemGroups(it).every(g => groupCount(g.id) >= minFor(it, g)); }
 function renderItem(){
+  pruneHidden();
   const it = itemById(draft.itemId); const vers = it.versions || []; const size = (vers[draft.versionIdx ?? 0] || {}).size;
   const parts = [];
   if (vers.length > 1) parts.push(`<div class="grp"><h4>Size <span class="req ${draft.versionIdx === null ? 'need' : ''}">Required</span></h4><div class="opts">${vers.map((v, i) => `<button class="${draft.versionIdx === i ? 'on' : ''}" data-ver="${i}">${esc(versionLabel(v) || 'Regular')} <small>${money(Number(v.price || 0))}</small></button>`).join('')}</div></div>`);
@@ -368,7 +373,7 @@ async function pay(){
   catch (e){ paying = false; if (e.message !== 'Canceled') renderPay(e.message); else renderPay(); return; }
   const payment = {method:'card', label: `${result.brand ? result.brand[0].toUpperCase() + result.brand.slice(1) : 'Card'} ${result.funding || ''} ••${result.last4 || ''}`, amount: r2(t.sub + t.tip), tip: t.tip, surcharge: result.surcharge, charged: result.amount, funding: result.funding, paymentIntent: result.paymentIntent, at: now, staff: 'Kiosk'};
   try {
-    const r = await store.createOrder({name: custName, staff: 'Kiosk', source: 'kiosk', rush: false, scheduled: false, cleared: false, clearedAt: 0, status: 'paid', createdAtMs: now, fireAtMs: now, lines: cart, payments: [payment], totals: {sub: t.sub, tax: t.tax, tip: t.tip, surcharge: result.surcharge, total: result.amount, due: 0}, paidAt: now, taxExempt: false, discount: null});
+    const r = await store.createOrder({name: custName, staff: 'Kiosk', source: 'kiosk', rush: false, scheduled: false, cleared: false, clearedAt: 0, status: 'paid', createdAtMs: now, fireAtMs: now, lines: cart, payments: [payment], totals: {sub: t.sub, taxable: t.taxable, tax: t.tax, inTax: t.tax, tips: t.tip, tip: t.tip, surcharge: result.surcharge, total: result.amount, due: 0}, paidAt: now, taxExempt: false, discount: null});
     adjustStock(cart);
     $('#sheetRoot').innerHTML = ''; $('#thanksName').textContent = `Thank you, ${custName}!`; $('#thanksNum').textContent = 'Order #' + r.num; show('thanks');
     thanksTimer = setTimeout(reset, 12000);

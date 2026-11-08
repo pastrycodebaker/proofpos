@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icons/icon-192.png">
+<title>Proof POS · Orders and reports</title>
+<style>
+  :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2328;--quiet:#5b6470;--line:#dfe3e8;--accent:#1a5fb4;--accent-bg:#e7f0fb;--ok:#1a7f37;--crit:#b42318}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;gap:10px;align-items:center;padding:12px 18px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  header h1{font-size:18px;margin:0}
+  #tabs{display:flex;gap:6px}
+  button,select,input{font:inherit;color:inherit}
+  button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+  button.on,#tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{color:var(--crit);border-color:#f0c4bf}
+  input,select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+  main{padding:16px 18px;max-width:1200px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .sp{flex:1}
+  .muted{color:var(--quiet)}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+  @media(max-width:860px){.split{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:13px;color:var(--quiet);font-weight:600}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tr.row{cursor:pointer}tr.row:hover{background:#f6f8fa}tr.row.sel{background:var(--accent-bg)}
+  .pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef1f4}
+  .pill.void{background:#fbebeb;color:var(--crit)}.pill.open{background:#f9eeda}.pill.ref{background:#efedff}
+  .lines div{display:flex;justify-content:space-between;gap:8px;padding:4px 0}
+  .lines .m{color:var(--quiet);font-size:13px;display:block}
+  .tot div{display:flex;justify-content:space-between;padding:3px 0}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+  .kpi span{color:var(--quiet);font-size:13px}
+  .err{color:var(--crit)}.ok{color:var(--ok)}
+  h2{font-size:17px;margin:18px 0 8px}
+  .hidden{display:none !important}
+  #login{max-width:360px;margin:60px auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>Orders and reports</h1>
+  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button></div>
+  <span class="sp"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a>
+</header>
+<div id="login" class="card hidden">
+  <h3 style="margin-top:0">Sign in</h3>
+  <input id="email" type="email" placeholder="Email" aria-label="Email" style="width:100%;margin-bottom:8px">
+  <input id="password" type="password" placeholder="Password" aria-label="Password" style="width:100%">
+  <button class="primary" id="signIn" style="width:100%;margin-top:10px">Sign in</button>
+  <div class="err" id="loginErr"></div>
+</div>
+<main id="app" class="hidden"></main>
+
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+import { createPayments } from '../payments.js';
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const money = n => (n < 0 ? '−$' : '$') + Math.abs(Number(n) || 0).toFixed(2);
+const r2 = n => Math.round(n * 100) / 100;
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const dayStart = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+if (DEMO) $('#switchLink').href = '../?pick&demo';
+
+let store, PAY, SETTINGS = {}, tab = 'orders', day = ymd(new Date()), q = '', selId = null, ORDERS = [];
+let taxFrom = '', taxTo = '';
+
+// ---------- Store ----------
+function demoStore(){
+  const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8).getTime();
+  const L = (name, price, taxable, extra = {}) => ({lid: Math.random().toString(36).slice(2, 8), name, price, taxable, mods: [], noMods: [], ...extra});
+  const mk = (num, mins, name, source, lines, pays, extra = {}) => { const sub = r2(lines.reduce((s, l) => s + l.price, 0)); const taxable = r2(lines.filter(l => l.taxable).reduce((s, l) => s + l.price, 0)); const tax = r2(taxable * 0.08 / 1.08);
+    return {id: 'o' + num, num, name, source, status: 'paid', createdAtMs: t0 + mins * 60000, paidAt: t0 + mins * 60000, lines: Object.fromEntries(lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: pays, totals: {sub, disc: 0, taxable, tax, inTax: tax, total: sub}, taxExempt: false, ...extra}; };
+  const orders = [
+    mk(101, 5, 'Ada', 'register', [L('Latte', 5.75, false, {mods: [{g:'milk', o:'Oat', q:1}]}), L('Chocolate Croissant', 4.5, false)], [{method:'card', label:'Visa credit ••4242', amount:10.25, tip:2.05, surcharge:0.37, charged:12.67, funding:'credit', paymentIntent:'pi_demo_1', at: t0}]),
+    mk(102, 20, 'Bo', 'kiosk', [L('House Sourdough', 9, false), L('House Sourdough', 9, false)], [{method:'card', label:'Mastercard debit ••5556', amount:18, tip:0, surcharge:0, charged:18, funding:'debit', paymentIntent:'pi_demo_2', at: t0}]),
+    mk(103, 45, 'Cy', 'register', [L('BLT', 10.8, true)], [{method:'cash', label:'Cash', amount:10.8, at: t0}]),
+    mk(104, 70, 'Colgate', 'register', [L('BLT', 10.8, true), L('Drip Coffee', 3, false)], [{method:'gate', label:'Gate Card', amount:13, at: t0}], {taxExempt: true, totals: {sub: 13.8, disc: 0, taxable: 10.8, tax: 0, inTax: 0.8, total: 13}}),
+    mk(105, 90, 'Dee', 'register', [L('Mocha', 6, false)], [], {status: 'void'}),
+  ];
+  return {
+    async settings(){ return {taxRate: 0.08}; },
+    async orders(from, to){ return orders.filter(o => o.createdAtMs >= from && o.createdAtMs < to); },
+    async addRefund(id, r){ const o = orders.find(x => x.id === id); o.refunds = [...(o.refunds || []), r]; },
+  };
+}
+async function firebaseStore(app){
+  const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const db = F.getFirestore(app);
+  return {
+    async settings(){ const s = await F.getDoc(F.doc(db, 'menu', 'main')); return s.exists() ? s.data() : {}; },
+    async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})); },
+    async addRefund(id, r){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r)}); },
+  };
+}
+
+// ---------- Order math ----------
+const linesOf = o => Object.values(o.lines || {}).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0)).filter(l => !l.removed);
+const refunded = o => r2((o.refunds || []).reduce((s, r) => s + Number(r.amount || 0), 0));
+function figures(o){
+  // Works for older orders too: recompute from the lines when a total is missing.
+  const t = o.totals || {}; const rate = Number(SETTINGS.taxRate || 0); const ls = linesOf(o);
+  const sub = t.sub ?? r2(ls.reduce((s, l) => s + Number(l.price || 0), 0));
+  const disc = Number(t.disc || 0);
+  const taxable = t.taxable ?? r2(ls.filter(l => l.taxable).reduce((s, l) => s + Number(l.price || 0), 0) * (sub ? (sub - disc) / sub : 0));
+  const inTax = t.inTax ?? r2(taxable * rate / (1 + rate));
+  const tax = o.taxExempt ? 0 : (t.tax ?? inTax);
+  const net = r2(sub - disc - (o.taxExempt ? inTax : 0)); // what the food and drinks came to, tax included
+  const pays = o.payments || [];
+  const tips = r2(pays.reduce((s, p) => s + Number(p.tip || 0), 0));
+  const surcharge = r2(pays.reduce((s, p) => s + Number(p.surcharge || 0), 0));
+  return {sub, disc, taxable, inTax, tax, net, tips, surcharge, refunds: refunded(o)};
+}
+const sourceName = s => ({register:'Register', kiosk:'Kiosk', online:'Online', hotplate:'Hotplate', phone:'Phone'})[s] || (s || 'Register');
+const statusPill = o => o.status === 'void' ? '<span class="pill void">Void</span>' : o.status !== 'paid' ? '<span class="pill open">Open</span>' : refunded(o) ? '<span class="pill ref">Refunded ' + money(refunded(o)) + '</span>' : '';
+const time = ms => new Date(ms).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+
+async function load(from, to){ ORDERS = (await store.orders(from, to)).sort((a, b) => b.createdAtMs - a.createdAtMs); }
+
+// ---------- Orders ----------
+async function renderOrders(){
+  const from = dayStart(day); await load(from, from + 86400000);
+  const s = q.trim().toLowerCase();
+  const list = ORDERS.filter(o => !s || String(o.num).includes(s) || (o.name || '').toLowerCase().includes(s));
+  const sel = ORDERS.find(o => o.id === selId);
+  $('#app').innerHTML = `<div class="bar"><input type="date" id="day" value="${day}"><input id="q" placeholder="Search name or order #" value="${esc(q)}" style="min-width:220px"><span class="muted">${list.length} orders</span></div>
+    <div class="split"><div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>#</th><th>Time</th><th>Name</th><th>From</th><th class="n">Total</th><th></th></tr></thead><tbody>
+      ${list.map(o => { const f = figures(o); return `<tr class="row ${o.id === selId ? 'sel' : ''}" data-id="${esc(o.id)}"><td>${esc(o.num ?? '')}</td><td>${time(o.createdAtMs)}</td><td>${esc(o.name || '')}</td><td>${sourceName(o.source)}</td><td class="n">${money(f.net + f.tips + f.surcharge)}</td><td>${statusPill(o)}</td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">No orders that day.</td></tr>'}
+    </tbody></table></div><div id="detail">${sel ? detail(sel) : '<div class="card muted">Pick an order to see its items, payments and refunds.</div>'}</div></div>`;
+}
+function detail(o){
+  const f = figures(o);
+  const groups = []; for (const l of linesOf(o)){ const k = JSON.stringify([l.name, l.version, l.mods, l.noMods, l.price]); const g = groups.find(x => x.k === k); if (g) g.n++; else groups.push({k, l, n: 1}); }
+  const modTxt = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...(l.mods || []).filter(m => !m.inc || m.pre || (m.q || 1) > 1).map(m => [m.pre && m.pre !== 'No' ? m.pre : '', (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' '))].join(' · ');
+  const pays = o.payments || [];
+  return `<div class="card"><div class="bar" style="margin-bottom:6px"><b style="font-size:18px">Order #${esc(o.num ?? '')} · ${esc(o.name || 'No name')}</b>${statusPill(o)}</div>
+    <div class="muted" style="margin-bottom:10px">${new Date(o.createdAtMs).toLocaleString()} · ${sourceName(o.source)}${o.staff ? ' · ' + esc(o.staff) : ''}${o.taxExempt ? ' · Tax exempt' : ''}</div>
+    <div class="lines">${groups.map(({l, n}) => `<div><span>${n > 1 ? `<b>${n}×</b> ` : ''}${esc([l.version, l.name].filter(Boolean).join(' '))}${modTxt(l) ? `<span class="m">${esc(modTxt(l))}</span>` : ''}${l.countNote ? `<span class="m">${esc(l.countNote)}</span>` : ''}</span><span>${money(l.price * n)}</span></div>`).join('')}</div>
+    <div class="tot" style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px">
+      <div><span>Subtotal</span><span>${money(f.sub)}</span></div>
+      ${f.disc ? `<div><span>Discount${o.discount ? ' (' + esc(o.discount.name) + ')' : ''}</span><span>${money(-f.disc)}</span></div>` : ''}
+      ${o.taxExempt ? `<div><span>Tax removed (exempt)</span><span>${money(-f.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(f.tax)}</span></div>`}
+      ${f.tips ? `<div><span>Tip</span><span>${money(f.tips)}</span></div>` : ''}
+      ${f.surcharge ? `<div><span>Credit card surcharge</span><span>${money(f.surcharge)}</span></div>` : ''}
+      <div style="font-weight:700"><span>Total paid</span><span>${money(f.net + f.tips + f.surcharge)}</span></div>
+      ${f.refunds ? `<div class="err"><span>Refunded</span><span>${money(-f.refunds)}</span></div>` : ''}
+    </div>
+    <h2>Payments</h2>
+    ${pays.length ? pays.map((p, i) => { const charged = Number(p.charged ?? (Number(p.amount || 0) + Number(p.tip || 0) + Number(p.surcharge || 0))); const done = (o.refunds || []).filter(r => r.pay === i).reduce((s, r) => s + Number(r.amount || 0), 0); const left = r2(charged - done);
+      return `<div class="card" style="padding:10px 12px;margin-bottom:8px"><div class="bar" style="margin:0"><b>${esc(p.label || p.method)}</b><span class="muted">${money(charged)}${p.tip ? ' · tip ' + money(p.tip) : ''}${p.surcharge ? ' · surcharge ' + money(p.surcharge) : ''}${p.staff ? ' · ' + esc(p.staff) : ''}</span><span class="sp"></span>
+        ${left > 0 && o.status === 'paid' ? `<input type="number" step="0.01" min="0.01" max="${left}" value="${left.toFixed(2)}" data-ramt="${i}" style="width:100px" aria-label="Refund amount"><button class="danger" data-refund="${i}">Refund</button>` : done ? '<span class="pill ref">Refunded</span>' : ''}</div>
+        ${p.method === 'card' && !p.paymentIntent ? '<div class="muted" style="font-size:13px">Test payment from before Stripe was connected: the refund is recorded only.</div>' : p.method !== 'card' ? `<div class="muted" style="font-size:13px">Recorded only: hand back the ${esc((p.label || p.method).toLowerCase())} yourself.</div>` : ''}</div>`; }).join('') : '<p class="muted">No payments.</p>'}
+    ${(o.refunds || []).length ? `<h2>Refunds</h2>${o.refunds.map(r => `<div class="muted">${new Date(r.at).toLocaleString()} · ${money(r.amount)} · ${esc(r.method)}${r.reason ? ' · ' + esc(r.reason) : ''}${r.staff ? ' · ' + esc(r.staff) : ''}</div>`).join('')}` : ''}
+    <div class="bar" style="margin-top:10px"><input id="rReason" placeholder="Reason (optional)" style="flex:1"><input id="rStaff" placeholder="Your name" value="${esc(localStorage.getItem('proof.refundStaff') || '')}" style="width:140px"></div>
+    <div id="rMsg"></div></div>`;
+}
+async function refund(o, i){
+  const p = o.payments[i]; const amt = r2(Number(document.querySelector(`[data-ramt="${i}"]`).value || 0));
+  const charged = Number(p.charged ?? (Number(p.amount || 0) + Number(p.tip || 0) + Number(p.surcharge || 0)));
+  const done = (o.refunds || []).filter(r => r.pay === i).reduce((s, r) => s + Number(r.amount || 0), 0);
+  if (!(amt > 0) || amt > r2(charged - done) + 0.001){ $('#rMsg').innerHTML = `<p class="err">Enter an amount up to ${money(charged - done)}.</p>`; return; }
+  const staff = $('#rStaff').value.trim(); try { localStorage.setItem('proof.refundStaff', staff); } catch (e) {}
+  const btn = document.querySelector(`[data-refund="${i}"]`); btn.disabled = true; btn.textContent = 'Refunding…';
+  try {
+    let stripeRefund = null;
+    if (p.method === 'card' && p.paymentIntent && !String(p.paymentIntent).startsWith('pi_demo')) stripeRefund = (await PAY.refund(p.paymentIntent, amt, staff)).id;
+    await store.addRefund(o.id, {at: Date.now(), amount: amt, pay: i, method: p.method, paymentIntent: p.paymentIntent || null, stripeRefund, reason: $('#rReason').value.trim(), staff});
+    await renderOrders(); $('#rMsg').innerHTML = `<p class="ok">Refunded ${money(amt)}${stripeRefund ? ' to the card' : ''}.</p>`;
+  } catch (e){ console.error(e); $('#rMsg').innerHTML = `<p class="err">${esc(e.message)}</p>`; btn.disabled = false; btn.textContent = 'Refund'; }
+}
+
+// ---------- Summaries ----------
+function summarize(orders){
+  const paid = orders.filter(o => o.status === 'paid'); const S = {count: paid.length, open: orders.filter(o => o.status !== 'paid' && o.status !== 'void').length, voids: orders.filter(o => o.status === 'void').length,
+    sub: 0, disc: 0, net: 0, taxableIncl: 0, tax: 0, exempt: 0, nontaxable: 0, tips: 0, surcharge: 0, refunds: 0, byMethod: {}, bySource: {}, cashRefunds: 0};
+  for (const o of paid){ const f = figures(o);
+    S.sub += f.sub; S.disc += f.disc; S.net += f.net; S.tips += f.tips; S.surcharge += f.surcharge; S.refunds += f.refunds;
+    if (o.taxExempt) S.exempt += r2(f.taxable - f.inTax); else { S.taxableIncl += f.taxable; S.tax += f.tax; }
+    S.nontaxable += r2(f.sub - f.disc - f.taxable);
+    for (const p of o.payments || []){ const k = p.method === 'card' ? 'Card' : (p.label || p.method); S.byMethod[k] = (S.byMethod[k] || 0) + Number(p.charged ?? (Number(p.amount || 0) + Number(p.tip || 0) + Number(p.surcharge || 0))); }
+    for (const r of o.refunds || []) if (r.method === 'cash') S.cashRefunds += Number(r.amount || 0);
+    S.bySource[sourceName(o.source)] = (S.bySource[sourceName(o.source)] || 0) + f.net;
+  }
+  for (const k of ['sub','disc','net','taxableIncl','tax','exempt','nontaxable','tips','surcharge','refunds','cashRefunds']) S[k] = r2(S[k]);
+  return S;
+}
+const kpi = (label, v, note = '') => `<div class="kpi"><span>${label}</span><b>${v}</b>${note ? `<span>${note}</span>` : ''}</div>`;
+async function renderEod(){
+  const from = dayStart(day); await load(from, from + 86400000); const S = summarize(ORDERS);
+  $('#app').innerHTML = `<div class="bar"><input type="date" id="day" value="${day}"><span class="sp"></span><button id="printBtn">Print</button></div>
+    ${S.open ? `<div class="card err" style="margin-bottom:12px">${S.open} order${S.open > 1 ? 's are' : ' is'} still open (not paid). They aren't counted below.</div>` : ''}
+    <div class="kpis">${kpi('Net sales', money(S.net), 'tax included, after discounts')}${kpi('Orders', S.count)}${kpi('Tips', money(S.tips))}${kpi('Sales tax collected', money(S.tax))}${kpi('Credit card surcharge', money(S.surcharge))}${kpi('Refunds', money(-S.refunds))}</div>
+    <div class="split"><div class="card"><h2 style="margin-top:0">By payment type</h2><table>${Object.entries(S.byMethod).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('') || '<tr><td class="muted">No payments.</td></tr>'}</table>
+      <h2>Cash drawer</h2><table><tr><td>Cash taken in</td><td class="n">${money(S.byMethod.Cash || 0)}</td></tr><tr><td>Cash refunds</td><td class="n">${money(-S.cashRefunds)}</td></tr><tr><td><b>Cash that should be in the drawer</b> (plus your starting bank)</td><td class="n"><b>${money((S.byMethod.Cash || 0) - S.cashRefunds)}</b></td></tr></table></div>
+    <div class="card"><h2 style="margin-top:0">By where it was ordered</h2><table>${Object.entries(S.bySource).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('')}</table>
+      <h2>Breakdown</h2><table><tr><td>Gross sales</td><td class="n">${money(S.sub)}</td></tr><tr><td>Discounts and comps</td><td class="n">${money(-S.disc)}</td></tr><tr><td>Net sales</td><td class="n">${money(S.net)}</td></tr><tr><td>Voided orders</td><td class="n">${S.voids}</td></tr></table></div></div>`;
+}
+// NY files sales tax by quarter: Mar–May, Jun–Aug, Sep–Nov, Dec–Feb.
+function nyQuarters(){
+  const out = []; const now = new Date(); let y = now.getFullYear(); const m = now.getMonth();
+  let startMonth = m >= 11 ? 11 : m >= 8 ? 8 : m >= 5 ? 5 : m >= 2 ? 2 : -1; // -1 = Dec of last year
+  for (let i = 0; i < 6; i++){
+    const s = new Date(y, startMonth, 1), e = new Date(y, startMonth + 3, 1);
+    out.push({label: `${s.toLocaleString([], {month:'short'})} ${s.getFullYear()} – ${new Date(e - 1).toLocaleString([], {month:'short', year:'numeric'})}`, from: ymd(s), to: ymd(new Date(e - 86400000))});
+    startMonth -= 3; if (startMonth < -1){ startMonth += 12; y--; }
+  }
+  return out;
+}
+async function renderTax(){
+  const qs = nyQuarters(); if (!taxFrom){ taxFrom = qs[0].from; taxTo = qs[0].to; }
+  const from = dayStart(taxFrom), to = dayStart(taxTo) + 86400000; await load(from, to); const S = summarize(ORDERS);
+  const rate = Number(SETTINGS.taxRate || 0);
+  $('#app').innerHTML = `<div class="bar"><select id="quarter"><option value="">Pick a sales tax quarter…</option>${qs.map((x, i) => `<option value="${i}" ${x.from === taxFrom && x.to === taxTo ? 'selected' : ''}>${esc(x.label)}${i === 0 ? ' (current)' : ''}</option>`).join('')}</select>
+      <input type="date" id="tFrom" value="${taxFrom}"> to <input type="date" id="tTo" value="${taxTo}"><span class="sp"></span><button id="csvBtn">Download CSV</button><button id="printBtn">Print</button></div>
+    <div class="kpis">${kpi('Sales tax collected', money(S.tax), `${(rate * 100).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}% rate`)}${kpi('Taxable sales', money(r2(S.taxableIncl - S.tax)), 'before tax')}${kpi('Non-taxable sales', money(S.nontaxable))}${kpi('Tax-exempt sales', money(S.exempt), 'Colgate and other exempt orders')}</div>
+    <div class="card"><table>
+      <tr><td>Gross sales (tax included)</td><td class="n">${money(S.sub)}</td></tr>
+      <tr><td>Discounts and comps</td><td class="n">${money(-S.disc)}</td></tr>
+      <tr><td>Taxable sales, tax included</td><td class="n">${money(S.taxableIncl)}</td></tr>
+      <tr><td>&nbsp;&nbsp;Sales tax in those prices</td><td class="n">${money(S.tax)}</td></tr>
+      <tr><td>&nbsp;&nbsp;Taxable sales before tax</td><td class="n">${money(r2(S.taxableIncl - S.tax))}</td></tr>
+      <tr><td>Non-taxable sales</td><td class="n">${money(S.nontaxable)}</td></tr>
+      <tr><td>Tax-exempt sales (before tax)</td><td class="n">${money(S.exempt)}</td></tr>
+      <tr><td>Credit card surcharge collected</td><td class="n">${money(S.surcharge)}</td></tr>
+      <tr><td>Refunds in this period</td><td class="n">${money(-S.refunds)}</td></tr>
+      <tr><td>Orders</td><td class="n">${S.count}</td></tr></table>
+      <p class="muted" style="margin-bottom:0">Prices include tax, so the tax is worked out from each taxable price. Refunds are listed but not taken out of the tax figures, and the surcharge is shown separately: ask Andrew how each should be reported.</p></div>`;
+}
+function downloadCsv(){
+  const rows = [['Order', 'Date', 'Name', 'Source', 'Status', 'Gross', 'Discount', 'Taxable incl tax', 'Tax', 'Tax exempt', 'Tips', 'Surcharge', 'Refunded']];
+  for (const o of ORDERS){ const f = figures(o); rows.push([o.num ?? '', new Date(o.createdAtMs).toLocaleString(), o.name || '', sourceName(o.source), o.status || '', f.sub, f.disc, o.taxExempt ? 0 : f.taxable, f.tax, o.taxExempt ? 'yes' : '', f.tips, f.surcharge, f.refunds]); }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `sales-tax-${taxFrom}-to-${taxTo}.csv`; a.click();
+}
+
+// ---------- Events ----------
+async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+$('#app').addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'day'){ day = t.value || ymd(new Date()); selId = null; render(); }
+  if (t.id === 'quarter' && t.value !== ''){ const x = nyQuarters()[Number(t.value)]; taxFrom = x.from; taxTo = x.to; render(); }
+  if (t.id === 'tFrom' || t.id === 'tTo'){ taxFrom = $('#tFrom').value || taxFrom; taxTo = $('#tTo').value || taxTo; render(); }
+});
+let qTimer; $('#app').addEventListener('input', e => { if (e.target.id === 'q'){ q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(async () => { await renderOrders(); const el = $('#q'); el.focus(); el.setSelectionRange(q.length, q.length); }, 250); } });
+$('#app').addEventListener('click', e => {
+  const row = e.target.closest('tr.row'); if (row){ selId = row.dataset.id; renderOrders(); return; }
+  const rb = e.target.closest('button[data-refund]'); if (rb){ refund(ORDERS.find(o => o.id === selId), Number(rb.dataset.refund)); return; }
+  if (e.target.id === 'csvBtn') downloadCsv();
+  if (e.target.id === 'printBtn') print();
+});
+
+// ---------- Start ----------
+async function boot(){ $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); SETTINGS = await store.settings().catch(() => ({})); render(); }
+if (DEMO){ store = demoStore(); PAY = createPayments({demo: true}); boot(); }
+else {
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  PAY = createPayments({getToken: () => auth.currentUser.getIdToken()});
+  store = await firebaseStore(app); let booted = false;
+  A.onAuthStateChanged(auth, u => { if (u && !booted){ booted = true; boot(); } if (!u) $('#login').classList.remove('hidden'); });
+  $('#signIn').addEventListener('click', async () => { try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); } catch (e){ $('#loginErr').textContent = 'That email and password did not work.'; } });
+}
+</script>
+</body>
+</html>

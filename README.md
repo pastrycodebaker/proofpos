@@ -131,3 +131,9 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 - Flow: create PaymentIntent → reader collects the card (tip on the reader at the register, 18/20/22%; the kiosk asks for tip on screen) → we read credit vs debit → add 3% for credit, capped at 2.7% + 5¢ → reader confirms.
 - `payments.js` is the shared client. With a test key, the first payment creates the "Flour & Salt" location and a simulated S700; the register and kiosk show "pretend the customer…" buttons. Each tablet can use a specific reader via `localStorage['proof.reader']`.
 - Before going live: check Stripe's US surcharging requirements for Terminal (customer notice on the reader).
+
+## Shared modifiers, conditional groups, grouped lines, orders and reports
+- Modifier group page → "Or add an existing modifier": copies it with `stockAs: "groupId~Option"`, so counts and 86 are shared everywhere it's used.
+- Item page: each group after the first has "Always show / Only after X" (`item.showWhen[groupId] = {g, o}`), e.g. Bagel flavors only after Bagel. Hidden groups aren't required and their picks are dropped.
+- Register check shows identical lines as one row with a count and −/+ buttons; each stays its own line for the kitchen.
+- `admin/orders.html` (start page → Orders and reports; register ⋮ → Past orders and refunds): orders by day with search, details with card type/last 4/tip/surcharge, partial or full refunds (cards through Stripe, others recorded), end-of-day summary with cash drawer, and a sales tax report by NY quarter (Mar–May, Jun–Aug, Sep–Nov, Dec–Feb) with CSV.
