@@ -98,7 +98,7 @@ function printerCard(p, i){
     <div class="bar"><button data-test="${i}">Send a test print</button><span data-testmsg="${i}" class="muted"></span><span class="sp"></span><button class="danger" data-del="${i}">Remove</button></div></div>`;
 }
 function readForm(){
-  printers = [...document.querySelectorAll('#list .card')].map((el, i) => ({id: printers[i].id, name: el.querySelector('[data-f=name]').value.trim() || 'Printer', ip: el.querySelector('[data-f=ip]').value.trim(), port: Number(el.querySelector('[data-f=port]').value || 9100),
+  printers = [...document.querySelectorAll('#list .card[data-i]')].map((el, i) => ({id: printers[i].id, name: el.querySelector('[data-f=name]').value.trim() || 'Printer', ip: el.querySelector('[data-f=ip]').value.trim(), port: Number(el.querySelector('[data-f=port]').value || 9100),
     kind: el.querySelector('[data-f=kind]').value, stations: [...el.querySelectorAll('[data-st]')].filter(c => c.checked).map(c => c.dataset.st), cols: Number(el.querySelector('[data-f=cols]').value || 48)}));
   shop = {name: $('#shopName').value.trim() || 'Flour & Salt', lines: $('#shopLines').value.split(/\s*\|\s*|\n/).map(x => x.trim()).filter(Boolean)};
 }
