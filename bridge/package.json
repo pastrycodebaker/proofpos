@@ -1,0 +1,9 @@
+{
+  "name": "proof-print-bridge",
+  "private": true,
+  "type": "module",
+  "description": "Sends Proof POS tickets, stickers and receipts to network printers.",
+  "dependencies": {
+    "firebase": "^10.12.2"
+  }
+}

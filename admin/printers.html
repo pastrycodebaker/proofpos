@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icons/icon-192.png">
+<title>Proof POS · Printers</title>
+<style>
+  :root{--line:#dfe3e8;--quiet:#5b6470;--accent:#1a5fb4;--accent-bg:#e7f0fb;--ok:#1a7f37;--crit:#b42318}
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef1f4;color:#1f2328;font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;gap:10px;align-items:center;padding:12px 18px;background:#fff;border-bottom:1px solid var(--line)}
+  header h1{font-size:18px;margin:0}
+  main{max-width:900px;margin:0 auto;padding:16px 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+  button,input,select{font:inherit;color:inherit}
+  button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{color:var(--crit);border-color:#f0c4bf}
+  input,select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;width:100%}
+  label{display:block;font-size:13px;color:var(--quiet);margin:8px 0 4px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row > div{flex:1;min-width:140px}
+  .checks{display:flex;gap:8px;flex-wrap:wrap}
+  .checks label{display:flex;gap:6px;align-items:center;margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:inherit;font-size:14px}
+  .checks input{width:auto}
+  .muted{color:var(--quiet)}.ok{color:var(--ok)}.err{color:var(--crit)}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .sp{flex:1}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#bbb;margin-right:6px}
+  .dot.on{background:var(--ok)}.dot.off{background:var(--crit)}
+  .hidden{display:none !important}
+  ol li{margin-bottom:6px}
+  code{background:#f2f4f7;padding:1px 5px;border-radius:5px}
+</style>
+</head>
+<body>
+<header><h1>Printers</h1><span class="sp" style="flex:1"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a></header>
+<div id="login" class="card hidden" style="max-width:360px;margin:60px auto">
+  <h3 style="margin-top:0">Sign in</h3>
+  <input id="email" type="email" placeholder="Email" aria-label="Email" style="margin-bottom:8px">
+  <input id="password" type="password" placeholder="Password" aria-label="Password">
+  <button class="primary" id="signIn" style="width:100%;margin-top:10px">Sign in</button>
+  <div class="err" id="loginErr"></div>
+</div>
+<main id="app" class="hidden">
+  <div class="card" id="bridgeCard"></div>
+  <div id="list"></div>
+  <div class="bar"><button id="addPrinter">Add a printer</button><span class="sp"></span><span id="saveMsg"></span><button class="primary" id="save">Save printers</button></div>
+  <div class="card" style="margin-top:16px">
+    <h3 style="margin-top:0">Receipt header</h3>
+    <div class="row"><div><label for="shopName">Business name</label><input id="shopName"></div><div><label for="shopLines">Address and other lines (one per line)</label><input id="shopLines" placeholder="37 Lebanon Street, Hamilton, NY"></div></div>
+  </div>
+</main>
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const uid = () => Math.random().toString(36).slice(2, 10);
+if (DEMO) $('#switchLink').href = '../?pick&demo';
+const KINDS = [['tickets', 'Kitchen tickets (one ticket per order)'], ['stickers', 'Stickers (one per item)'], ['receipts', 'Receipts (when staff tap Print receipt)']];
+const STATIONS = [['espresso', 'Espresso bar'], ['kitchen', 'Kitchen'], ['none', 'Everything else (bagels, pastries, retail)']];
+let store, printers = [], shop = {}, status = {};
+
+function demoStore(){
+  let data = {printers: [{id: 'p1', name: 'Kitchen tickets', ip: '192.168.192.3', port: 9100, kind: 'tickets', stations: ['kitchen'], cols: 48}]}; const subs = [];
+  return {
+    async get(){ return structuredClone(data); }, async save(x){ data = structuredClone(x); },
+    watchStatus(cb){ cb({bridgeSeenAt: Date.now() - 30000, bridgeHost: 'demo-laptop'}); },
+    async testPrint(p){ return {id: 'demo'}; }, watchJob(id, cb){ setTimeout(() => cb({status: 'printed', printer: 'demo'}), 800); },
+  };
+}
+async function firebaseStore(app){
+  const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'); const db = F.getFirestore(app);
+  return {
+    async get(){ const s = await F.getDoc(F.doc(db, 'settings', 'printers')); return s.exists() ? s.data() : {}; },
+    async save(x){ await F.setDoc(F.doc(db, 'settings', 'printers'), x); },
+    watchStatus(cb){ F.onSnapshot(F.doc(db, 'menu', 'status'), s => cb(s.exists() ? s.data() : {})); },
+    async testPrint(p){ const ref = await F.addDoc(F.collection(db, 'printJobs'), {kind: 'test', printerId: p.id, status: 'queued', createdAt: Date.now()}); return {id: ref.id}; },
+    watchJob(id, cb){ const un = F.onSnapshot(F.doc(db, 'printJobs', id), s => { const d = s.data() || {}; cb(d); if (d.status === 'printed' || d.status === 'error') un(); }); },
+  };
+}
+
+function renderBridge(){
+  const seen = Number(status.bridgeSeenAt || 0); const on = seen && Date.now() - seen < 150000;
+  $('#bridgeCard').innerHTML = `<div style="font-weight:700;font-size:16px"><span class="dot ${on ? 'on' : seen ? 'off' : ''}"></span>Print bridge: ${on ? `running on ${esc(status.bridgeHost || 'a computer')}` : seen ? `not running (last seen ${new Date(seen).toLocaleString()})` : 'not set up yet'}</div>
+    ${on ? '' : `<p class="muted">The bridge is a small program on a computer at the cafe that sends print jobs to these printers. To try it on a laptop:</p>
+    <ol><li>Install <b>Node.js</b> (the LTS version) from nodejs.org.</li><li>Download <a href="../bridge/proof-print-bridge.zip" download>proof-print-bridge.zip</a> and unzip it.</li>
+      <li>Mac: double-click <code>start-bridge.command</code> (if blocked, right-click it and choose Open). Windows: double-click <code>start-bridge.bat</code>.</li>
+      <li>Sign in with the shop account when it asks, and leave the window open. This box turns green.</li></ol>
+    <p class="muted" style="margin-bottom:0">The laptop must be on the same network as the printers. Once it works, a Raspberry Pi can run it full time.</p>`}`;
+}
+function printerCard(p, i){
+  return `<div class="card" data-i="${i}"><div class="row"><div><label>Name</label><input data-f="name" value="${esc(p.name)}" placeholder="Kitchen tickets"></div><div><label>Network address (IP)</label><input data-f="ip" value="${esc(p.ip)}" placeholder="192.168.192.3"></div><div style="max-width:110px"><label>Port</label><input data-f="port" type="number" value="${esc(p.port || 9100)}"></div></div>
+    <label>What it prints</label><select data-f="kind">${KINDS.map(([k, l]) => `<option value="${k}" ${p.kind === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <div class="${p.kind === 'receipts' ? 'hidden' : ''}" data-stations><label>Prints new items from these stations by itself</label><div class="checks">${STATIONS.map(([k, l]) => `<label><input type="checkbox" data-st="${k}" ${(p.stations || []).includes(k) ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
+    <div class="row"><div style="max-width:200px"><label>Characters per line</label><input data-f="cols" type="number" value="${esc(p.cols || 48)}"></div><div class="muted" style="font-size:13px;padding-bottom:10px">48 fits 80 mm paper. Use 32 for narrow (58 mm) paper.</div></div>
+    <div class="bar"><button data-test="${i}">Send a test print</button><span data-testmsg="${i}" class="muted"></span><span class="sp"></span><button class="danger" data-del="${i}">Remove</button></div></div>`;
+}
+function readForm(){
+  printers = [...document.querySelectorAll('#list .card')].map((el, i) => ({id: printers[i].id, name: el.querySelector('[data-f=name]').value.trim() || 'Printer', ip: el.querySelector('[data-f=ip]').value.trim(), port: Number(el.querySelector('[data-f=port]').value || 9100),
+    kind: el.querySelector('[data-f=kind]').value, stations: [...el.querySelectorAll('[data-st]')].filter(c => c.checked).map(c => c.dataset.st), cols: Number(el.querySelector('[data-f=cols]').value || 48)}));
+  shop = {name: $('#shopName').value.trim() || 'Flour & Salt', lines: $('#shopLines').value.split(/\s*\|\s*|\n/).map(x => x.trim()).filter(Boolean)};
+}
+function renderList(){ $('#list').innerHTML = printers.map(printerCard).join('') || '<div class="card muted">No printers yet. Add one with the address from its status slip.</div>'; }
+async function save(){
+  readForm(); const bad = printers.find(p => !/^\d{1,3}(\.\d{1,3}){3}$/.test(p.ip)); if (bad){ $('#saveMsg').innerHTML = `<span class="err">${esc(bad.name)} needs an address like 192.168.192.3</span>`; return false; }
+  try { await store.save({printers, shop}); $('#saveMsg').innerHTML = '<span class="ok">Saved</span>'; return true; }
+  catch (e){ $('#saveMsg').innerHTML = `<span class="err">${/permission/i.test(e.message) ? 'You do not have permission to change printers. Sign in with an owner account.' : esc(e.message)}</span>`; return false; }
+}
+$('#app').addEventListener('change', e => { if (e.target.dataset.f === 'kind'){ e.target.closest('.card').querySelector('[data-stations]').classList.toggle('hidden', e.target.value === 'receipts'); } $('#saveMsg').textContent = 'Unsaved changes'; });
+$('#app').addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'addPrinter'){ readForm(); printers.push({id: uid(), name: '', ip: '', port: 9100, kind: 'tickets', stations: [], cols: 48}); renderList(); }
+  if (t.dataset.del !== undefined){ readForm(); printers.splice(Number(t.dataset.del), 1); renderList(); $('#saveMsg').textContent = 'Unsaved changes'; }
+  if (t.id === 'save') save();
+  if (t.dataset.test !== undefined){
+    const i = Number(t.dataset.test); const msg = document.querySelector(`[data-testmsg="${i}"]`);
+    if (!(await save())) return;
+    msg.textContent = 'Sent to the bridge…';
+    try { const job = await store.testPrint(printers[i]); store.watchJob(job.id, d => { if (d.status === 'printed') msg.innerHTML = '<span class="ok">Printed. Check the printer.</span>'; else if (d.status === 'error') msg.innerHTML = `<span class="err">${esc(d.error || 'Could not print')}</span>`; else if (d.status === 'printing') msg.textContent = 'Printing…'; });
+      setTimeout(() => { if (msg.textContent === 'Sent to the bridge…') msg.innerHTML = '<span class="err">No answer. Is the print bridge running?</span>'; }, 15000);
+    } catch (err){ msg.innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+  }
+});
+async function boot(){
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  const d = await store.get(); printers = d.printers || []; shop = d.shop || {name: 'Flour & Salt', lines: ['37 Lebanon Street, Hamilton, NY']};
+  $('#shopName').value = shop.name || ''; $('#shopLines').value = (shop.lines || []).join(' | ');
+  renderList(); store.watchStatus(s => { status = s; renderBridge(); }); setInterval(renderBridge, 30000);
+}
+if (DEMO){ store = demoStore(); boot(); }
+else {
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app); store = await firebaseStore(app); let booted = false;
+  A.onAuthStateChanged(auth, u => { if (u && !booted){ booted = true; boot(); } if (!u) $('#login').classList.remove('hidden'); });
+  $('#signIn').addEventListener('click', async () => { try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); } catch (e){ $('#loginErr').textContent = 'That email and password did not work.'; } });
+}
+</script>
+</body>
+</html>

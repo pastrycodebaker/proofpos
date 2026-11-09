@@ -137,3 +137,8 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 - Item page: each group after the first has "Always show / Only after X" (`item.showWhen[groupId] = {g, o}`), e.g. Bagel flavors only after Bagel. Hidden groups aren't required and their picks are dropped.
 - Register check shows identical lines as one row with a count and −/+ buttons; each stays its own line for the kitchen.
 - `admin/orders.html` (start page → Orders and reports; register ⋮ → Past orders and refunds): orders by day with search, details with card type/last 4/tip/surcharge, partial or full refunds (cards through Stripe, others recorded), end-of-day summary with cash drawer, and a sales tax report by NY quarter (Mar–May, Jun–Aug, Sep–Nov, Dec–Feb) with CSV.
+
+## Printing (print bridge)
+- `admin/printers.html` (start page → Printers): each printer's name, IP, port 9100, what it prints (kitchen tickets, stickers, receipts), which stations print there by themselves, characters per line. Saved in `settings/printers` (owners only). "Send a test print" adds a `printJobs` doc.
+- `bridge/` is a small Node program that runs on a computer at the cafe (laptop to test, Raspberry Pi later): signs in with the shop account, watches new orders and prints tickets/stickers for the chosen stations (marks `orders.printed.<printerId>.<lineId>`, scheduled orders print when they fire), handles `printJobs` (receipts, reprints, tests), and sends a heartbeat to `menu/status.bridgeSeenAt`. Download: `/bridge/proof-print-bridge.zip` (rebuild the zip when bridge files change).
+- Register done screen → Print receipt; Orders and reports → Print receipt / Reprint kitchen ticket. Receipts show the credit card surcharge as its own line.

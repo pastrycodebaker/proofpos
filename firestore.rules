@@ -28,6 +28,9 @@ service cloud.firestore {
     // Owner list and staff codes: owners change them; signed-in tablets read staff codes to unlock.
     match /settings/owners { allow read: if signedIn(); allow write: if isOwner(); }
     match /settings/staff { allow read: if signedIn(); allow write: if isOwner(); }
+    match /settings/printers { allow read: if signedIn(); allow write: if isOwner(); }
+    // Print requests (receipts, reprints, test prints): any signed-in tablet; the print bridge updates them.
+    match /printJobs/{id} { allow read, write: if signedIn(); }
 
     // Everything else (orders, counters, KDS settings, events): signed-in tablets.
     match /orders/{doc=**} { allow read, write: if signedIn(); }

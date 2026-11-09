@@ -1,6 +1,8 @@
+*.key
 .env
 .env.*
-*.key
-node_modules/
 .firebase/
 .secret.local
+bridge/config.json
+bridge/node_modules/
+node_modules/

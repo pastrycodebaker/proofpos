@@ -189,6 +189,7 @@ function demoStore(){
     async getStaff(){ return {members:[{name:'Demo Staff', pin:'1234'}], sleepMinutes:5}; },
     watchOrders(cb){ subs.orders.push(cb); cb(structuredClone(orders)); },
     async createOrder(o){ const id = uid(); orders.push({...o, id, num: next++}); emit('orders', orders); return id; },
+    async addPrintJob(){},
     async updateOrder(id, fields, newLines){ const o = orders.find(x => x.id === id); Object.assign(o, fields); if (newLines) o.lines.push(...newLines); emit('orders', orders); },
     async adjustItem(id, d){ const it = menu.items.find(i => i.id === id); if (it && typeof it.stockCount === 'number'){ it.stockCount += d; if (it.stockCount <= 0 && d < 0) it.eightySixed = true; emit('menu', menu); } },
     async adjustMod(key, d){ if (typeof modStock[key] === 'number'){ modStock[key] += d; emit('stock', modStock); } },
@@ -223,6 +224,7 @@ async function firebaseStore(app){
       await F.runTransaction(db, async tx => { const c = await tx.get(counter); const num = c.exists() ? c.data().next : 101; tx.set(counter, {next:num + 1}); tx.set(ref, {...data, num}); });
       return ref.id;
     },
+    async addPrintJob(job){ await F.addDoc(F.collection(db, 'printJobs'), {...job, status: 'queued', createdAt: Date.now()}); },
     async updateOrder(id, fields, newLines, startPos){
       const upd = {...fields};
       (newLines || []).forEach((l, i) => { upd['lines.' + l.lid] = {...l, pos:(startPos || 0) + i}; });
@@ -457,7 +459,7 @@ function renderPay(){
 }
 function renderDone(change){
   const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
-  $('#main').innerHTML = renderTop() + `<div class="done">${change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
+  $('#main').innerHTML = renderTop() + `<div class="done">${change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button id="printReceipt" style="min-width:260px;min-height:50px;font-size:17px">Print receipt</button><button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
 }
 
 // ---------- Render ----------
@@ -629,6 +631,7 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.q){ tender = String(Math.round(Number(t.dataset.q) * 100)); takePayment('cash'); return; }
   if (t.dataset.pay){ takePayment(t.dataset.pay); return; }
   if (t.id === 'payBack'){ view = 'menu'; render(); return; }
+  if (t.id === 'printReceipt'){ t.disabled = true; t.textContent = 'Sending…'; store.addPrintJob({kind: 'receipt', orderId: check.orderId}).then(() => { t.textContent = 'Receipt sent to the printer'; }).catch(err => { console.error(err); t.disabled = false; t.textContent = 'Could not send. Try again'; }); return; }
   if (t.id === 'newOrder'){ check = newCheck(); view = 'menu'; render(); return; }
 });
 function openMore(gid, name){

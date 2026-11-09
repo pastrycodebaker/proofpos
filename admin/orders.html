@@ -92,6 +92,7 @@ function demoStore(){
     async settings(){ return {taxRate: 0.08}; },
     async orders(from, to){ return orders.filter(o => o.createdAtMs >= from && o.createdAtMs < to); },
     async addRefund(id, r){ const o = orders.find(x => x.id === id); o.refunds = [...(o.refunds || []), r]; },
+    async addPrintJob(){},
   };
 }
 async function firebaseStore(app){
@@ -101,6 +102,7 @@ async function firebaseStore(app){
     async settings(){ const s = await F.getDoc(F.doc(db, 'menu', 'main')); return s.exists() ? s.data() : {}; },
     async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})); },
     async addRefund(id, r){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r)}); },
+    async addPrintJob(job){ await F.addDoc(F.collection(db, 'printJobs'), {...job, status: 'queued', createdAt: Date.now()}); },
   };
 }
 
@@ -162,6 +164,7 @@ function detail(o){
         ${p.method === 'card' && !p.paymentIntent ? '<div class="muted" style="font-size:13px">Test payment from before Stripe was connected: the refund is recorded only.</div>' : p.method !== 'card' ? `<div class="muted" style="font-size:13px">Recorded only: hand back the ${esc((p.label || p.method).toLowerCase())} yourself.</div>` : ''}</div>`; }).join('') : '<p class="muted">No payments.</p>'}
     ${(o.refunds || []).length ? `<h2>Refunds</h2>${o.refunds.map(r => `<div class="muted">${new Date(r.at).toLocaleString()} · ${money(r.amount)} · ${esc(r.method)}${r.reason ? ' · ' + esc(r.reason) : ''}${r.staff ? ' · ' + esc(r.staff) : ''}</div>`).join('')}` : ''}
     <div class="bar" style="margin-top:10px"><input id="rReason" placeholder="Reason (optional)" style="flex:1"><input id="rStaff" placeholder="Your name" value="${esc(localStorage.getItem('proof.refundStaff') || '')}" style="width:140px"></div>
+    <div class="bar"><button data-print="receipt">Print receipt</button><button data-print="ticket">Reprint kitchen ticket</button><span id="pMsg" class="muted"></span></div>
     <div id="rMsg"></div></div>`;
 }
 async function refund(o, i){
@@ -256,6 +259,7 @@ let qTimer; $('#app').addEventListener('input', e => { if (e.target.id === 'q'){
 $('#app').addEventListener('click', e => {
   const row = e.target.closest('tr.row'); if (row){ selId = row.dataset.id; renderOrders(); return; }
   const rb = e.target.closest('button[data-refund]'); if (rb){ refund(ORDERS.find(o => o.id === selId), Number(rb.dataset.refund)); return; }
+  const pb = e.target.closest('button[data-print]'); if (pb){ store.addPrintJob({kind: pb.dataset.print, orderId: selId}).then(() => { $('#pMsg').textContent = 'Sent to the printer.'; }).catch(err => { $('#pMsg').textContent = err.message; }); return; }
   if (e.target.id === 'csvBtn') downloadCsv();
   if (e.target.id === 'printBtn') print();
 });
