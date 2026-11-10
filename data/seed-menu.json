@@ -68,6 +68,11 @@
   ],
   "discounts": [
    {
+    "name": "Staff meal",
+    "type": "percent",
+    "value": 100
+   },
+   {
     "name": "Comp",
     "type": "percent",
     "value": 100

@@ -48,7 +48,7 @@
 <body>
 <header>
   <h1>Orders and reports</h1>
-  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button><button data-tab="times">Ticket times</button><button data-tab="activity">Activity</button></div>
+  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button><button data-tab="pre">Pre-orders</button><button data-tab="times">Ticket times</button><button data-tab="activity">Activity</button></div>
   <span class="sp"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a>
 </header>
 <div id="login" class="card hidden">
@@ -92,6 +92,9 @@ function demoStore(){
   ];
   return {
     async settings(){ return {taxRate: 0.08}; },
+    async preorders(date){ const tm = new Date(Date.now() + 86400000).toLocaleDateString('en-CA', {timeZone: 'America/New_York'}); if (date !== tm) return [];
+      const P = (num, name, phone, lines, extra = {}) => ({...mk(num, 0, name, 'online', lines, [{method:'card', label:'Visa credit ••4242', amount: r2(lines.reduce((s, l) => s + l.price, 0)), at: t0}]), pickupDate: tm, scheduled: true, customerPhone: phone, email: name.toLowerCase() + '@example.com', ...extra});
+      return [P(201, 'Maya', '5551234567', [L('Pumpkin Pie', 34, false), L('House Sourdough', 9, false)]), P(202, 'Theo', '', [L('Pumpkin Pie', 34, false), L('Pumpkin Pie', 34, false), L('Bagel', 2.5, false, {mods: [{g:'bagel', o:'Everything', q:6}]})]), P(203, 'Rae', '5559876543', [L('House Sourdough', 9, false)], {status: 'void'})]; },
     async orders(from, to){ return orders.filter(o => o.createdAtMs >= from && o.createdAtMs < to); },
     async addRefund(id, r){ const o = orders.find(x => x.id === id); o.refunds = [...(o.refunds || []), r]; },
     async addPrintJob(){},
@@ -105,6 +108,7 @@ async function firebaseStore(app){
   return {
     async settings(){ const s = await F.getDoc(F.doc(db, 'menu', 'main')); return s.exists() ? s.data() : {}; },
     async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})); },
+    async preorders(date){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('pickupDate', '==', date))); return snap.docs.map(d => ({id: d.id, ...d.data()})); },
     async addRefund(id, r){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r)}); },
     async addPrintJob(job){ await F.addDoc(F.collection(db, 'printJobs'), {...job, status: 'queued', createdAt: Date.now()}); },
     async events(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'events'), F.where('at', '>=', from), F.where('at', '<', to))); return snap.docs.map(d => d.data()); },
@@ -275,6 +279,22 @@ async function renderTimes(){
     <div class="kpis">${stations.map(k => kpi(STN[k], mins(median(per[k])), `typical · slowest ${mins(Math.max(...per[k]))} · ${per[k].length} tickets`)).join('') || '<div class="card muted">No finished tickets that day.</div>'}</div>
     ${hours.length ? `<div class="card"><h2 style="margin-top:0">By hour (typical time)</h2><table><thead><tr><th>Hour</th>${stations.map(k => `<th class="n">${STN[k]}</th>`).join('')}</tr></thead><tbody>${hours.map(h => `<tr><td>${hl(h)}</td>${stations.map(k => { const a = (byHour[h] || {})[k] || []; return `<td class="n">${a.length ? mins(median(a)) + ` <span class="muted">(${a.length})</span>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>` : ''}`;
 }
+// ---------- Pre-orders (by pickup day) ----------
+let pday = new Date(Date.now() + 86400000).toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+async function renderPre(){
+  const all = await store.preorders(pday); const live = all.filter(o => o.status === 'paid').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const prod = {};
+  for (const o of live) for (const l of linesOf(o)){
+    const k = [l.version, l.name].filter(Boolean).join(' '); const p = prod[k] = prod[k] || {n: 0, mods: {}};
+    p.n++; for (const m of (l.mods || []).filter(m => !m.def)){ const mk2 = m.o; p.mods[mk2] = (p.mods[mk2] || 0) + (m.q || 1); }
+  }
+  const label = new Date(pday + 'T12:00:00').toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'});
+  const modText = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...(l.mods || []).filter(m => !m.def).map(m => (m.q > 1 ? m.q + '× ' : '') + m.o)].join(', ');
+  $('#app').innerHTML = `<div class="bar"><input type="date" id="pday" value="${pday}"><span class="muted">Paid online orders for pickup ${esc(label)}. They show on the KDS that morning.</span><button id="printPre">Print list</button></div>
+    <div class="kpis">${kpi('Orders', live.length, all.length - live.length ? (all.length - live.length) + ' voided or open' : 'for pickup')}${kpi('Items', Object.values(prod).reduce((s, p) => s + p.n, 0), 'to make')}${kpi('Sales', money(live.reduce((s, o) => s + figures(o).net, 0)), 'tax included')}</div>
+    <div class="card"><h2 style="margin-top:0">Production list</h2>${Object.keys(prod).length ? `<table><thead><tr><th>Item</th><th class="n">Count</th><th>Choices</th></tr></thead><tbody>${Object.entries(prod).sort((a, b) => b[1].n - a[1].n).map(([k, p]) => `<tr><td><b>${esc(k)}</b></td><td class="n">${p.n}</td><td class="muted">${Object.entries(p.mods).map(([m, n]) => `${n} ${esc(m)}`).join(' · ')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No pre-orders for this day yet.</p>'}</div>
+    ${live.length ? `<div class="card" style="padding:0"><table><thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Items</th><th class="n">Paid</th></tr></thead><tbody>${live.map(o => `<tr><td>${esc(o.num)}</td><td><b>${esc(o.name || '')}</b></td><td class="muted">${esc([o.customerPhone, o.email].filter(Boolean).join(' · '))}</td><td>${linesOf(o).map(l => esc([l.version, l.name].filter(Boolean).join(' ')) + (modText(l) ? ` <span class="muted">(${esc(modText(l))})</span>` : '')).join('<br>')}</td><td class="n">${money((o.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0))}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+}
 // ---------- Activity (audit log) ----------
 const EVT = {void: 'Voided order', discount: 'Discount', discount_removed: 'Removed discount', staff_meal: 'Staff meal', tax_exempt: 'Tax exempt', tax_exempt_off: 'Tax exempt removed', no_sale: 'No sale (drawer opened)', open_item: 'Open item', refund: 'Refund', reward_used: 'Used reward points', reward_removed: 'Stopped using points'};
 async function renderActivity(){
@@ -287,17 +307,19 @@ async function renderActivity(){
 }
 
 // ---------- Events ----------
-async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else if (tab === 'times') await renderTimes(); else if (tab === 'activity') await renderActivity(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
+async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else if (tab === 'times') await renderTimes(); else if (tab === 'pre') await renderPre(); else if (tab === 'activity') await renderActivity(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b)); render(); });
 $('#app').addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'day'){ day = t.value || ymd(new Date()); selId = null; render(); }
+  if (t.id === 'pday'){ pday = t.value || pday; render(); }
   if (t.id === 'quarter' && t.value !== ''){ const x = nyQuarters()[Number(t.value)]; taxFrom = x.from; taxTo = x.to; render(); }
   if (t.id === 'tFrom' || t.id === 'tTo'){ taxFrom = $('#tFrom').value || taxFrom; taxTo = $('#tTo').value || taxTo; render(); }
 });
 let qTimer; $('#app').addEventListener('input', e => { if (e.target.id === 'q'){ q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(async () => { await renderOrders(); const el = $('#q'); el.focus(); el.setSelectionRange(q.length, q.length); }, 250); } });
 $('#app').addEventListener('click', e => {
   const row = e.target.closest('tr.row'); if (row){ selId = row.dataset.id; renderOrders(); return; }
+  if (e.target.id === 'printPre'){ window.print(); return; }
   const rb = e.target.closest('button[data-refund]'); if (rb){ refund(ORDERS.find(o => o.id === selId), Number(rb.dataset.refund)); return; }
   const pb = e.target.closest('button[data-print]'); if (pb){ store.addPrintJob({kind: pb.dataset.print, orderId: selId}).then(() => { $('#pMsg').textContent = 'Sent to the printer.'; }).catch(err => { $('#pMsg').textContent = err.message; }); return; }
   if (e.target.id === 'emailReceipt'){ const o = ORDERS.find(x => x.id === selId); const p = o.payments.find(x => x.paymentIntent); PAY.emailReceipt(p.paymentIntent, $('#rcptEmail').value.trim()).then(r => { $('#pMsg').textContent = r.testMode ? 'Saved. Test mode: Stripe shows the receipt in the Dashboard instead of emailing it.' : 'Receipt emailed.'; }).catch(err => { $('#pMsg').textContent = err.message; }); return; }

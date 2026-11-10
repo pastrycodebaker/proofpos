@@ -159,3 +159,15 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 - Email receipts: done screen and order details send Stripe's card receipt (`email_receipt` in the Stripe function, sets the charge's receipt_email). Test mode doesn't email.
 - Auto-pause kiosk drinks: KDS → Timing → "Auto-pause kiosk drinks" count (`settings/kds.autoPauseAt`). Pauses (`menu/status.kioskAutoPaused`) when that many espresso items wait; resumes when it drops 2 below. Manual pauses are left alone.
 - Raspberry Pi: `bridge/RASPBERRY-PI.txt` + `install-pi.sh` (systemd service, starts on boot, restarts on failure).
+
+## Online ordering (`/order/`)
+
+One page for both kinds of order, replacing Toast online ordering and Hotplate:
+
+- **Today, ASAP**: open during the hours in Menu editor → Settings → Online ordering, until a set number of minutes before close. Respects the online pause switch, 86s and counts, and an optional cap per 15 minutes.
+- **Pre-order a day**: any open day up to the days-ahead limit, until that day's deadline (default: 5pm the day before). Pre-orders sit on the KDS and print bridge until the fire time on pickup day.
+- **Per item** (item page → Online ordering): pre-order only, specific dates only (one-off specials like pies), its own deadline, and a most-per-pickup-day limit. Items with specific dates float to a "Specials" row for those days.
+- Prices are rechecked on the server (`netlify/functions/online.mjs`) using the same rules as the page (`shared/online.mjs`). Payment is Stripe's Payment Element; the order is written once the payment succeeds, either from the page or from the Stripe webhook (`stripe-webhook`), so a closed tab never loses an order.
+- Orders and reports → **Pre-orders** lists every paid pre-order for a pickup day with a production count.
+
+Setup (Netlify environment variables): `STRIPE_PUBLISHABLE_KEY`, `ORDER_BOT_EMAIL` and `ORDER_BOT_PASSWORD` (a Firebase sign-in just for the order function), and `STRIPE_WEBHOOK_SECRET` (Stripe webhook to `/.netlify/functions/stripe-webhook`, event `payment_intent.succeeded`).

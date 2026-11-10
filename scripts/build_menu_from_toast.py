@@ -182,7 +182,7 @@ settings = {
   'sizes': ['8 oz', '12 oz', '16 oz', '20 oz', 'Double', 'Refill'], 'priceCols': PRICE_COLS,
   'surchargeRate': 0.03, 'surchargeChannels': {'register': True, 'kiosk': False, 'online': False}, 'taxRate': 0.08,
   'preMods': ['No', 'Light', 'Extra', 'On the side'],
-  'discounts': [{'name': 'Comp', 'type': 'percent', 'value': 100}, {'name': 'Donation', 'type': 'percent', 'value': 100}, {'name': 'Bagel token', 'type': 'amount', 'value': 1.5}, {'name': 'Pastry token', 'type': 'amount', 'value': 3.0}],
+  'discounts': [{'name': 'Staff meal', 'type': 'percent', 'value': 100}, {'name': 'Comp', 'type': 'percent', 'value': 100}, {'name': 'Donation', 'type': 'percent', 'value': 100}, {'name': 'Bagel token', 'type': 'amount', 'value': 1.5}, {'name': 'Pastry token', 'type': 'amount', 'value': 3.0}],
   'noNameCategories': ['Bulk Bagels', 'Pastries + Breads', 'Retail'],
   'kioskHideCategories': ['Sandwiches', 'Alcohol'],
   'favorites': ['build-your-own-sandwich', 'the-colgate', 'latte', 'the-chipotle-potato', 'maple-new-day', 'drip-coffee', 'cold-brew', 'chai'],

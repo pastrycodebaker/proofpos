@@ -70,7 +70,11 @@ async function printNew(){
     }
   }
 }
-onSnapshot(query(collection(db, 'orders'), where('createdAtMs', '>=', since)), s => { ORDERS = s.docs.map(d => ({id: d.id, ...d.data()})); printNew(); });
+// Two feeds: orders rung up since start, and pre-orders (placed days ago) that fire from now on.
+const feeds = {made: [], fires: []};
+const merge = () => { const m = new Map(); for (const o of [...feeds.made, ...feeds.fires]) m.set(o.id, o); ORDERS = [...m.values()]; printNew(); };
+onSnapshot(query(collection(db, 'orders'), where('createdAtMs', '>=', since)), s => { feeds.made = s.docs.map(d => ({id: d.id, ...d.data()})); merge(); });
+onSnapshot(query(collection(db, 'orders'), where('fireAtMs', '>=', since)), s => { feeds.fires = s.docs.map(d => ({id: d.id, ...d.data()})); merge(); });
 setInterval(printNew, 30000); // scheduled orders
 
 // ---------- Print requests: receipts, reprints and test prints ----------

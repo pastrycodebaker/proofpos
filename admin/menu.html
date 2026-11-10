@@ -306,6 +306,14 @@ function renderItemEditor(){
     <div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !it.days || it.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-fday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}
       <label class="${it.active !== false ? 'on' : ''}" style="margin-left:12px"><input type="checkbox" id="f_active" ${it.active !== false ? 'checked' : ''}>In season (on the menu)</label></div>
     </details>
+    <details class="more" ${it.preorderOnly || (it.dates || []).length ? 'open' : ''}><summary><b>Online ordering</b> <span class="muted">${[it.preorderOnly ? 'pre-order only' : '', (it.dates || []).length ? (it.dates.length + ' date' + (it.dates.length > 1 ? 's' : '') + ' only') : '', it.deadline ? 'own deadline' : '', it.dateLimit ? it.dateLimit + ' per day' : ''].filter(Boolean).join(' · ') || 'normal'}</span></summary>
+    <div class="toggles" style="margin-top:10px"><label class="${it.preorderOnly ? 'on' : ''}"><input type="checkbox" id="f_preonly" ${it.preorderOnly ? 'checked' : ''}>Pre-order only (not for same-day ASAP orders)</label></div>
+    <label>Only on these pickup dates (one-off specials). Leave blank for every day it's offered.</label>
+    <input id="f_dates" placeholder="2026-11-25, 2026-11-26" value="${esc((it.dates || []).join(', '))}">
+    <div class="row"><div><label>Order deadline: days before pickup (blank = shop default)</label><input id="f_dlDays" type="number" min="0" step="1" value="${it.deadline ? esc(it.deadline.daysBefore) : ''}"></div>
+      <div><label>by this time</label><input id="f_dlTime" type="time" value="${it.deadline ? esc(it.deadline.time) : ''}"></div>
+      <div><label>Most we can make per pickup day (blank = no limit)</label><input id="f_dateLimit" type="number" min="1" step="1" value="${it.dateLimit || ''}"></div></div>
+    </details>
     <details class="more" ${false ? 'open' : ''}><summary><b>Kitchen, tax and description</b> <span class="muted">${[STATIONS[it.station] || '', it.taxable ? 'taxed' : 'not taxed', it.reroute && it.reroute !== 'none' ? 'weekend reroute' : ''].filter(Boolean).join(' · ')}</span></summary>
     <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
     <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
@@ -408,6 +416,10 @@ function readItemForm(it){
   out.countPricing = cpSel && cpSel.group && out.modifierGroupIds.includes(cpSel.group) ? readTiers() : null;
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
+  out.preorderOnly = $('#f_preonly').checked;
+  out.dates = $('#f_dates').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  { const dd = $('#f_dlDays').value, dt = $('#f_dlTime').value; out.deadline = dd === '' && !dt ? null : {daysBefore: Math.max(0, Math.floor(Number(dd || 0))), time: dt || '17:00'}; }
+  { const dl = $('#f_dateLimit').value; out.dateLimit = dl === '' ? null : Math.max(1, Math.floor(Number(dl))); }
   if (it.review && $('#f_reviewed')?.checked) out.review = null;
   return out;
 }
@@ -480,7 +492,7 @@ let staffNow = {members:[], sleepMinutes:5};
 async function renderSettings(){
   staffNow = await store.getStaff().catch(() => staffNow);
   ownersNow = await store.getOwners().catch(() => ownersNow);
-  const s = S.settings;
+  const s = S.settings; const os = s.online || {};
   $('#editPane').innerHTML = `<h2>Settings</h2>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
     <label>Favorites row on the register (up to 8, in order)</label>
@@ -511,6 +523,20 @@ async function renderSettings(){
     <h3>Weekend reroute</h3>
     <p class="muted">Drinks that move to the runner screen when "Weekend reroute" is checked on the KDS: ${S.items.filter(i => i.reroute && i.reroute !== 'none').map(i => esc((i.reroute === 'iced' ? 'iced ' : '') + i.name)).join(', ') || 'none yet'}. Change one on its item page.</p>
     <button id="rrDefaults">Set cold brew, Honeybee, kombucha, lemonade, iced tea and iced chai</button> <span class="status" id="rrStatus"></span>
+    <h3>Online ordering</h3>
+    <p class="muted">Customers order at <b>${esc(location.origin)}/order/</b>. Same-day orders are ASAP during these hours; any open day up to the days-ahead limit can be pre-ordered until its deadline. Leave a day's hours blank if you're closed.</p>
+    <div class="row" style="flex-wrap:wrap">${DAYS.map(([l, n]) => { const h = (os.hours || {})[n] || {}; return `<div style="min-width:150px"><label>${l}</label><div class="row"><input type="time" data-oh="${n}" data-k="open" value="${esc(h.open || '')}"><input type="time" data-oh="${n}" data-k="close" value="${esc(h.close || '')}"></div></div>`; }).join('')}</div>
+    <div class="row"><div><label>Minutes to make an ASAP order</label><input id="o_prep" type="number" min="0" value="${esc(os.prepMinutes ?? 15)}"></div>
+      <div><label>Stop ASAP this many minutes before close</label><input id="o_last" type="number" min="0" value="${esc(os.lastOrderMinutes ?? 15)}"></div>
+      <div><label>Most ASAP orders per 15 minutes (0 = no limit)</label><input id="o_cap" type="number" min="0" value="${esc(os.asapPer15 || 0)}"></div></div>
+    <div class="row"><div><label>How many days ahead people can pre-order</label><input id="o_ahead" type="number" min="0" value="${esc(os.daysAhead ?? 21)}"></div>
+      <div><label>Default pre-order deadline: days before</label><input id="o_dlDays" type="number" min="0" value="${esc((os.deadline || {}).daysBefore ?? 1)}"></div>
+      <div><label>by this time</label><input id="o_dlTime" type="time" value="${esc((os.deadline || {}).time || '17:00')}"></div>
+      <div><label>Pre-orders show on the KDS at</label><input id="o_fire" type="time" value="${esc(os.fireTime || '06:00')}"></div></div>
+    <label>Closed dates, no pickups (holidays)</label><input id="o_closed" placeholder="2026-11-26, 2026-12-25" value="${esc((os.closedDates || []).join(', '))}">
+    <label>Pickup note shown on pre-orders</label><input id="o_note" placeholder="Pick up any time after 8am at the Maple Ave counter." value="${esc(os.pickupNote || '')}">
+    <div class="toggles" style="margin-top:8px"><label class="${os.asap !== false ? 'on' : ''}"><input type="checkbox" id="o_asap" ${os.asap !== false ? 'checked' : ''}>Take same-day ASAP orders</label></div>
+    <div class="bar"><button class="primary" id="saveOnline">Save online ordering</button><span class="status" id="onlStatus"></span></div>
     <h3>Bake days</h3>
     <p class="muted">Sets House Sourdough to Wed–Sat, Red Wheat Sourdough and Donuts to Fri–Sat, and Brioche rolls to Wed and Fri. Change any item later in Layout.</p>
     <button id="dayDefaults">Set bake days</button> <span class="status" id="dayStatus"></span>
@@ -618,6 +644,15 @@ document.addEventListener('click', async e => {
         noNameCategories: [...document.querySelectorAll('[data-noname]')].filter(c => c.checked).map(c => c.dataset.noname),
         taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'saveOnline'){
+      const hours = {}; document.querySelectorAll('[data-oh]').forEach(i => { if (!i.value) return; (hours[i.dataset.oh] ||= {})[i.dataset.k] = i.value; });
+      for (const [d, h] of Object.entries(hours)) if (!h.open || !h.close || h.open >= h.close){ status('#onlStatus', 'Each open day needs an opening time before its closing time.', 'err'); return; }
+      const n = (id, d) => { const v = $(id).value; return v === '' ? d : Math.max(0, Math.floor(Number(v))); };
+      const online = {asap: $('#o_asap').checked, hours, prepMinutes: n('#o_prep', 15), lastOrderMinutes: n('#o_last', 15), asapPer15: n('#o_cap', 0), daysAhead: n('#o_ahead', 21),
+        deadline: {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireTime: $('#o_fire').value || '06:00',
+        closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim()};
+      await store.saveSettings({...S.settings, online}); await reload(); setTimeout(() => status('#onlStatus', 'Saved', 'ok'), 300);
     }
     if (t.id === 'cupDefaults'){
       const seed = await seedData(); const cup = seed.modifierGroups.find(g => g.id === 'cup');

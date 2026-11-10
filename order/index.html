@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F7F3EC">
+<link rel="icon" href="/icons/icon-192.png">
+<title>Order ahead · Flour &amp; Salt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F7F3EC;--card:#fff;--ink:#2B2622;--quiet:#6B6157;--soft:#EFE7DA;--line:#E3D9CA;--accent:#1F5C55;--accent-bg:#E6F0EE;--warn:#F2C14E;--crit:#A32D1F}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Inter,system-ui,sans-serif}
+  button{font:inherit;color:inherit;border:0;background:var(--card);border-radius:14px;padding:12px 16px;cursor:pointer}
+  button.primary{background:var(--accent);color:#fff;font-weight:700}
+  button.primary:disabled{background:#9DB5B1;cursor:default}
+  input{font:inherit;color:inherit;border:2px solid var(--line);border-radius:12px;padding:12px 14px;width:100%;background:#fff}
+  input:focus{outline:none;border-color:var(--accent)}
+  h1,h2,h3{font-family:"Bricolage Grotesque",Inter,sans-serif;font-weight:800;margin:0;letter-spacing:-.01em}
+  .muted{color:var(--quiet)} .err{color:var(--crit);font-weight:600} .hidden{display:none !important}
+  .wrap{max-width:980px;margin:0 auto;padding:16px 16px 120px}
+  header.top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
+  header.top .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px}
+  .pickup{background:#fff;border-radius:18px;padding:14px;margin-bottom:14px}
+  .pickup h3{font-size:18px;margin-bottom:8px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .chips button{flex:none;border:2px solid var(--line);background:#fff;min-width:96px;text-align:left;padding:10px 12px;line-height:1.2}
+  .chips button small{display:block;color:var(--quiet);font-size:13px}
+  .chips button.on{border-color:var(--accent);background:var(--accent-bg);font-weight:700}
+  .chips button:disabled{opacity:.5}
+  .note{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:14px;margin-top:10px}
+  .note.warn{background:#FFF3D6}
+  .cats{display:flex;gap:8px;overflow-x:auto;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:3}
+  .cats button{flex:none;background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:600;font-size:15px}
+  .cats button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  h2.cat{font-size:24px;margin:18px 0 10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .tile{text-align:left;display:flex;flex-direction:column;gap:4px;min-height:96px;justify-content:space-between;padding:14px 16px}
+  .tile .t{font-weight:700;font-size:17px} .tile .d{font-size:14px;color:var(--quiet)} .tile .p{font-weight:600}
+  .tile .why{font-size:13px;font-weight:700;color:var(--crit)} .tile .dl{font-size:13px;font-weight:600;color:#8A5A00}
+  .tile:disabled{opacity:.55;cursor:default}
+  .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%);z-index:5}
+  .bar button{width:100%;max-width:520px;margin:0 auto;display:flex;justify-content:space-between;font-size:18px;padding:16px 20px;border-radius:16px}
+  .scrim{position:fixed;inset:0;background:rgba(43,38,34,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+  @media(min-width:700px){.scrim{align-items:center;padding:24px}}
+  .sheet{background:var(--bg);width:100%;max-width:640px;max-height:92vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden}
+  @media(min-width:700px){.sheet{border-radius:22px}}
+  .sheet .hd{padding:18px 20px 6px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .sheet .hd h2{font-size:26px}
+  .sheet .bd{padding:4px 20px 14px;overflow:auto;display:flex;flex-direction:column;gap:16px}
+  .sheet .ft{padding:14px 20px calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);background:#fff}
+  .sheet .ft .sp{flex:1}
+  .x{background:transparent;font-size:22px;padding:4px 10px}
+  .grp h4{margin:0 0 8px;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--soft)} .tag.need{background:#F6D3CD;color:var(--crit)}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opts button{border:2px solid transparent;display:flex;gap:6px;align-items:center;padding:10px 12px}
+  .opts button.on{border-color:var(--accent);background:var(--accent-bg);font-weight:700}
+  .opts button small{color:var(--quiet);font-size:13px}
+  .opts button:disabled{opacity:.45;text-decoration:line-through}
+  .step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:12px;padding:4px 4px 4px 12px;border:2px solid transparent}
+  .step.on{border-color:var(--accent);background:var(--accent-bg)} .step span{min-width:110px;font-weight:600}
+  .step button{background:var(--soft);padding:8px 14px;font-weight:700} .step b{min-width:22px;text-align:center}
+  .ln{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .ln .m{grid-column:1/-1;font-size:14px;color:var(--quiet)} .ln .bad{grid-column:1/-1;font-size:14px;color:var(--crit);font-weight:700}
+  .ln button{grid-column:1/-1;justify-self:start;background:transparent;color:var(--crit);padding:2px 0;font-size:14px;font-weight:600}
+  .tot div{display:flex;justify-content:space-between;padding:2px 0}
+  .tips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .tips button{border:2px solid transparent;display:flex;flex-direction:column;align-items:center;padding:10px 6px;font-weight:700}
+  .tips button.on{border-color:var(--accent);background:var(--accent-bg)} .tips small{font-weight:500;color:var(--quiet)}
+  label{display:block;font-weight:600;margin:0 0 6px;font-size:15px}
+  .fields{display:grid;gap:12px}
+  #payEl{min-height:60px}
+  .done{text-align:center;padding:40px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+  .done h1{font-size:40px}
+  .done .num{font-size:22px;font-weight:700;background:#fff;padding:10px 22px;border-radius:999px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><p class="muted">Loading the menu…</p></div>
+<div class="bar hidden" id="bar"><button class="primary" id="cartBtn"><span id="cartCount"></span><span id="cartTotal"></span></button></div>
+<div id="sheetRoot"></div>
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+import * as R from '../shared/online.mjs';
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const money = n => '$' + (Number(n) || 0).toFixed(2);
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+
+let M = {items: [], groups: [], settings: {}, status: {}, kds: {}};
+let pickup = load('fs.pickup', {type: 'asap'}), cart = load('fs.cart', []), cat = null, draft = null, tipPct = null, me = load('fs.me', {name: '', email: '', phone: ''});
+const S = () => M.settings || {};
+const itemById = id => M.items.find(i => i.id === id);
+const groupById = id => M.groups.find(g => g.id === id);
+const onlineItems = () => M.items.filter(i => !i.archived && i.active !== false && !i.alcohol && i.visible?.online !== false);
+const order = (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name);
+const avail = it => R.availability(it, pickup, S(), Date.now());
+// What the usual build costs (built-from sandwiches price from their included ingredients).
+const fromPrice = it => { const ps = (it.versions || []).map((v, i) => { try { return R.buildLine(M, {itemId: it.id, versionIdx: i, mods: [...(it.included || []).map(x => ({g: x.g, o: x.o, q: 1})), ...(it.modifierGroupIds || []).map(groupById).filter(g => g && g.default).map(g => ({g: g.id, o: g.default, q: 1}))]}).price; } catch (e){ return Number(v.price || 0); } }); return ps.length ? Math.min(...ps) : 0; };
+const ownDeadline = it => !!(it.deadline || it.preorderOnly || (it.dates || []).length);
+const deadlineText = ms => new Date(ms).toLocaleString('en-US', {timeZone: R.TZ, weekday: 'short', hour: 'numeric', minute: '2-digit'});
+
+// ---------- Data ----------
+async function start(){
+  if (DEMO){
+    const s = await (await fetch('../data/seed-menu.json')).json();
+    const demoHours = {3:{open:'07:00',close:'14:00'},4:{open:'07:00',close:'14:00'},5:{open:'07:00',close:'14:00'},6:{open:'08:00',close:'14:00'},0:{open:'08:00',close:'14:00'}};
+    const items = s.items.concat([{id:'pumpkin-pie', name:'Pumpkin Pie', category:'Pre-orders', description:'Whole 9" pie. Pick up the day before Thanksgiving.', versions:[{temp:'', size:'', price:34}], modifierGroupIds:[], preorderOnly:true, dates:[R.addDays(R.nyDate(), 15), R.addDays(R.nyDate(), 16)], deadline:{daysBefore:3, time:'17:00'}, dateLimit:40, visible:{register:true, kiosk:false, online:true}, station:'none'}]);
+    M = {items, groups: s.modifierGroups, settings: {...s.settings, online: {hours: demoHours, prepMinutes: 15}, categories: [...s.settings.categories, 'Pre-orders']}, status: {}, kds: {}};
+    render(); return;
+  }
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const db = F.getFirestore(initializeApp(firebaseConfig));
+  const got = {i: false, g: false, s: false};
+  const fire = () => { if (got.i && got.g && got.s) render(); };
+  F.onSnapshot(F.collection(db, 'menu', 'main', 'items'), s => { M.items = s.docs.map(d => d.data()); got.i = true; fire(); });
+  F.onSnapshot(F.collection(db, 'menu', 'main', 'modifierGroups'), s => { M.groups = s.docs.map(d => d.data()); got.g = true; fire(); });
+  F.onSnapshot(F.doc(db, 'menu', 'main'), s => { M.settings = s.exists() ? s.data() : {}; got.s = true; fire(); });
+  F.onSnapshot(F.doc(db, 'menu', 'status'), s => { M.status = s.exists() ? s.data() : {}; fire(); });
+}
+async function api(action, body = {}){
+  if (DEMO) return demoApi(action, body);
+  const r = await fetch('/.netlify/functions/online', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...body, action})});
+  const d = await r.json().catch(() => ({error: 'Something went wrong. Please try again.'}));
+  if (!r.ok) throw new Error(d.error || 'Something went wrong.'); return d;
+}
+function demoApi(action, b){
+  if (action === 'start'){ const lines = b.cart.map(d => R.buildLine(M, d)); return {demo: true, paymentIntent: 'pi_demo', totals: R.cartTotals(lines, S(), b.tipPct)}; }
+  if (action === 'finish') return {paid: true, num: 142, readyAt: pickup.type === 'asap' ? Date.now() + 15 * 60000 : null, pickup};
+}
+
+// ---------- Main page ----------
+function pickupHtml(){
+  const a = R.asapState(S(), M.status); const dates = R.pickupDates(S()); const today = R.nyDate();
+  if (pickup.type === 'asap' && !a.ok) pickup = dates.find(d => d !== today) ? {type: 'date', date: dates.find(d => d !== today)} : pickup;
+  if (pickup.type === 'date' && !dates.includes(pickup.date)) pickup = a.ok ? {type: 'asap'} : (dates[0] ? {type: 'date', date: dates[0]} : {type: 'asap'});
+  save('fs.pickup', pickup);
+  const os = R.onlineSettings(S());
+  return `<div class="pickup"><h3>When would you like it?</h3><div class="chips">
+    <button class="${pickup.type === 'asap' ? 'on' : ''}" data-pick="asap" ${a.ok ? '' : 'disabled'}>Today, ASAP<small>${a.ok ? 'Ready in about ' + os.prepMinutes + ' min' : 'Not available now'}</small></button>
+    ${dates.filter(d => d !== today).map(d => `<button class="${pickup.type === 'date' && pickup.date === d ? 'on' : ''}" data-pick="${d}">${esc(R.dayLabel(d).split(',')[0])}<small>${esc(R.dayLabel(d).split(', ')[1] || '')}</small></button>`).join('')}
+  </div>${!a.ok ? `<div class="note">${esc(a.reason)}</div>` : ''}${pickup.type === 'date' ? `<div class="note">Pre-order for pickup <b>${esc(R.dayLabel(pickup.date))}</b>. Order by <b>${esc(deadlineText(R.nyMs(R.addDays(pickup.date, -Number(os.deadline.daysBefore || 0)), os.deadline.time || '23:59')))}</b>. ${esc(os.pickupNote || 'Pick up any time we are open that day.')}</div>` : ''}</div>`;
+}
+function render(){
+  if (!M.items.length){ $('#app').innerHTML = '<p class="muted">Loading the menu…</p>'; return; }
+  const pick = pickupHtml();
+  const items = onlineItems(); const catsOrder = S().categories || [];
+  const cats = [...new Set(items.map(i => i.category || 'Other'))].sort((a, b) => ((catsOrder.indexOf(a) + 1) || 99) - ((catsOrder.indexOf(b) + 1) || 99));
+  // Pre-order specials float to the top when they're orderable for the chosen day
+  const special = items.filter(i => (i.preorderOnly || (i.dates || []).length) && avail(i).ok);
+  if (!cat || !cats.includes(cat)) cat = cats[0];
+  const tile = i => { const a = avail(i); return `<button class="tile" data-item="${esc(i.id)}" ${a.ok ? '' : 'disabled'}><span class="t">${esc(i.name)}</span>${i.description ? `<span class="d">${esc(i.description)}</span>` : ''}
+    ${a.ok ? `<span class="p">${(i.versions || []).length > 1 ? 'From ' : ''}${money(fromPrice(i))}</span>${a.deadline && (ownDeadline(i) || a.left !== null) ? `<span class="dl">Order by ${esc(deadlineText(a.deadline))}${a.left !== null && a.left <= 10 ? ` · ${a.left} left` : ''}</span>` : ''}` : `<span class="why">${esc(a.reason)}</span>`}</button>`; };
+  $('#app').innerHTML = `<header class="top"><span class="brand">Flour &amp; Salt</span><span class="muted">Order ahead</span></header>${pick}
+    ${special.length ? `<h2 class="cat">Specials for ${pickup.type === 'asap' ? 'today' : esc(R.dayLabel(pickup.date))}</h2><div class="grid">${special.sort(order).map(tile).join('')}</div>` : ''}
+    <div class="cats">${cats.map(c => `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <h2 class="cat">${esc(cat)}</h2><div class="grid">${items.filter(i => (i.category || 'Other') === cat).sort((a, b) => (avail(b).ok - avail(a).ok) || order(a, b)).map(tile).join('')}</div>
+    <p class="muted" style="margin-top:24px;font-size:14px">Prices include sales tax. Questions? Call or stop by the counter.</p>`;
+  renderBar();
+}
+function renderBar(){
+  const n = cart.length; $('#bar').classList.toggle('hidden', !n);
+  $('#cartCount').textContent = `View order · ${n} item${n === 1 ? '' : 's'}`;
+  $('#cartTotal').textContent = money(cart.reduce((s, x) => s + (x.price || 0), 0));
+}
+
+// ---------- Item sheet ----------
+function openItem(id){
+  const it = itemById(id); if (!it || !avail(it).ok) return;
+  draft = {itemId: id, versionIdx: (it.versions || []).length > 1 ? null : 0, mods: []};
+  for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (g.default && g.options.some(o => o.name === g.default && !o.hideOnline)) draft.mods.push({g: g.id, o: g.default, q: 1});
+  for (const x of it.included || []) if (!draft.mods.some(m => m.g === x.g && m.o === x.o)) draft.mods.push({g: x.g, o: x.o, q: 1});
+  if ((it.versions || []).length <= 1 && !(it.modifierGroupIds || []).length){ addDraft(); return; }
+  renderItem();
+}
+const gCount = gid => draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0);
+function tryLine(){ try { return R.buildLine(M, structuredClone(draft), M.kds); } catch (e){ return null; } }
+function renderItem(){
+  const it = itemById(draft.itemId); const vers = it.versions || []; const v = vers[draft.versionIdx ?? 0] || {};
+  // Drop picks from groups that are now hidden (e.g. bagel flavor after switching away from Bagel)
+  const ids = it.modifierGroupIds || []; draft.mods = draft.mods.filter(m => !ids.includes(m.g) || R.groupShown(it, m.g, draft.mods));
+  const parts = [];
+  if (vers.length > 1) parts.push(`<div class="grp"><h4>Size <span class="tag ${draft.versionIdx === null ? 'need' : ''}">Required</span></h4><div class="opts">${vers.map((x, i) => `<button class="${draft.versionIdx === i ? 'on' : ''}" data-ver="${i}">${esc(R.versionLabel(x) || 'Regular')} <small>${money(x.price)}</small></button>`).join('')}</div></div>`);
+  for (const g of ids.map(groupById).filter(Boolean)){
+    if (!R.groupShown(it, g.id, draft.mods)) continue;
+    const min = R.minFor(it, g), n = gCount(g.id); const counted = it.countPricing && it.countPricing.group === g.id;
+    const opts = g.options.filter(o => !o.hideOnline);
+    const head = `<h4>${esc(g.name)} ${min ? `<span class="tag ${n < min ? 'need' : ''}">Required</span>` : '<span class="tag">Optional</span>'}${counted ? ` <span class="tag">${n} picked</span>` : ''}</h4>`;
+    const body = counted ? opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? m.q : 0; return `<div class="step ${q ? 'on' : ''}"><span>${esc(o.name)}</span><button data-minus="${esc(g.id)}|${esc(o.name)}" aria-label="One less ${esc(o.name)}" ${q ? '' : 'disabled'}>−</button><b>${q}</b><button data-plus="${esc(g.id)}|${esc(o.name)}" aria-label="One more ${esc(o.name)}">+</button></div>`; }).join('')
+      : opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = R.optPrice(o, v.size, v.temp); const inc = (it.included || []).some(x => x.g === g.id && x.o === o.name); return `<button class="${m ? 'on' : ''}" data-opt="${esc(g.id)}|${esc(o.name)}">${esc(inc && !m ? 'No ' + o.name : o.name)}${inc ? (m ? ' <small>Included</small>' : '') : p ? ` <small>${p > 0 ? '+' : '−'}${money(Math.abs(p))}</small>` : ''}</button>`; }).join('');
+    parts.push(`<div class="grp">${head}<div class="opts">${body}</div></div>`);
+  }
+  const l = tryLine();
+  $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="${esc(it.name)}"><div class="hd"><div><h2>${esc(it.name)}</h2>${it.description ? `<div class="muted">${esc(it.description)}</div>` : ''}</div><button class="x" data-close="1" aria-label="Close">✕</button></div>
+    <div class="bd">${parts.join('')}</div><div class="ft"><span class="muted">${l && l.countNote ? esc(l.countNote) : ''}</span><span class="sp"></span><button class="primary" id="addBtn" ${l ? '' : 'disabled'}>${l ? 'Add · ' + money(l.price) : 'Make your choices'}</button></div></div></div>`;
+}
+function addDraft(){ const l = R.buildLine(M, structuredClone(draft), M.kds); cart.push({...structuredClone(draft), price: l.price, name: l.name, version: l.version, label: lineLabel(l)}); save('fs.cart', cart); draft = null; $('#sheetRoot').innerHTML = ''; renderBar(); }
+const lineLabel = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...l.mods.filter(m => !m.inc && !m.def).map(m => (m.q > 1 ? m.q + '× ' : '') + m.o)].join(' · ');
+
+// ---------- Cart and checkout ----------
+function cartIssues(){ return cart.map(x => { const it = itemById(x.itemId); const a = it ? avail(it) : {ok: false, reason: 'No longer on the menu'}; if (!a.ok) return a.reason; try { R.buildLine(M, structuredClone(x), M.kds); return null; } catch (e){ return e.message; } }); }
+function renderCart(err = ''){
+  const issues = cartIssues(); const lines = cart.map((x, i) => issues[i] ? null : R.buildLine(M, structuredClone(x), M.kds));
+  const t = R.cartTotals(lines.filter(Boolean), S(), tipPct || 0);
+  const os = R.onlineSettings(S());
+  const tips = [['0', 'No tip'], ...os.tips.map(p => [String(p), Math.round(p * 100) + '%'])];
+  const when = pickup.type === 'asap' ? 'Today, ready in about ' + os.prepMinutes + ' min' : 'Pre-order for ' + R.dayLabel(pickup.date);
+  $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="Your order"><div class="hd"><div><h2>Your order</h2><div class="muted">${esc(when)}</div></div><button class="x" data-close="1" aria-label="Close">✕</button></div><div class="bd">
+    <div>${cart.map((x, i) => `<div class="ln"><b>${esc([x.version, x.name].filter(Boolean).join(' '))}</b><span>${money(lines[i] ? lines[i].price : x.price)}</span>${x.label ? `<span class="m">${esc(x.label)}</span>` : ''}${issues[i] ? `<span class="bad">${esc(issues[i])}. Please remove it.</span>` : ''}<button data-rm="${i}">Remove</button></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}</div>
+    <div class="fields"><div><label for="fName">Name for the order</label><input id="fName" autocomplete="given-name" value="${esc(me.name)}"></div>
+      <div><label for="fEmail">Email for your receipt</label><input id="fEmail" type="email" autocomplete="email" value="${esc(me.email)}"></div>
+      <div><label for="fPhone">Phone, to earn rewards (optional)</label><input id="fPhone" type="tel" autocomplete="tel" value="${esc(me.phone)}"></div></div>
+    <div><label>Add a tip for the team?</label><div class="tips">${tips.map(([p, l]) => `<button class="${tipPct !== null && String(tipPct) === p ? 'on' : ''}" data-tip="${p}">${l}${p !== '0' ? `<small>${money(t.sub * Number(p))}</small>` : ''}</button>`).join('')}</div></div>
+    <div class="tot"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:18px"><span>Total</span><span>${money(t.charge)}</span></div><div class="muted" style="font-size:13px"><span>Prices include sales tax</span><span>${money(t.tax)}</span></div></div>
+    <div id="payBox"></div><div class="err" id="cErr">${esc(err)}</div></div>
+    <div class="ft"><span class="sp"></span><button class="primary" id="checkout" ${cart.length && !issues.some(Boolean) ? '' : 'disabled'} style="font-size:18px;padding:14px 22px">Continue to payment</button></div></div></div>`;
+  ['fName', 'fEmail', 'fPhone'].forEach(id => $('#' + id).addEventListener('input', () => { me = {name: $('#fName').value, email: $('#fEmail').value, phone: $('#fPhone').value}; save('fs.me', me); }));
+}
+let stripeJs = null, elements = null, current = null;
+async function checkout(){
+  me = {name: $('#fName').value.trim(), email: $('#fEmail').value.trim(), phone: $('#fPhone').value.trim()}; save('fs.me', me);
+  if (!me.name) return renderCart('Please add a name for the order.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(me.email)) return renderCart('Please add an email for your receipt.');
+  if (tipPct === null) return renderCart('Please pick a tip option (No tip is fine).');
+  const btn = $('#checkout'); btn.disabled = true; btn.textContent = 'One moment…';
+  try {
+    current = await api('start', {cart: cart.map(({itemId, versionIdx, mods}) => ({itemId, versionIdx, mods})), pickup, tipPct, customer: me});
+    if (current.demo){ $('#payBox').innerHTML = `<div class="note warn">Demo: no card is charged.</div>`; btn.textContent = 'Pay ' + money(current.totals.charge); btn.disabled = false; btn.id = 'payNow'; return; }
+    if (!current.publishableKey) throw new Error('Online payments are not set up yet.');
+    if (!window.Stripe) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://js.stripe.com/v3/'; s.onload = res; s.onerror = () => rej(new Error('Could not load the payment form.')); document.head.appendChild(s); });
+    stripeJs = stripeJs || window.Stripe(current.publishableKey);
+    elements = stripeJs.elements({clientSecret: current.clientSecret, appearance: {theme: 'stripe', variables: {colorPrimary: '#1F5C55', borderRadius: '12px'}}});
+    $('#payBox').innerHTML = '<div id="payEl"></div>'; elements.create('payment').mount('#payEl');
+    btn.textContent = 'Pay ' + money(current.totals.charge); btn.disabled = false; btn.id = 'payNow';
+  } catch (e){ renderCart(e.message); }
+}
+async function payNow(){
+  const btn = $('#payNow'); btn.disabled = true; btn.textContent = 'Paying…'; $('#cErr').textContent = '';
+  try {
+    if (!current.demo){
+      const r = await stripeJs.confirmPayment({elements, redirect: 'if_required', confirmParams: {return_url: location.href.split('?')[0] + '?paid=' + current.paymentIntent}});
+      if (r.error){ $('#cErr').textContent = r.error.message; btn.disabled = false; btn.textContent = 'Pay ' + money(current.totals.charge); return; }
+    }
+    await finishOrder(current.paymentIntent);
+  } catch (e){ $('#cErr').textContent = e.message; btn.disabled = false; btn.textContent = 'Try again'; }
+}
+async function finishOrder(pi){
+  let r; for (let i = 0; i < 6; i++){ r = await api('finish', {paymentIntent: pi}); if (r.paid) break; await new Promise(x => setTimeout(x, 1500)); }
+  if (!r || !r.paid) throw new Error("Your payment is still processing. We'll start your order as soon as it goes through.");
+  cart = []; save('fs.cart', cart); $('#sheetRoot').innerHTML = ''; $('#bar').classList.add('hidden');
+  const when = r.pickup && r.pickup.type === 'date' ? `Pick up ${R.dayLabel(r.pickup.date)}` : r.readyAt ? `Ready about ${new Date(r.readyAt).toLocaleTimeString('en-US', {timeZone: R.TZ, hour: 'numeric', minute: '2-digit'})}` : 'We’re on it';
+  $('#app').innerHTML = `<div class="done"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1F5C55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
+    <h1>Thank you${me.name ? ', ' + esc(me.name.split(' ')[0]) : ''}!</h1><div class="num">Order #${esc(r.num)}</div><p style="font-size:20px;margin:0">${esc(when)}</p><p class="muted" style="margin:0">Your receipt is on its way to ${esc(me.email)}. Give your name at the counter.</p>
+    <button class="primary" id="again" style="margin-top:10px">Start another order</button></div>`;
+}
+
+// ---------- Events ----------
+document.addEventListener('click', e => {
+  const t = e.target.closest('button') || e.target;
+  if (t.dataset.close && (e.target === t || e.target.closest('button'))){ draft = null; $('#sheetRoot').innerHTML = ''; return; }
+  if (t.dataset.pick){ pickup = t.dataset.pick === 'asap' ? {type: 'asap'} : {type: 'date', date: t.dataset.pick}; save('fs.pickup', pickup); render(); return; }
+  if (t.dataset.cat){ cat = t.dataset.cat; render(); return; }
+  if (t.dataset.item){ openItem(t.dataset.item); return; }
+  if (t.id === 'addBtn'){ addDraft(); return; }
+  if (t.dataset.ver !== undefined){ draft.versionIdx = Number(t.dataset.ver); renderItem(); return; }
+  if (t.dataset.opt){ const [gid, name] = t.dataset.opt.split('|'); const g = groupById(gid); const cur = draft.mods.find(m => m.g === gid && m.o === name);
+    if (cur) draft.mods = draft.mods.filter(m => m !== cur); else { if (g.max === 1) draft.mods = draft.mods.filter(m => m.g !== gid); if (gCount(gid) < (g.max || 99)) draft.mods.push({g: gid, o: name, q: 1}); }
+    renderItem(); return; }
+  if (t.dataset.plus){ const [gid, name] = t.dataset.plus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur) cur.q++; else draft.mods.push({g: gid, o: name, q: 1}); renderItem(); return; }
+  if (t.dataset.minus){ const [gid, name] = t.dataset.minus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur){ cur.q--; if (cur.q <= 0) draft.mods = draft.mods.filter(m => m !== cur); } renderItem(); return; }
+  if (t.id === 'cartBtn'){ tipPct = null; renderCart(); return; }
+  if (t.dataset.rm !== undefined){ cart.splice(Number(t.dataset.rm), 1); save('fs.cart', cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
+  if (t.dataset.tip !== undefined){ tipPct = Number(t.dataset.tip); const err = $('#cErr') ? $('#cErr').textContent : ''; renderCart(err.includes('tip') ? '' : err); return; }
+  if (t.id === 'checkout'){ checkout(); return; }
+  if (t.id === 'payNow'){ payNow(); return; }
+  if (t.id === 'again'){ render(); return; }
+});
+// Back from a bank redirect (some payment methods leave the page): finish the order.
+const paid = new URLSearchParams(location.search).get('paid');
+start().then(() => { if (paid) finishOrder(paid).catch(e => { $('#app').insertAdjacentHTML('afterbegin', `<div class="note warn">${esc(e.message)}</div>`); }); });
+</script>
+</body>
+</html>

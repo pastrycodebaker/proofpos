@@ -39,5 +39,7 @@ service cloud.firestore {
     match /events/{doc=**} { allow read, write: if signedIn(); }
     // Rewards members by phone number.
     match /customers/{phone} { allow read, write: if signedIn(); }
+    // Online checkouts waiting for payment (written by the online ordering function's sign-in).
+    match /onlineCheckouts/{id} { allow read, write: if signedIn(); }
   }
 }

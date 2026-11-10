@@ -475,6 +475,8 @@ function quickCash(due){ const a = Math.ceil(due); const b = Math.ceil(due / 5) 
 function renderPay(){
   const t = totals(); const qc = quickCash(t.due);
   const rate = Number(settings().surchargeRate ?? 0.03);
+  // Fully comped orders (staff meals, comps, donations) have nothing to pay: one tap closes them.
+  if (t.due <= 0.004 && !check.payments.length){ $('#main').innerHTML = renderTop() + `<div class="done"><div class="big">${money(0)} due</div><div class="muted">${esc(check.discount ? check.discount.name + (check.discount.staffMember ? ' for ' + check.discount.staffMember : '') : 'Nothing to pay')}</div><button class="primary" id="closeZero" style="min-width:260px;min-height:56px;font-size:18px">Close order, nothing to pay</button><button id="payBack" style="min-width:260px">Back to order</button></div>`; return; }
   $('#main').innerHTML = renderTop() + `<div class="pay"><div><h2>Balance due: ${money(t.due)}</h2>
     <div class="tender"><span class="muted">Amount</span><div class="amt" id="amt">${tender ? money(Number(tender) / 100) : money(t.due)}</div></div>
     <div class="keypad">${[1,2,3].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[0] ?? ''}">${qc[0] !== undefined ? '$' + qc[0] : ''}</button>${[4,5,6].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[1] ?? ''}">${qc[1] !== undefined ? '$' + qc[1] : ''}</button>${[7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[2] ?? ''}">${qc[2] !== undefined ? '$' + qc[2] : ''}</button><button data-k="C">C</button><button data-k="0">0</button><button data-k="00">00</button><button data-k="B">⌫</button></div>
@@ -506,10 +508,12 @@ async function sendUnsent(){
   if (!check.orderId){
     const now = Date.now();
     const fire = check.fireAtMs && check.fireAtMs > now ? check.fireAtMs : now;
-    check.orderId = await store.createOrder({...base, source:'register', rush:false, scheduled: fire > now, cleared:false, clearedAt:0, status:'open', createdAtMs: now, fireAtMs: fire, lines: unsent.map(clean), payments:[]});
+    // Staff meals jump the line: rushed and labeled on every KDS.
+    check.orderId = await store.createOrder({...base, source:'register', rush: !!(check.discount && check.discount.staffMember), staffMeal: check.discount && check.discount.staffMember || null, scheduled: fire > now, cleared:false, clearedAt:0, status:'open', createdAtMs: now, fireAtMs: fire, lines: unsent.map(clean), payments:[]});
   } else {
     const o = ORDERS.find(x => x.id === check.orderId); const startPos = o ? o.lines.length : check.lines.length;
-    await store.updateOrder(check.orderId, base, unsent.map(clean), startPos);
+    const sm = check.discount && check.discount.staffMember;
+    await store.updateOrder(check.orderId, {...base, ...(sm ? {rush: true, staffMeal: sm} : {})}, unsent.map(clean), startPos);
   }
   unsent.forEach(l => { l.sent = true; });
   adjustStock(unsent, -1);
@@ -568,21 +572,25 @@ async function takeCard(amt){
 }
 async function takePayment(method){
   const t = totals(); let amt = tender ? Number(tender) / 100 : t.due; tender = '';
-  if (amt <= 0) return;
   let change = 0;
-  if (method === 'cash'){ if (amt > t.due){ change = r2(amt - t.due); } amt = Math.min(amt, t.due); }
-  else amt = Math.min(amt, t.due);
-  const label = (METHODS.find(m => m[0] === method) || [, method])[1];
-  let p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
-  if (method === 'card'){ p = await takeCard(amt); if (!p) return; }
-  if (change) p.tendered = r2(amt + change);
-  check.payments.push(p);
+  if (method === 'zero') check.payments.push({method: 'none', label: 'No payment (' + (check.discount ? check.discount.name : 'comp') + ')', amount: 0, at: Date.now(), staff: user ? user.name : ''});
+  else {
+    if (amt <= 0) return;
+    if (method === 'cash'){ if (amt > t.due){ change = r2(amt - t.due); } amt = Math.min(amt, t.due); }
+    else amt = Math.min(amt, t.due);
+    const label = (METHODS.find(m => m[0] === method) || [, method])[1];
+    let p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
+    if (method === 'card'){ p = await takeCard(amt); if (!p) return; }
+    if (change) p.tendered = r2(amt + change);
+    check.payments.push(p);
+  }
   const after = totals();
   if (after.due <= 0.004){
     try {
       await sendUnsent();
       const earned = check.customer ? Math.floor(after.total) : 0, used = check.reward ? check.reward.points : 0;
-      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now(),
+      const sm = check.discount && check.discount.staffMember;
+      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now(), ...(sm ? {rush: true, staffMeal: sm} : {}),
         ...(check.customer ? {customerPhone: check.customer.phone, customerName: check.customer.name || '', pointsEarned: earned, pointsUsed: used} : {})});
       if (check.customer) store.addPoints(check.customer.phone, earned - used, check.customer.name).catch(console.error);
     } catch (e){ alertSheet('Saved locally, will sync: ' + e.message); }
@@ -659,6 +667,7 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.q){ tender = String(Math.round(Number(t.dataset.q) * 100)); takePayment('cash'); return; }
   if (t.dataset.pay){ takePayment(t.dataset.pay); return; }
   if (t.id === 'payBack'){ view = 'menu'; render(); return; }
+  if (t.id === 'closeZero'){ takePayment('zero'); return; }
   if (t.id === 'emailReceipt'){ const p = check.payments.find(x => x.paymentIntent); const em = $('#rcptEmail').value.trim(); t.disabled = true;
     PAY.emailReceipt(p.paymentIntent, em).then(r => { $('#rcptMsg').textContent = r.testMode ? 'Saved. Test mode: Stripe does not send emails, it shows the receipt in the Dashboard.' : 'Receipt emailed.'; }).catch(err => { t.disabled = false; $('#rcptMsg').textContent = err.message; }); return; }
   if (t.id === 'printReceipt'){ t.disabled = true; t.textContent = 'Sending…'; store.addPrintJob({kind: 'receipt', orderId: check.orderId}).then(() => { t.textContent = 'Receipt sent to the printer'; }).catch(err => { console.error(err); t.disabled = false; t.textContent = 'Could not send. Try again'; }); return; }

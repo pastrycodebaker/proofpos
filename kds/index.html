@@ -45,7 +45,8 @@
   .t-crit .thead{background:#45211c}.t-crit .timer{background:var(--crit);color:#fff}
   .badges{display:flex;gap:6px;padding:0 12px 4px;flex-wrap:wrap}
   .badge{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 6px}
-  .b-rush{background:var(--rush);color:#fff}.b-src{background:#3d3527;color:var(--accent)}.b-edit{background:var(--new);color:#08131f}
+  .b-rush{background:var(--rush);color:#fff}.b-staff{background:#7c4dff;color:#fff}
+  .ticket.staffmeal{border-color:#7c4dff}.b-src{background:#3d3527;color:var(--accent)}.b-edit{background:var(--new);color:#08131f}
   ul.items{list-style:none;margin:0;padding:4px 0 6px}
   li.item{padding:8px 12px;border-top:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
   li.item .box{width:22px;height:22px;border:2px solid var(--quiet);border-radius:6px;flex:none;margin-top:1px;display:grid;place-items:center;font-size:14px}
@@ -369,12 +370,12 @@ function ticketHtml(o, v, past){
     return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${sortedMods(l).length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc([m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''))}</div>`).join('')}</div>` : ''}${where}</div></li>`;
   }).join('');
   const edited = o.lines.some(l => live(l) && l.changed && now - l.changedAt < 90000);
-  const badges = [o.rush ? '<span class="badge b-rush">Rush</span>' : '', o.scheduled ? `<span class="badge b-sched">Scheduled ${new Date(fireAt(o)).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
+  const badges = [o.staffMeal ? `<span class="badge b-staff">Staff meal · ${esc(o.staffMeal)}</span>` : '', o.rush ? '<span class="badge b-rush">Rush</span>' : '', o.scheduled ? `<span class="badge b-sched">Scheduled ${new Date(fireAt(o)).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
   const allDone = o.lines.filter(live).every(l => l.done);
   const foot = past ? `<div class="tfoot"><button data-act="bringback" data-o="${o.id}">Bring back</button></div>` : v.id === 'runner'
     ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
     : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
-  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - fireAt(o))}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
+  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''} ${o.staffMeal ? 'staffmeal' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - fireAt(o))}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
 }
 let lastFull = 0, pressing = false;
 document.addEventListener('pointerdown', () => { pressing = true; });
