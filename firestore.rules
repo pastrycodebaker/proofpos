@@ -37,5 +37,7 @@ service cloud.firestore {
     match /counters/{doc=**} { allow read, write: if signedIn(); }
     match /settings/kds { allow read, write: if signedIn(); }
     match /events/{doc=**} { allow read, write: if signedIn(); }
+    // Rewards members by phone number.
+    match /customers/{phone} { allow read, write: if signedIn(); }
   }
 }

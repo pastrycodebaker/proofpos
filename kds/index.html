@@ -205,6 +205,9 @@
   <h2>Ticket timing colors</h2>
   <div class="muted" style="margin-bottom:10px">Minutes on screen before a ticket turns yellow, then red. Shared by every screen.</div>
   <div class="thresh" id="threshRows"></div>
+  <h2 style="margin-top:16px">Auto-pause kiosk drinks</h2>
+  <div class="muted" style="margin-bottom:6px">Pause kiosk drinks by themselves when this many drinks are waiting at the espresso bar. They turn back on when it catches up. Blank = off.</div>
+  <input type="number" min="1" id="autoPauseAt" placeholder="Off" style="max-width:120px">
   <div style="margin-top:12px"><button class="primary" id="timingSave">Save</button> <button id="timingClose">Close</button></div>
 </div>
 
@@ -480,12 +483,14 @@ $('#btnTiming').addEventListener('click', () => {
   const t = settings.thresholds || DEFAULT_T; const labels = {espresso:'Espresso bar', kitchen:'Kitchen', all:'Runner'};
   $('#threshRows').innerHTML = '<div class="muted">Station</div><div class="muted">Yellow at</div><div class="muted">Red at</div>' +
     Object.keys(DEFAULT_T).map(k => `<div>${labels[k]}</div><input type="number" min="1" data-k="${k}" data-f="y" value="${t[k]?.y ?? DEFAULT_T[k].y}"><input type="number" min="1" data-k="${k}" data-f="r" value="${t[k]?.r ?? DEFAULT_T[k].r}">`).join('');
+  $('#autoPauseAt').value = settings.autoPauseAt || '';
   openModal('timingModal');
 });
 $('#timingSave').addEventListener('click', () => {
   const t = structuredClone(settings.thresholds || DEFAULT_T);
   document.querySelectorAll('#threshRows input').forEach(i => { const n = Number(i.value); if (n > 0){ t[i.dataset.k] = t[i.dataset.k] || {}; t[i.dataset.k][i.dataset.f] = n; } });
-  settings = {...settings, thresholds: t}; act(store.saveSettings(settings)); closeAll(); render();
+  const ap = Number($('#autoPauseAt').value || 0);
+  settings = {...settings, thresholds: t, autoPauseAt: ap > 0 ? ap : null}; act(store.saveSettings(settings)); closeAll(); render();
 });
 $('#timingClose').addEventListener('click', closeAll);
 
@@ -619,11 +624,21 @@ function renderStatus(){
   $('#btnOnline').classList.toggle('onlineoff', off);
   $('#onlineBanner').classList.toggle('hidden', !off);
   const until = Number(status.kioskDrinksPausedUntil || 0), left = until - Date.now();
-  $('#btnKiosk').textContent = left > 0 ? `Kiosk drinks: paused · back on in ${Math.ceil(left / 60000)} min` : 'Kiosk drinks: on';
+  $('#btnKiosk').textContent = left > 0 ? `Kiosk drinks: ${status.kioskAutoPaused ? 'auto-' : ''}paused · ${status.kioskAutoPaused ? 'until the bar catches up' : 'back on in ' + Math.ceil(left / 60000) + ' min'}` : 'Kiosk drinks: on';
   $('#btnKiosk').classList.toggle('onlineoff', left > 0);
 }
 // Pausing kiosk drinks lasts 10 minutes, then turns itself back on. Tap while paused to turn drinks back on now.
-$('#btnKiosk').addEventListener('click', () => { const paused = Number(status.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; status = {...status, kioskDrinksPausedUntil: v}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: v, kioskChangedAt: Date.now()})); });
+$('#btnKiosk').addEventListener('click', () => { const paused = Number(status.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; status = {...status, kioskDrinksPausedUntil: v, kioskAutoPaused: false}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: v, kioskAutoPaused: false, kioskChangedAt: Date.now()})); });
+// Auto-pause: when the espresso bar has too many drinks waiting, pause kiosk drinks; turn back on once it catches up.
+// A pause someone tapped by hand is never turned back on early by this.
+function drinksWaiting(){ const now = Date.now(); let n = 0; for (const o of ORDERS){ if (o.cleared || o.status === 'void' || (o.fireAtMs || 0) > now) continue; for (const l of o.lines || []) if (!l.removed && !l.done && l.station === 'espresso') n++; } return n; }
+function autoPause(){
+  const at = Number(settings.autoPauseAt || 0); if (!at) return;
+  const n = drinksWaiting(), until = Number(status.kioskDrinksPausedUntil || 0), now = Date.now(), paused = until > now;
+  if (n >= at && (!paused || (status.kioskAutoPaused && until - now < 3 * 60000))){ const v = now + 10 * 60000; status = {...status, kioskDrinksPausedUntil: v, kioskAutoPaused: true}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: v, kioskAutoPaused: true, kioskChangedAt: now})); }
+  else if (paused && status.kioskAutoPaused && n < Math.max(1, at - 2) && now - Number(status.kioskChangedAt || 0) > 2 * 60000){ status = {...status, kioskDrinksPausedUntil: 0, kioskAutoPaused: false}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: 0, kioskAutoPaused: false, kioskChangedAt: now})); }
+}
+setInterval(autoPause, 20000);
 setInterval(() => renderStatus(), 15000);
 if (DEMO) $('#btnSwitch').href = '../?pick&demo';
 $('#btnOnline').addEventListener('click', () => { status = {...status, onlinePaused: !status.onlinePaused}; renderStatus(); act(store.setStatus({onlinePaused: status.onlinePaused, changedAt: Date.now()})); });

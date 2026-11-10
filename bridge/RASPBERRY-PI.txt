@@ -1,0 +1,36 @@
+Running the print bridge on a Raspberry Pi
+==========================================
+Once printing works from a laptop, a Raspberry Pi can run the bridge full time. It starts by itself
+when it powers on and restarts if anything stops it. No screen or keyboard needed after setup.
+
+What to buy: a Raspberry Pi 4 or 5 starter kit (case, power supply, 32 GB memory card), plus a network cable.
+
+1. Prepare the memory card (on any computer)
+   - Install "Raspberry Pi Imager" from raspberrypi.com/software and open it.
+   - Device: your Pi model. Operating system: Raspberry Pi OS Lite (64-bit). Storage: the memory card.
+   - When it asks about settings, choose Edit settings:
+       - Hostname: proofbridge
+       - Username: pi, and a password you'll remember
+       - Services tab: turn on SSH (password authentication)
+   - Write the card, put it in the Pi.
+
+2. Plug it in
+   - Network cable from the Pi to the same router or switch the printers use. Then power.
+   - Wait 2 minutes for it to start.
+
+3. Connect to it from a laptop on the same network
+   - Windows: open Command Prompt. Mac: open Terminal.
+   - Type:  ssh pi@proofbridge.local   (say yes, then enter the password)
+
+4. Copy and run the bridge (paste these lines one at a time)
+   curl -L -o bridge.zip https://proofpos.netlify.app/bridge/proof-print-bridge.zip
+   sudo apt-get install -y unzip && unzip -o bridge.zip -d proof-print-bridge
+   cd proof-print-bridge && bash install-pi.sh
+
+   It installs what it needs (a few minutes), asks for the shop account once, and starts.
+
+5. Check it
+   In Proof POS → Printers, the box at the top turns green and says "running on proofbridge".
+   Then turn off the laptop bridge if it's still running, so only one is printing.
+
+Updating later: repeat step 4 (it keeps the saved sign-in), then:  sudo systemctl restart proof-bridge

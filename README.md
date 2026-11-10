@@ -150,3 +150,12 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 - `item.archived` hides an item everywhere (register, kiosk, online, editor list, spreadsheet); the editor's "Archived" filter shows them, with Restore.
 - Register search finds every current item, including ones not on the register buttons.
 - Item page: name, price and groups up top; built-from, price by count, where/days/stock and kitchen/tax/description fold into sections. "Copy groups from another item" copies groups, required switches and "only after" rules.
+
+## Nov 10: rewards, staff meals, audit log, ticket times, email receipts, auto-pause, Pi
+- Rewards: register ⋮ → Rewards (phone number). `customers/{phone}` {points, visits, name}. 1 point per $1 of the order total, 150 points = $3 off (`check.reward`, counted as a discount). Orders store customerPhone, pointsEarned, pointsUsed. Toast loyalty import still to do.
+- Staff meals: any discount whose name has "staff" or "shift" asks whose meal it is (`discount.staffMember`); End of day lists staff meals by person.
+- Audit log: register writes `events` for discounts, staff meals, tax exempt, voids, open items, no sale, rewards; Orders and reports logs refunds. Orders and reports → Activity.
+- Ticket times: Orders and reports → Ticket times, from fire time to each station's last `doneAt`, typical and slowest, by hour.
+- Email receipts: done screen and order details send Stripe's card receipt (`email_receipt` in the Stripe function, sets the charge's receipt_email). Test mode doesn't email.
+- Auto-pause kiosk drinks: KDS → Timing → "Auto-pause kiosk drinks" count (`settings/kds.autoPauseAt`). Pauses (`menu/status.kioskAutoPaused`) when that many espresso items wait; resumes when it drops 2 below. Manual pauses are left alone.
+- Raspberry Pi: `bridge/RASPBERRY-PI.txt` + `install-pi.sh` (systemd service, starts on boot, restarts on failure).

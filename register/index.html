@@ -133,6 +133,9 @@
   .favs button small{display:none}
   .favs button.out,.favs button.notday{opacity:.45}
   @media(max-width:900px){.favs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .sheet .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+  .sheet .pad button{font-size:22px;font-weight:700;padding:14px;min-height:56px}
+  .sheet .err{color:var(--crit,#b42318)}
 </style>
 </head>
 <body>
@@ -202,8 +205,11 @@ function demoStore(){
     async setItemStock(id, x){ const it = menu.items.find(i => i.id === id); Object.assign(it, x); emit('menu', menu); },
     async setModStock(key, n){ if (n === null) delete modStock[key]; else modStock[key] = n; emit('stock', modStock); },
     async logEvent(){},
+    async getCustomer(phone){ return customers[phone] ? {...customers[phone]} : null; },
+    async addPoints(phone, delta, name){ const c = customers[phone] || {phone, points: 0, visits: 0}; c.points += delta; c.visits++; if (name) c.name = name; customers[phone] = c; },
   };
 }
+const customers = {'3155550100': {phone: '3155550100', name: 'Demo Regular', points: 212, visits: 30}};
 async function firebaseStore(app){
   const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
   let db; try { db = F.initializeFirestore(app, {localCache: F.persistentLocalCache({tabManager: F.persistentMultipleTabManager()})}); } catch (e){ db = F.getFirestore(app); }
@@ -241,6 +247,9 @@ async function firebaseStore(app){
     setItemStock: (id, x) => F.updateDoc(F.doc(db,'menu','main','items',id), x),
     setModStock: (key, n) => F.setDoc(F.doc(db,'menu','modStock'), {counts: {[key]: n === null ? F.deleteField() : n}}, {merge:true}),
     logEvent: e => F.setDoc(F.doc(F.collection(db,'events')), {...e, at: Date.now()}),
+    // Rewards: one document per phone number; works offline because it only adds to the count.
+    async getCustomer(phone){ const s = await F.getDoc(F.doc(db,'customers',phone)); return s.exists() ? s.data() : null; },
+    addPoints: (phone, delta, name) => F.setDoc(F.doc(db,'customers',phone), {phone, points: F.increment(delta), visits: F.increment(1), lastVisit: Date.now(), ...(name ? {name} : {})}, {merge: true}),
   };
 }
 
@@ -248,7 +257,11 @@ async function firebaseStore(app){
 let store, MENU = {items:[], groups:[], settings:{}}, MODSTOCK = {}, STATUS = {onlinePaused:false}, KDS = {}, STAFF = {members:[], sleepMinutes:5}, ORDERS = [];
 let user = null, view = 'menu', cat = null, search = '';
 let check = newCheck(), draft = null, tender = '';
-function newCheck(){ return {orderId:null, name:'', lines:[], taxExempt:false, discount:null, fireAtMs:null, payments:[]}; }
+function newCheck(){ return {orderId:null, name:'', lines:[], taxExempt:false, discount:null, fireAtMs:null, payments:[], customer:null, reward:null}; }
+// Audit log: who did what, for voids, discounts, tax exempt, open items, no sale.
+function audit(type, detail = {}){ const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null; store.logEvent({type, staff: user ? user.name : '', orderId: check.orderId || null, num: o ? o.num : null, ...detail}).catch(console.error); }
+const REWARD = {points: 150, amount: 3}; // 150 points = $3 off; 1 point per $1
+const normPhone = p => String(p || '').replace(/\D/g, '').slice(-10);
 const itemById = id => MENU.items.find(i => i.id === id);
 const groupById = id => MENU.groups.find(g => g.id === id);
 const settings = () => MENU.settings || {};
@@ -305,6 +318,7 @@ function totals(){
   const sub = r2(live.reduce((s, l) => s + q(l), 0));
   let disc = 0; const d = check.discount;
   if (d) disc = r2(d.type === 'percent' ? sub * d.value / 100 : Math.min(sub, d.value));
+  const reward = check.reward ? r2(Math.min(check.reward.amount, sub - disc)) : 0; disc = r2(disc + reward);
   const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + q(l), 0) * (sub ? (sub - disc) / sub : 0));
   // Prices are tax-inclusive: tax is the part of taxable prices that is tax. Tax exempt takes that part off.
   const rate = Number(settings().taxRate || 0);
@@ -313,7 +327,7 @@ function totals(){
   const total = r2(sub - disc - (check.taxExempt ? inTax : 0));
   const paid = r2(check.payments.reduce((s, p) => s + p.amount, 0));
   const surcharge = r2(check.payments.reduce((s, p) => s + (p.surcharge || 0), 0));
-  return {sub, disc, taxable, tax, inTax, total, paid, surcharge, tips: r2(check.payments.reduce((s, p) => s + (p.tip || 0), 0)), due: r2(total - paid)};
+  return {sub, disc, reward, taxable, tax, inTax, total, paid, surcharge, tips: r2(check.payments.reduce((s, p) => s + (p.tip || 0), 0)), due: r2(total - paid)};
 }
 
 // ---------- Check panel ----------
@@ -323,7 +337,8 @@ function renderCheck(){
   $('#cName').textContent = check.name || 'Add name'; $('#cName').classList.toggle('set', !!check.name);
   const tags = [];
   if (check.taxExempt) tags.push('<span>Tax exempt</span>');
-  if (check.discount) tags.push(`<span>${esc(check.discount.name)}</span>`);
+  if (check.discount) tags.push(`<span>${esc(check.discount.name)}${check.discount.staffMember ? ' · ' + esc(check.discount.staffMember) : ''}</span>`);
+  if (check.customer) tags.push(`<span>Rewards ${esc(check.customer.name || '••' + check.customer.phone.slice(-4))} · ${check.customer.points} pts${check.reward ? ' · using ' + check.reward.points : ''}</span>`);
   if (check.fireAtMs) tags.push(`<span class="warn">Scheduled ${new Date(check.fireAtMs).toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'})}</span>`);
   $('#cTags').innerHTML = tags.join(''); $('#cTags').classList.toggle('hidden', !tags.length);
   const lines = check.lines.filter(l => !l.removed);
@@ -338,7 +353,7 @@ function renderCheck(){
     return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
-  $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc ? `<div><span>${esc(check.discount.name)}</span><span>${money(-t.disc)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
+  $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc - t.reward > 0.004 ? `<div><span>${esc(check.discount.name)}</span><span>${money(-(t.disc - t.reward))}</span></div>` : ''}${t.reward ? `<div><span>Reward (${check.reward.points} pts)</span><span>${money(-t.reward)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
   const unsent = check.lines.some(l => !l.sent && !l.removed);
   const blocked = draft && !draftReady();
   $('#btnStay').disabled = !unsent || !!blocked;
@@ -469,7 +484,7 @@ function renderPay(){
 }
 function renderDone(change){
   const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
-  $('#main').innerHTML = renderTop() + `<div class="done">${change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button id="printReceipt" style="min-width:260px;min-height:50px;font-size:17px">Print receipt</button><button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
+  $('#main').innerHTML = renderTop() + `<div class="done">${change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button id="printReceipt" style="min-width:260px;min-height:50px;font-size:17px">Print receipt</button>${check.payments.some(p => p.paymentIntent) ? `<div class="row" style="min-width:260px"><input id="rcptEmail" type="email" placeholder="Email for receipt" style="flex:1"><button id="emailReceipt">Email</button></div><div id="rcptMsg" class="muted"></div>` : ''}<button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
 }
 
 // ---------- Render ----------
@@ -566,7 +581,10 @@ async function takePayment(method){
   if (after.due <= 0.004){
     try {
       await sendUnsent();
-      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now()});
+      const earned = check.customer ? Math.floor(after.total) : 0, used = check.reward ? check.reward.points : 0;
+      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now(),
+        ...(check.customer ? {customerPhone: check.customer.phone, customerName: check.customer.name || '', pointsEarned: earned, pointsUsed: used} : {})});
+      if (check.customer) store.addPoints(check.customer.phone, earned - used, check.customer.name).catch(console.error);
     } catch (e){ alertSheet('Saved locally, will sync: ' + e.message); }
     lastChange = change; view = 'done';
   }
@@ -613,7 +631,7 @@ function stockSheet(ref){
 $('#main').addEventListener('input', e => { if (e.target.id === 'search'){ search = e.target.value; renderMenu(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); } });
 $('#main').addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
-  if (t.id === 'kioskDrinks'){ const paused = Number(STATUS.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; STATUS = {...STATUS, kioskDrinksPausedUntil: v}; render(); store.setStatus({kioskDrinksPausedUntil: v, kioskChangedAt: Date.now()}).catch(console.error); return; }
+  if (t.id === 'kioskDrinks'){ const paused = Number(STATUS.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; STATUS = {...STATUS, kioskDrinksPausedUntil: v, kioskAutoPaused: false}; render(); store.setStatus({kioskDrinksPausedUntil: v, kioskAutoPaused: false, kioskChangedAt: Date.now()}).catch(console.error); return; }
   if (t.id === 'online'){ const v = !STATUS.onlinePaused; STATUS = {...STATUS, onlinePaused: v}; render(); store.setStatus({onlinePaused: v, changedAt: Date.now()}).catch(console.error); return; }
   if (t.id === 'switchUser'){ lockNow(); return; }
   if (t.id === 'goFull'){ document.documentElement.requestFullscreen?.().then(render).catch(() => {}); return; }
@@ -641,6 +659,8 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.q){ tender = String(Math.round(Number(t.dataset.q) * 100)); takePayment('cash'); return; }
   if (t.dataset.pay){ takePayment(t.dataset.pay); return; }
   if (t.id === 'payBack'){ view = 'menu'; render(); return; }
+  if (t.id === 'emailReceipt'){ const p = check.payments.find(x => x.paymentIntent); const em = $('#rcptEmail').value.trim(); t.disabled = true;
+    PAY.emailReceipt(p.paymentIntent, em).then(r => { $('#rcptMsg').textContent = r.testMode ? 'Saved. Test mode: Stripe does not send emails, it shows the receipt in the Dashboard.' : 'Receipt emailed.'; }).catch(err => { t.disabled = false; $('#rcptMsg').textContent = err.message; }); return; }
   if (t.id === 'printReceipt'){ t.disabled = true; t.textContent = 'Sending…'; store.addPrintJob({kind: 'receipt', orderId: check.orderId}).then(() => { t.textContent = 'Receipt sent to the printer'; }).catch(err => { console.error(err); t.disabled = false; t.textContent = 'Could not send. Try again'; }); return; }
   if (t.id === 'newOrder'){ check = newCheck(); view = 'menu'; render(); return; }
 });
@@ -661,6 +681,7 @@ function openMore(gid, name){
 $('#cMore').addEventListener('click', () => {
   const discounts = settings().discounts || [{name:'Comp', type:'percent', value:100}, {name:'Donation', type:'percent', value:100}];
   sheet(`<h3>Order actions</h3><div class="grid2">
+    <button data-a="rewards" class="${check.customer ? 'on' : ''}">Rewards (phone number)</button>
     <button data-a="exempt" class="${check.taxExempt ? 'on' : ''}">Tax exempt (Colgate)</button>
     <button data-a="schedule">Schedule</button>
     <button data-a="open">Open item</button>
@@ -674,10 +695,14 @@ $('#cMore').addEventListener('click', () => {
     const b = e.target.closest('button'); if (!b && !e.target.classList.contains('scrim')) return;
     if (!b || b.dataset.close !== undefined){ closeSheet(); return; }
     const a = b.dataset.a;
-    if (b.dataset.disc !== undefined){ check.discount = discounts[Number(b.dataset.disc)]; closeSheet(); render(); return; }
-    if (a === 'clearDisc'){ check.discount = null; closeSheet(); render(); }
-    if (a === 'exempt'){ check.taxExempt = !check.taxExempt; closeSheet(); render(); }
-    if (a === 'nosale'){ store.logEvent({type:'no_sale', staff: user ? user.name : ''}).catch(console.error); closeSheet(); alertSheet('Drawer opened. No sale was logged.'); }
+    if (b.dataset.disc !== undefined){ const d = discounts[Number(b.dataset.disc)];
+      // Staff and shift meals ask whose meal it is, so it's logged to their name.
+      if (/staff|shift/i.test(d.name)){ staffMealSheet(d); return; }
+      check.discount = d; audit('discount', {name: d.name}); closeSheet(); render(); return; }
+    if (a === 'clearDisc'){ audit('discount_removed', {name: check.discount && check.discount.name}); check.discount = null; closeSheet(); render(); }
+    if (a === 'exempt'){ check.taxExempt = !check.taxExempt; audit(check.taxExempt ? 'tax_exempt' : 'tax_exempt_off'); closeSheet(); render(); }
+    if (a === 'rewards'){ rewardsSheet(); return; }
+    if (a === 'nosale'){ audit('no_sale'); closeSheet(); alertSheet('Drawer opened. No sale was logged.'); }
     if (a === 'void') voidOrder();
     if (a === 'schedule') scheduleSheet();
     if (a === 'open') openItemSheet();
@@ -703,13 +728,14 @@ function openItemSheet(){
       const name = $('#oiName').value.trim(); const price = Number($('#oiPrice').value);
       if (!name || !(price >= 0) || $('#oiPrice').value === ''){ $('#oiErr').textContent = 'Enter a name and a price.'; return; }
       const line = {lid: uid(), itemId: '_open', name, station: st, rerouted:false, versionIdx:0, version:'', mods:[], counts:{}, price: r2(price), taxable:false, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
-      check.lines.push(line); closeSheet(); render();
+      check.lines.push(line); audit("open_item", {name: line.name, amount: line.price}); closeSheet(); render();
     }
   };
 }
 async function voidOrder(){
   closeSheet();
-  if (check.payments.length){ alertSheet('This order has payments. Refunds are not built yet.'); return; }
+  if (check.payments.length){ alertSheet('This order has payments. Refund it in Orders and reports instead.'); return; }
+  if (check.orderId) audit('void', {amount: totals().total, items: check.lines.filter(l => !l.removed).map(l => l.name)});
   if (check.orderId){
     const sentLines = check.lines.filter(l => l.sent && !l.removed);
     try { await store.updateOrder(check.orderId, {status:'void', cleared:true, clearedAt:Date.now(), voidedBy: user ? user.name : ''}); } catch (e){ console.error(e); }
@@ -718,9 +744,38 @@ async function voidOrder(){
   check = newCheck(); draft = null; view = 'menu'; render();
 }
 
+// ---------- Staff meals and rewards ----------
+function staffMealSheet(d){
+  const names = (STAFF.members || []).map(m => m.name).filter(Boolean);
+  sheet(`<h3 style="margin-top:0">${esc(d.name)}: whose meal?</h3><div class="grid2">${names.map(n => `<button data-sm="${esc(n)}">${esc(n)}</button>`).join('') || '<p class="muted">Add staff in the menu editor → Settings.</p>'}</div>
+    <input id="smOther" placeholder="Or type a name" style="margin-top:10px;width:100%"><div class="row" style="margin-top:10px"><button class="primary" id="smOk">Apply</button><button data-close>Cancel</button></div>`);
+  const apply = n => { if (!n) return; check.discount = {...d, staffMember: n}; if (!check.name) check.name = n; audit('staff_meal', {name: d.name, staffMember: n}); closeSheet(); render(); };
+  onSheet(e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.sm) apply(b.dataset.sm); if (b.id === 'smOk') apply($('#smOther').value.trim()); });
+}
+function rewardsSheet(){
+  let digits = check.customer ? check.customer.phone : '', found = check.customer, msg = '';
+  const fmt = d => d.length > 6 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d.length > 3 ? `(${d.slice(0,3)}) ${d.slice(3)}` : d;
+  const draw = () => sheet(`<h3 style="margin-top:0">Rewards</h3><div style="font-size:28px;font-weight:700;min-height:40px">${esc(fmt(digits)) || '<span class="muted">Phone number</span>'}</div>
+    <div class="pad">${[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(k => `<button data-rk="${k}">${k}</button>`).join('')}</div>
+    ${found ? `<p><b>${esc(found.name || 'Rewards member')}</b> · ${found.points} points${found.points >= REWARD.points ? ` · can use ${REWARD.points} for ${money(REWARD.amount)} off` : ` · ${REWARD.points - found.points} more for ${money(REWARD.amount)} off`}</p>` : digits.length === 10 ? '<p class="muted">New member. They earn points on this order.</p><input id="rwName" placeholder="Name (optional)" style="width:100%">' : '<p class="muted">1 point per $1. 150 points = $3 off.</p>'}
+    ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
+    <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="primary" id="rwAttach" ${digits.length === 10 ? '' : 'disabled'}>${check.customer ? 'Update' : 'Add to order'}</button>${found && found.points >= REWARD.points ? `<button id="rwUse">${check.reward ? 'Stop using points' : `Use ${REWARD.points} points (${money(REWARD.amount)} off)`}</button>` : ''}${check.customer ? '<button id="rwRemove">Remove from order</button>' : ''}<button data-close>Close</button></div>`);
+  const look = async () => { if (digits.length !== 10){ found = null; draw(); return; } try { found = await store.getCustomer(digits); } catch (e){ msg = 'Could not look up the number (offline?). Points will still be added.'; found = null; } draw(); };
+  draw();
+  onSheet(e => { const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.rk !== undefined){ const k = b.dataset.rk; if (k === 'C') digits = ''; else if (k === '⌫') digits = digits.slice(0, -1); else if (digits.length < 10) digits += k; found = null; msg = ''; if (digits.length === 10) look(); else draw(); }
+    if (b.id === 'rwAttach'){ const name = ($('#rwName') && $('#rwName').value.trim()) || (found && found.name) || ''; check.customer = {phone: digits, name, points: found ? found.points : 0}; if (!check.name && name) check.name = name.split(' ')[0]; closeSheet(); render(); }
+    if (b.id === 'rwUse'){ if (!check.customer) check.customer = {phone: digits, name: found.name || '', points: found.points}; check.reward = check.reward ? null : {...REWARD}; audit(check.reward ? 'reward_used' : 'reward_removed', {phone: '••' + digits.slice(-4)}); closeSheet(); render(); }
+    if (b.id === 'rwRemove'){ check.customer = null; check.reward = null; closeSheet(); render(); }
+  });
+}
+
 // ---------- Sheets ----------
 function sheet(html){ $('#sheetRoot').innerHTML = `<div class="scrim"><div class="sheet">${html}</div></div>`; $('#sheetRoot').onclick = e => { if (e.target.classList.contains('scrim') || e.target.closest('[data-close]')) closeSheet(); }; }
-function closeSheet(){ $('#sheetRoot').innerHTML = ''; $('#sheetRoot').onclick = null; }
+function closeSheet(){ $('#sheetRoot').innerHTML = ''; $('#sheetRoot').onclick = null; onSheet(null); }
+// One extra click handler per open sheet; replaced or removed so taps never double up.
+let sheetExtra = null;
+function onSheet(fn){ if (sheetExtra) $('#sheetRoot').removeEventListener('click', sheetExtra); sheetExtra = fn; if (fn) $('#sheetRoot').addEventListener('click', fn); }
 function alertSheet(msg){ sheet(`<p>${esc(msg)}</p><div class="row"><button class="primary" data-close>OK</button></div>`); }
 
 // ---------- Staff lock ----------

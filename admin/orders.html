@@ -48,7 +48,7 @@
 <body>
 <header>
   <h1>Orders and reports</h1>
-  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button></div>
+  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button><button data-tab="times">Ticket times</button><button data-tab="activity">Activity</button></div>
   <span class="sp"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a>
 </header>
 <div id="login" class="card hidden">
@@ -80,19 +80,23 @@ function demoStore(){
   const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8).getTime();
   const L = (name, price, taxable, extra = {}) => ({lid: Math.random().toString(36).slice(2, 8), name, price, taxable, mods: [], noMods: [], ...extra});
   const mk = (num, mins, name, source, lines, pays, extra = {}) => { const sub = r2(lines.reduce((s, l) => s + l.price, 0)); const taxable = r2(lines.filter(l => l.taxable).reduce((s, l) => s + l.price, 0)); const tax = r2(taxable * 0.08 / 1.08);
-    return {id: 'o' + num, num, name, source, status: 'paid', createdAtMs: t0 + mins * 60000, paidAt: t0 + mins * 60000, lines: Object.fromEntries(lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: pays, totals: {sub, disc: 0, taxable, tax, inTax: tax, total: sub}, taxExempt: false, ...extra}; };
+    lines.forEach((l, i) => { l.station = l.station || (/Latte|Mocha|Coffee/.test(l.name) ? 'espresso' : /BLT|Colgate/.test(l.name) ? 'kitchen' : 'none'); l.done = true; l.doneAt = t0 + mins * 60000 + (l.station === 'kitchen' ? 9 : 4 + i) * 60000; });
+    return {id: 'o' + num, num, name, source, fireAtMs: t0 + mins * 60000, status: 'paid', createdAtMs: t0 + mins * 60000, paidAt: t0 + mins * 60000, lines: Object.fromEntries(lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: pays, totals: {sub, disc: 0, taxable, tax, inTax: tax, total: sub}, taxExempt: false, ...extra}; };
   const orders = [
     mk(101, 5, 'Ada', 'register', [L('Latte', 5.75, false, {mods: [{g:'milk', o:'Oat', q:1}]}), L('Chocolate Croissant', 4.5, false)], [{method:'card', label:'Visa credit ••4242', amount:10.25, tip:2.05, surcharge:0.37, charged:12.67, funding:'credit', paymentIntent:'pi_demo_1', at: t0}]),
     mk(102, 20, 'Bo', 'kiosk', [L('House Sourdough', 9, false), L('House Sourdough', 9, false)], [{method:'card', label:'Mastercard debit ••5556', amount:18, tip:0, surcharge:0, charged:18, funding:'debit', paymentIntent:'pi_demo_2', at: t0}]),
     mk(103, 45, 'Cy', 'register', [L('BLT', 10.8, true)], [{method:'cash', label:'Cash', amount:10.8, at: t0}]),
     mk(104, 70, 'Colgate', 'register', [L('BLT', 10.8, true), L('Drip Coffee', 3, false)], [{method:'gate', label:'Gate Card', amount:13, at: t0}], {taxExempt: true, totals: {sub: 13.8, disc: 0, taxable: 10.8, tax: 0, inTax: 0.8, total: 13}}),
     mk(105, 90, 'Dee', 'register', [L('Mocha', 6, false)], [], {status: 'void'}),
+    mk(107, 95, 'Jess', 'register', [L('The Colgate', 9.75, true, {station:'kitchen'})], [{method:'cash', label:'Cash', amount:4.88, at: t0}], {discount: {name:'Staff meal', type:'percent', value:50, staffMember:'Jess'}, totals: {sub: 9.75, disc: 4.87, taxable: 4.88, tax: 0.36, inTax: 0.36, total: 4.88}}),
   ];
   return {
     async settings(){ return {taxRate: 0.08}; },
     async orders(from, to){ return orders.filter(o => o.createdAtMs >= from && o.createdAtMs < to); },
     async addRefund(id, r){ const o = orders.find(x => x.id === id); o.refunds = [...(o.refunds || []), r]; },
     async addPrintJob(){},
+    async events(from, to){ return [{type:'void', staff:'Demo Staff', num:106, amount:6.75, items:['Latte'], at: t0 + 100 * 60000}, {type:'discount', staff:'Demo Staff', num:104, name:'Comp', at: t0 + 72 * 60000}, {type:'no_sale', staff:'Demo Staff', at: t0 + 30 * 60000}].filter(e => e.at >= from && e.at < to); },
+    async logEvent(){},
   };
 }
 async function firebaseStore(app){
@@ -103,6 +107,8 @@ async function firebaseStore(app){
     async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})); },
     async addRefund(id, r){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r)}); },
     async addPrintJob(job){ await F.addDoc(F.collection(db, 'printJobs'), {...job, status: 'queued', createdAt: Date.now()}); },
+    async events(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'events'), F.where('at', '>=', from), F.where('at', '<', to))); return snap.docs.map(d => d.data()); },
+    async logEvent(e){ await F.addDoc(F.collection(db, 'events'), {...e, at: Date.now()}); },
   };
 }
 
@@ -146,7 +152,7 @@ function detail(o){
   const modTxt = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...(l.mods || []).filter(m => !m.inc || m.pre || (m.q || 1) > 1).map(m => [m.pre && m.pre !== 'No' ? m.pre : '', (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' '))].join(' · ');
   const pays = o.payments || [];
   return `<div class="card"><div class="bar" style="margin-bottom:6px"><b style="font-size:18px">Order #${esc(o.num ?? '')} · ${esc(o.name || 'No name')}</b>${statusPill(o)}</div>
-    <div class="muted" style="margin-bottom:10px">${new Date(o.createdAtMs).toLocaleString()} · ${sourceName(o.source)}${o.staff ? ' · ' + esc(o.staff) : ''}${o.taxExempt ? ' · Tax exempt' : ''}</div>
+    <div class="muted" style="margin-bottom:10px">${new Date(o.createdAtMs).toLocaleString()} · ${sourceName(o.source)}${o.staff ? ' · ' + esc(o.staff) : ''}${o.taxExempt ? ' · Tax exempt' : ''}${o.discount && o.discount.staffMember ? ' · Staff meal for ' + esc(o.discount.staffMember) : ''}${o.customerPhone ? ` · Rewards ${esc(o.customerName || '••' + o.customerPhone.slice(-4))}: +${o.pointsEarned || 0}${o.pointsUsed ? ', used ' + o.pointsUsed : ''} pts` : ''}</div>
     <div class="lines">${groups.map(({l, n}) => `<div><span>${n > 1 ? `<b>${n}×</b> ` : ''}${esc([l.version, l.name].filter(Boolean).join(' '))}${modTxt(l) ? `<span class="m">${esc(modTxt(l))}</span>` : ''}${l.countNote ? `<span class="m">${esc(l.countNote)}</span>` : ''}</span><span>${money(l.price * n)}</span></div>`).join('')}</div>
     <div class="tot" style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px">
       <div><span>Subtotal</span><span>${money(f.sub)}</span></div>
@@ -165,6 +171,7 @@ function detail(o){
     ${(o.refunds || []).length ? `<h2>Refunds</h2>${o.refunds.map(r => `<div class="muted">${new Date(r.at).toLocaleString()} · ${money(r.amount)} · ${esc(r.method)}${r.reason ? ' · ' + esc(r.reason) : ''}${r.staff ? ' · ' + esc(r.staff) : ''}</div>`).join('')}` : ''}
     <div class="bar" style="margin-top:10px"><input id="rReason" placeholder="Reason (optional)" style="flex:1"><input id="rStaff" placeholder="Your name" value="${esc(localStorage.getItem('proof.refundStaff') || '')}" style="width:140px"></div>
     <div class="bar"><button data-print="receipt">Print receipt</button><button data-print="ticket">Reprint kitchen ticket</button><span id="pMsg" class="muted"></span></div>
+    ${pays.some(p => p.paymentIntent) ? '<div class="bar"><input id="rcptEmail" type="email" placeholder="Email the card receipt" style="flex:1"><button id="emailReceipt">Email receipt</button></div>' : ''}
     <div id="rMsg"></div></div>`;
 }
 async function refund(o, i){
@@ -177,6 +184,7 @@ async function refund(o, i){
   try {
     let stripeRefund = null;
     if (p.method === 'card' && p.paymentIntent && !String(p.paymentIntent).startsWith('pi_demo')) stripeRefund = (await PAY.refund(p.paymentIntent, amt, staff)).id;
+    store.logEvent({type: 'refund', staff, orderId: o.id, num: o.num, amount: amt, method: p.method, reason: $('#rReason').value.trim()}).catch(console.error);
     await store.addRefund(o.id, {at: Date.now(), amount: amt, pay: i, method: p.method, paymentIntent: p.paymentIntent || null, stripeRefund, reason: $('#rReason').value.trim(), staff});
     await renderOrders(); $('#rMsg').innerHTML = `<p class="ok">Refunded ${money(amt)}${stripeRefund ? ' to the card' : ''}.</p>`;
   } catch (e){ console.error(e); $('#rMsg').innerHTML = `<p class="err">${esc(e.message)}</p>`; btn.disabled = false; btn.textContent = 'Refund'; }
@@ -206,6 +214,7 @@ async function renderEod(){
     <div class="split"><div class="card"><h2 style="margin-top:0">By payment type</h2><table>${Object.entries(S.byMethod).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('') || '<tr><td class="muted">No payments.</td></tr>'}</table>
       <h2>Cash drawer</h2><table><tr><td>Cash taken in</td><td class="n">${money(S.byMethod.Cash || 0)}</td></tr><tr><td>Cash refunds</td><td class="n">${money(-S.cashRefunds)}</td></tr><tr><td><b>Cash that should be in the drawer</b> (plus your starting bank)</td><td class="n"><b>${money((S.byMethod.Cash || 0) - S.cashRefunds)}</b></td></tr></table></div>
     <div class="card"><h2 style="margin-top:0">By where it was ordered</h2><table>${Object.entries(S.bySource).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('')}</table>
+      <h2>Staff meals</h2>${(() => { const m = {}; for (const o of ORDERS.filter(x => x.status === 'paid' && x.discount && x.discount.staffMember)){ const k = o.discount.staffMember; m[k] = m[k] || {n: 0, v: 0}; m[k].n++; m[k].v += figures(o).disc; } const rows = Object.entries(m); return rows.length ? `<table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.n} meal${v.n > 1 ? 's' : ''}</td><td class="n">${money(v.v)} off</td></tr>`).join('')}</table>` : '<p class="muted">None.</p>'; })()}
       <h2>Breakdown</h2><table><tr><td>Gross sales</td><td class="n">${money(S.sub)}</td></tr><tr><td>Discounts and comps</td><td class="n">${money(-S.disc)}</td></tr><tr><td>Net sales</td><td class="n">${money(S.net)}</td></tr><tr><td>Voided orders</td><td class="n">${S.voids}</td></tr></table></div></div>`;
 }
 // NY files sales tax by quarter: Mar–May, Jun–Aug, Sep–Nov, Dec–Feb.
@@ -246,8 +255,39 @@ function downloadCsv(){
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `sales-tax-${taxFrom}-to-${taxTo}.csv`; a.click();
 }
 
+// ---------- Ticket times: from when an order fires to when each station marks its items done ----------
+const STN = {espresso: 'Espresso bar', kitchen: 'Kitchen', none: 'Grab and go'};
+const median = a => { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); const m = Math.floor(b.length / 2); return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+const mins = v => v ? (v < 10 ? v.toFixed(1) : Math.round(v)) + ' min' : '—';
+async function renderTimes(){
+  const from = dayStart(day); await load(from, from + 86400000);
+  const per = {}; const byHour = {};
+  for (const o of ORDERS.filter(x => x.status !== 'void')){
+    const start = o.fireAtMs || o.createdAtMs;
+    const st = {};
+    for (const l of linesOf(o)) if (l.done && l.doneAt > start){ const k = l.station || 'none'; st[k] = Math.max(st[k] || 0, l.doneAt); }
+    for (const [k, t] of Object.entries(st)){ const m = (t - start) / 60000; if (m > 120) continue; (per[k] = per[k] || []).push(m); const h = new Date(start).getHours(); byHour[h] = byHour[h] || {}; (byHour[h][k] = byHour[h][k] || []).push(m); }
+  }
+  const stations = Object.keys(STN).filter(k => per[k]);
+  const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+  const hl = h => new Date(2000, 0, 1, h).toLocaleTimeString([], {hour: 'numeric'});
+  $('#app').innerHTML = `<div class="bar"><input type="date" id="day" value="${day}"><span class="muted">From when an order fires to when that station finishes its items. Orders over 2 hours are left out.</span></div>
+    <div class="kpis">${stations.map(k => kpi(STN[k], mins(median(per[k])), `typical · slowest ${mins(Math.max(...per[k]))} · ${per[k].length} tickets`)).join('') || '<div class="card muted">No finished tickets that day.</div>'}</div>
+    ${hours.length ? `<div class="card"><h2 style="margin-top:0">By hour (typical time)</h2><table><thead><tr><th>Hour</th>${stations.map(k => `<th class="n">${STN[k]}</th>`).join('')}</tr></thead><tbody>${hours.map(h => `<tr><td>${hl(h)}</td>${stations.map(k => { const a = (byHour[h] || {})[k] || []; return `<td class="n">${a.length ? mins(median(a)) + ` <span class="muted">(${a.length})</span>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>` : ''}`;
+}
+// ---------- Activity (audit log) ----------
+const EVT = {void: 'Voided order', discount: 'Discount', discount_removed: 'Removed discount', staff_meal: 'Staff meal', tax_exempt: 'Tax exempt', tax_exempt_off: 'Tax exempt removed', no_sale: 'No sale (drawer opened)', open_item: 'Open item', refund: 'Refund', reward_used: 'Used reward points', reward_removed: 'Stopped using points'};
+async function renderActivity(){
+  const from = dayStart(day); const ev = (await store.events(from, from + 86400000)).sort((a, b) => b.at - a.at);
+  const who = {}; for (const e of ev){ const k = e.staff || 'Unknown'; who[k] = who[k] || {}; who[k][e.type] = (who[k][e.type] || 0) + 1; }
+  $('#app').innerHTML = `<div class="bar"><input type="date" id="day" value="${day}"><span class="muted">${ev.length} events</span></div>
+    ${Object.keys(who).length ? `<div class="kpis">${Object.entries(who).map(([k, v]) => kpi(esc(k), Object.values(v).reduce((a, b) => a + b, 0), Object.entries(v).map(([t, n]) => `${n} ${(EVT[t] || t).toLowerCase()}`).join(' · '))).join('')}</div>` : ''}
+    <div class="card" style="padding:0"><table><thead><tr><th>Time</th><th>Who</th><th>What</th><th>Order</th><th>Details</th></tr></thead><tbody>
+    ${ev.map(e => `<tr><td>${time(e.at)}</td><td>${esc(e.staff || '')}</td><td>${esc(EVT[e.type] || e.type)}</td><td>${e.num ? '#' + esc(e.num) : ''}</td><td class="muted">${esc([e.name, e.staffMember, e.amount !== undefined ? money(e.amount) : '', (e.items || []).join(', '), e.reason, e.method].filter(Boolean).join(' · '))}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Nothing logged that day.</td></tr>'}</tbody></table></div>`;
+}
+
 // ---------- Events ----------
-async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
+async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else if (tab === 'times') await renderTimes(); else if (tab === 'activity') await renderActivity(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b)); render(); });
 $('#app').addEventListener('change', e => {
   const t = e.target;
@@ -260,6 +300,7 @@ $('#app').addEventListener('click', e => {
   const row = e.target.closest('tr.row'); if (row){ selId = row.dataset.id; renderOrders(); return; }
   const rb = e.target.closest('button[data-refund]'); if (rb){ refund(ORDERS.find(o => o.id === selId), Number(rb.dataset.refund)); return; }
   const pb = e.target.closest('button[data-print]'); if (pb){ store.addPrintJob({kind: pb.dataset.print, orderId: selId}).then(() => { $('#pMsg').textContent = 'Sent to the printer.'; }).catch(err => { $('#pMsg').textContent = err.message; }); return; }
+  if (e.target.id === 'emailReceipt'){ const o = ORDERS.find(x => x.id === selId); const p = o.payments.find(x => x.paymentIntent); PAY.emailReceipt(p.paymentIntent, $('#rcptEmail').value.trim()).then(r => { $('#pMsg').textContent = r.testMode ? 'Saved. Test mode: Stripe shows the receipt in the Dashboard instead of emailing it.' : 'Receipt emailed.'; }).catch(err => { $('#pMsg').textContent = err.message; }); return; }
   if (e.target.id === 'csvBtn') downloadCsv();
   if (e.target.id === 'printBtn') print();
 });

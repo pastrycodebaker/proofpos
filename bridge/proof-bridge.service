@@ -1,0 +1,14 @@
+[Unit]
+Description=Proof POS print bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/proof-print-bridge
+ExecStart=/usr/bin/node bridge.mjs
+Restart=always
+RestartSec=10
+User=pi
+
+[Install]
+WantedBy=multi-user.target

@@ -85,6 +85,14 @@ async function handle(action, b){
       if (b.paymentIntent) await stripe('POST', `payment_intents/${b.paymentIntent}/cancel`).catch(() => {});
       return {ok: true};
     }
+    case 'email_receipt': {
+      // Stripe emails its card receipt when an email is added to the charge. (In test mode Stripe doesn't send it; preview it in the Dashboard.)
+      const pi = await stripe('GET', `payment_intents/${b.paymentIntent}`);
+      if (!pi.latest_charge) throw new Error('No card charge on this payment.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.email || '')) throw new Error('That email address does not look right.');
+      await stripe('POST', `charges/${pi.latest_charge}`, {receipt_email: b.email});
+      return {ok: true, testMode: !pi.livemode};
+    }
     case 'refund': {
       const r = await stripe('POST', 'refunds', {payment_intent: b.paymentIntent, amount: b.amount ? Math.round(b.amount) : undefined, metadata: {staff: b.staff || ''}});
       return {id: r.id, amount: r.amount, status: r.status};

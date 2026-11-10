@@ -49,8 +49,9 @@ export function createPayments({demo = false, getToken}){
     })();
     return ctl;
   }
+  async function emailReceipt(paymentIntent, email){ return api('email_receipt', {paymentIntent, email}); }
   async function refund(paymentIntent, amount, staff){ return api('refund', {paymentIntent, amount: amount ? Math.round(amount * 100) : undefined, staff}); }
-  return {cardPayment, refund, reader};
+  return {cardPayment, refund, reader, emailReceipt};
 }
 
 // Demo mode: no server; a pretend reader that works the same way.
@@ -62,6 +63,7 @@ async function demoApi(action, b){
   if (action === 'status') return {collected: demoState.collected, actionStatus: demoState.failed ? 'failed' : null, failure: demoState.failed ? 'Card declined (demo)' : null, pi: {status: demoState.done ? 'succeeded' : 'requires_payment_method'}};
   if (action === 'confirm'){ const base = demoState.amount + demoState.tip; const s = demoState.surcharge && demoState.funding === 'credit' ? Math.min(Math.round(base * 0.03), Math.round(base * 0.027) + 5) : 0; demoState.done = true; return {amount: base + s, base: demoState.amount, tip: demoState.tip, surcharge: s, funding: demoState.funding, brand: 'visa', last4: demoState.funding === 'debit' ? '5556' : '4242'}; }
   if (action === 'cancel') return {ok: true};
+  if (action === 'email_receipt') return {ok: true, testMode: true};
   if (action === 'refund') return {id: 're_demo', amount: b.amount, status: 'succeeded'};
   throw new Error('demo: ' + action);
 }
