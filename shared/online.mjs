@@ -34,7 +34,7 @@ export function onlineSettings(settings = {}){
     asapPer15: Number(o.asapPer15 || 0),       // most ASAP online orders per 15 minutes (0 = no limit)
     lastOrderMinutes: Number(o.lastOrderMinutes ?? 15), // stop ASAP this long before closing
     daysAhead: Number(o.daysAhead ?? 21),
-    deadline: o.deadline || {daysBefore: 1, time: '17:00'}, // default pre-order deadline
+    deadline: o.deadline || {weekly: true, weekday: 1, time: '13:00'}, // default pre-order deadline: Monday 1pm for that week's pickups (or {daysBefore, time})
     fireTime: o.fireTime || '06:00',           // pre-orders appear on the KDS at this time on pickup day
     closedDates: o.closedDates || [],
     pickupNote: o.pickupNote || '',
@@ -72,6 +72,10 @@ export function pickupDates(settings, now = Date.now()){
 // pickup = {type:'asap'} or {type:'date', date:'YYYY-MM-DD'}
 export function deadlineFor(item, date, settings){
   const os = onlineSettings(settings); const dl = item.deadline || os.deadline;
+  if (dl.weekly){ // the last cutoff day (e.g. Monday) before the pickup day
+    let d = addDays(date, -1); for (let i = 0; i < 7 && weekday(d) !== Number(dl.weekday ?? 1); i++) d = addDays(d, -1);
+    return nyMs(d, dl.time || '13:00');
+  }
   return nyMs(addDays(date, -Number(dl.daysBefore || 0)), dl.time || '23:59');
 }
 export function availability(item, pickup, settings, now = Date.now(), soldOnDate = 0){

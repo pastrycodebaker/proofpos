@@ -144,7 +144,7 @@ function pickupHtml(){
   return `<div class="pickup"><h3>When would you like it?</h3><div class="chips">
     <button class="${pickup.type === 'asap' ? 'on' : ''}" data-pick="asap" ${a.ok ? '' : 'disabled'}>Today, ASAP<small>${a.ok ? 'Ready in about ' + os.prepMinutes + ' min' : 'Not available now'}</small></button>
     ${dates.filter(d => d !== today).map(d => `<button class="${pickup.type === 'date' && pickup.date === d ? 'on' : ''}" data-pick="${d}">${esc(R.dayLabel(d).split(',')[0])}<small>${esc(R.dayLabel(d).split(', ')[1] || '')}</small></button>`).join('')}
-  </div>${!a.ok ? `<div class="note">${esc(a.reason)}</div>` : ''}${pickup.type === 'date' ? `<div class="note">Pre-order for pickup <b>${esc(R.dayLabel(pickup.date))}</b>. Order by <b>${esc(deadlineText(R.nyMs(R.addDays(pickup.date, -Number(os.deadline.daysBefore || 0)), os.deadline.time || '23:59')))}</b>. ${esc(os.pickupNote || 'Pick up any time we are open that day.')}</div>` : ''}</div>`;
+  </div>${!a.ok ? `<div class="note">${esc(a.reason)}</div>` : ''}${pickup.type === 'date' ? `<div class="note">Pre-order for pickup <b>${esc(R.dayLabel(pickup.date))}</b>. Order by <b>${esc(deadlineText(R.deadlineFor({}, pickup.date, S())))}</b>. ${esc(os.pickupNote || 'Pick up any time we are open that day.')}</div>` : ''}</div>`;
 }
 function render(){
   if (!M.items.length){ $('#app').innerHTML = '<p class="muted">Loading the menu…</p>'; return; }
