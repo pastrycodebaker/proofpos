@@ -524,7 +524,7 @@ async function renderSettings(){
     <p class="muted">Drinks that move to the runner screen when "Weekend reroute" is checked on the KDS: ${S.items.filter(i => i.reroute && i.reroute !== 'none').map(i => esc((i.reroute === 'iced' ? 'iced ' : '') + i.name)).join(', ') || 'none yet'}. Change one on its item page.</p>
     <button id="rrDefaults">Set cold brew, Honeybee, kombucha, lemonade, iced tea and iced chai</button> <span class="status" id="rrStatus"></span>
     <h3>Online ordering</h3>
-    <p class="muted">Customers order at <b>${esc(location.origin)}/order/</b>. Same-day orders are ASAP during these hours; any open day up to the days-ahead limit can be pre-ordered until its deadline. The weekly deadline (Monday 1pm) closes pre-orders for that Wednesday through Sunday. Leave a day's hours blank if you're closed.</p>
+    <p class="muted">Customers order at <b>${esc(location.origin)}/order/</b>. Same-day orders are ASAP during these hours; any open day up to the days-ahead limit can be pre-ordered until its deadline. The weekly deadline (Monday 1pm) closes pre-orders for that Wednesday through Sunday. Pre-order customers pick a pickup time every 15 minutes within these hours. Leave a day's hours blank if you're closed.</p>
     <div class="row" style="flex-wrap:wrap">${DAYS.map(([l, n]) => { const h = (os.hours || {})[n] || {}; return `<div style="min-width:150px"><label>${l}</label><div class="row"><input type="time" data-oh="${n}" data-k="open" value="${esc(h.open || '')}"><input type="time" data-oh="${n}" data-k="close" value="${esc(h.close || '')}"></div></div>`; }).join('')}</div>
     <div class="row"><div><label>Minutes to make an ASAP order</label><input id="o_prep" type="number" min="0" value="${esc(os.prepMinutes ?? 15)}"></div>
       <div><label>Stop ASAP this many minutes before close</label><input id="o_last" type="number" min="0" value="${esc(os.lastOrderMinutes ?? 15)}"></div>
@@ -534,7 +534,9 @@ async function renderSettings(){
       <div><label>Weekly: cutoff day</label><select id="o_dlWd">${DAYS.map(([l, n]) => `<option value="${n}" ${Number((os.deadline || {}).weekday ?? 1) === n ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div><label>Or: days before</label><input id="o_dlDays" type="number" min="0" value="${esc((os.deadline || {}).daysBefore ?? 1)}"></div>
       <div><label>by this time</label><input id="o_dlTime" type="time" value="${esc((os.deadline || {}).time || '13:00')}"></div>
-      <div><label>Pre-orders show on the KDS at</label><input id="o_fire" type="time" value="${esc(os.fireTime || '06:00')}"></div></div>
+      </div>
+    <div class="row"><div><label>Pre-orders show on the KDS this many minutes before pickup</label><input id="o_lead" type="number" min="0" step="5" value="${esc(os.fireLead ?? 30)}"></div>
+      <div><label>Most pre-orders per 15-minute pickup time (0 = no limit)</label><input id="o_slot" type="number" min="0" value="${esc(os.slotLimit || 0)}"></div></div>
     <label>Closed dates, no pickups (holidays)</label><input id="o_closed" placeholder="2026-11-26, 2026-12-25" value="${esc((os.closedDates || []).join(', '))}">
     <label>Pickup note shown on pre-orders</label><input id="o_note" placeholder="Pick up any time after 8am at the Maple Ave counter." value="${esc(os.pickupNote || '')}">
     <div class="toggles" style="margin-top:8px"><label class="${os.asap !== false ? 'on' : ''}"><input type="checkbox" id="o_asap" ${os.asap !== false ? 'checked' : ''}>Take same-day ASAP orders</label></div>
@@ -650,9 +652,9 @@ document.addEventListener('click', async e => {
     if (t.id === 'saveOnline'){
       const hours = {}; document.querySelectorAll('[data-oh]').forEach(i => { if (!i.value) return; (hours[i.dataset.oh] ||= {})[i.dataset.k] = i.value; });
       for (const [d, h] of Object.entries(hours)) if (!h.open || !h.close || h.open >= h.close){ status('#onlStatus', 'Each open day needs an opening time before its closing time.', 'err'); return; }
-      const n = (id, d) => { const v = $(id).value; return v === '' ? d : Math.max(0, Math.floor(Number(v))); };
+      const n = (id, d) => { const v = $(id).value; return v === '' ? d : Math.max(0, Math.floor(Number(v))); }; const os0 = S.settings.online || {};
       const online = {asap: $('#o_asap').checked, hours, prepMinutes: n('#o_prep', 15), lastOrderMinutes: n('#o_last', 15), asapPer15: n('#o_cap', 0), daysAhead: n('#o_ahead', 21),
-        deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireTime: $('#o_fire').value || '06:00',
+        deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireTime: os0.fireTime || '06:00', fireLead: n('#o_lead', 30), slotLimit: n('#o_slot', 0),
         closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim()};
       await store.saveSettings({...S.settings, online}); await reload(); setTimeout(() => status('#onlStatus', 'Saved', 'ok'), 300);
     }

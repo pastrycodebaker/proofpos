@@ -35,7 +35,9 @@ export function onlineSettings(settings = {}){
     lastOrderMinutes: Number(o.lastOrderMinutes ?? 15), // stop ASAP this long before closing
     daysAhead: Number(o.daysAhead ?? 21),
     deadline: o.deadline || {weekly: true, weekday: 1, time: '13:00'}, // default pre-order deadline: Monday 1pm for that week's pickups (or {daysBefore, time})
-    fireTime: o.fireTime || '06:00',           // pre-orders appear on the KDS at this time on pickup day
+    fireTime: o.fireTime || '06:00',           // older setting, used only for pre-orders without a pickup time
+    fireLead: Number(o.fireLead ?? 30),        // pre-orders appear on the KDS this many minutes before their pickup time
+    slotLimit: Number(o.slotLimit || 0),       // most pre-orders per 15-minute pickup time (0 = no limit)
     closedDates: o.closedDates || [],
     pickupNote: o.pickupNote || '',
     tips: settings.tipPercents || [0.18, 0.20, 0.22],
@@ -68,6 +70,13 @@ export function pickupDates(settings, now = Date.now()){
   return out;
 }
 
+// Pickup times for a pre-order day, every 15 minutes from opening to 15 minutes before close.
+export function pickupSlots(settings, date){
+  const os = onlineSettings(settings); const h = os.hours[weekday(date)]; if (!h || !h.open || !h.close) return [];
+  const toM = t => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
+  const out = []; for (let m = Math.ceil(toM(h.open) / 15) * 15; m <= toM(h.close) - 15; m += 15) out.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
+  return out;
+}
 // ---------- Item availability ----------
 // pickup = {type:'asap'} or {type:'date', date:'YYYY-MM-DD'}
 export function deadlineFor(item, date, settings){

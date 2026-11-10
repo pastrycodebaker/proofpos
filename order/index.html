@@ -139,12 +139,13 @@ function pickupHtml(){
   const a = R.asapState(S(), M.status); const dates = R.pickupDates(S()); const today = R.nyDate();
   if (pickup.type === 'asap' && !a.ok) pickup = dates.find(d => d !== today) ? {type: 'date', date: dates.find(d => d !== today)} : pickup;
   if (pickup.type === 'date' && !dates.includes(pickup.date)) pickup = a.ok ? {type: 'asap'} : (dates[0] ? {type: 'date', date: dates[0]} : {type: 'asap'});
+  if (pickup.type === 'date' && pickup.time && !R.pickupSlots(S(), pickup.date).includes(pickup.time)) pickup.time = '';
   save('fs.pickup', pickup);
   const os = R.onlineSettings(S());
   return `<div class="pickup"><h3>When would you like it?</h3><div class="chips">
     <button class="${pickup.type === 'asap' ? 'on' : ''}" data-pick="asap" ${a.ok ? '' : 'disabled'}>Today, ASAP<small>${a.ok ? 'Ready in about ' + os.prepMinutes + ' min' : 'Not available now'}</small></button>
     ${dates.filter(d => d !== today).map(d => `<button class="${pickup.type === 'date' && pickup.date === d ? 'on' : ''}" data-pick="${d}">${esc(R.dayLabel(d).split(',')[0])}<small>${esc(R.dayLabel(d).split(', ')[1] || '')}</small></button>`).join('')}
-  </div>${!a.ok ? `<div class="note">${esc(a.reason)}</div>` : ''}${pickup.type === 'date' ? `<div class="note">Pre-order for pickup <b>${esc(R.dayLabel(pickup.date))}</b>. Order by <b>${esc(deadlineText(R.deadlineFor({}, pickup.date, S())))}</b>. ${esc(os.pickupNote || 'Pick up any time we are open that day.')}</div>` : ''}</div>`;
+  </div>${!a.ok ? `<div class="note">${esc(a.reason)}</div>` : ''}${pickup.type === 'date' ? `<div style="margin-top:10px"><label for="pTime">Pickup time</label><select id="pTime" style="font:inherit;padding:12px 14px;border:2px solid ${pickup.time ? 'var(--line)' : 'var(--accent)'};border-radius:12px;width:100%;background:#fff"><option value="">Pick a time</option>${R.pickupSlots(S(), pickup.date).map(t => `<option value="${t}" ${pickup.time === t ? 'selected' : ''}>${esc(R.timeLabel(t))}</option>`).join('')}</select></div>` : ''}${pickup.type === 'date' ? `<div class="note">Pre-order for pickup <b>${esc(R.dayLabel(pickup.date))}</b>. Order by <b>${esc(deadlineText(R.deadlineFor({}, pickup.date, S())))}</b>. ${esc(os.pickupNote || '')}</div>` : ''}</div>`;
 }
 function render(){
   if (!M.items.length){ $('#app').innerHTML = '<p class="muted">Loading the menu…</p>'; return; }
@@ -209,7 +210,7 @@ function renderCart(err = ''){
   const t = R.cartTotals(lines.filter(Boolean), S(), tipPct || 0);
   const os = R.onlineSettings(S());
   const tips = [['0', 'No tip'], ...os.tips.map(p => [String(p), Math.round(p * 100) + '%'])];
-  const when = pickup.type === 'asap' ? 'Today, ready in about ' + os.prepMinutes + ' min' : 'Pre-order for ' + R.dayLabel(pickup.date);
+  const when = pickup.type === 'asap' ? 'Today, ready in about ' + os.prepMinutes + ' min' : 'Pre-order for ' + R.dayLabel(pickup.date) + (pickup.time ? ' at ' + R.timeLabel(pickup.time) : '');
   $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="Your order"><div class="hd"><div><h2>Your order</h2><div class="muted">${esc(when)}</div></div><button class="x" data-close="1" aria-label="Close">✕</button></div><div class="bd">
     <div>${cart.map((x, i) => `<div class="ln"><b>${esc([x.version, x.name].filter(Boolean).join(' '))}</b><span>${money(lines[i] ? lines[i].price : x.price)}</span>${x.label ? `<span class="m">${esc(x.label)}</span>` : ''}${issues[i] ? `<span class="bad">${esc(issues[i])}. Please remove it.</span>` : ''}<button data-rm="${i}">Remove</button></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}</div>
     <div class="fields"><div><label for="fName">Name for the order</label><input id="fName" autocomplete="given-name" value="${esc(me.name)}"></div>
@@ -226,6 +227,7 @@ async function checkout(){
   me = {name: $('#fName').value.trim(), email: $('#fEmail').value.trim(), phone: $('#fPhone').value.trim()}; save('fs.me', me);
   if (!me.name) return renderCart('Please add a name for the order.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(me.email)) return renderCart('Please add an email for your receipt.');
+  if (pickup.type === 'date' && !pickup.time) return renderCart('Please pick a pickup time (close this and choose one under "When would you like it?").');
   if (tipPct === null) return renderCart('Please pick a tip option (No tip is fine).');
   const btn = $('#checkout'); btn.disabled = true; btn.textContent = 'One moment…';
   try {
@@ -253,7 +255,7 @@ async function finishOrder(pi){
   let r; for (let i = 0; i < 6; i++){ r = await api('finish', {paymentIntent: pi}); if (r.paid) break; await new Promise(x => setTimeout(x, 1500)); }
   if (!r || !r.paid) throw new Error("Your payment is still processing. We'll start your order as soon as it goes through.");
   cart = []; save('fs.cart', cart); $('#sheetRoot').innerHTML = ''; $('#bar').classList.add('hidden');
-  const when = r.pickup && r.pickup.type === 'date' ? `Pick up ${R.dayLabel(r.pickup.date)}` : r.readyAt ? `Ready about ${new Date(r.readyAt).toLocaleTimeString('en-US', {timeZone: R.TZ, hour: 'numeric', minute: '2-digit'})}` : 'We’re on it';
+  const when = r.pickup && r.pickup.type === 'date' ? `Pick up ${R.dayLabel(r.pickup.date)}${r.pickup.time ? ' at ' + R.timeLabel(r.pickup.time) : ''}` : r.readyAt ? `Ready about ${new Date(r.readyAt).toLocaleTimeString('en-US', {timeZone: R.TZ, hour: 'numeric', minute: '2-digit'})}` : 'We’re on it';
   $('#app').innerHTML = `<div class="done"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1F5C55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
     <h1>Thank you${me.name ? ', ' + esc(me.name.split(' ')[0]) : ''}!</h1><div class="num">Order #${esc(r.num)}</div><p style="font-size:20px;margin:0">${esc(when)}</p><p class="muted" style="margin:0">Your receipt is on its way to ${esc(me.email)}. Give your name at the counter.</p>
     <button class="primary" id="again" style="margin-top:10px">Start another order</button></div>`;
@@ -263,7 +265,7 @@ async function finishOrder(pi){
 document.addEventListener('click', e => {
   const t = e.target.closest('button') || e.target;
   if (t.dataset.close && (e.target === t || e.target.closest('button'))){ draft = null; $('#sheetRoot').innerHTML = ''; return; }
-  if (t.dataset.pick){ pickup = t.dataset.pick === 'asap' ? {type: 'asap'} : {type: 'date', date: t.dataset.pick}; save('fs.pickup', pickup); render(); return; }
+  if (t.dataset.pick){ pickup = t.dataset.pick === 'asap' ? {type: 'asap'} : {type: 'date', date: t.dataset.pick, time: pickup.date === t.dataset.pick ? pickup.time : ''}; save('fs.pickup', pickup); render(); return; }
   if (t.dataset.cat){ cat = t.dataset.cat; render(); return; }
   if (t.dataset.item){ openItem(t.dataset.item); return; }
   if (t.id === 'addBtn'){ addDraft(); return; }
@@ -280,6 +282,7 @@ document.addEventListener('click', e => {
   if (t.id === 'payNow'){ payNow(); return; }
   if (t.id === 'again'){ render(); return; }
 });
+document.addEventListener('change', e => { if (e.target.id === 'pTime'){ pickup = {...pickup, time: e.target.value}; save('fs.pickup', pickup); e.target.style.borderColor = pickup.time ? 'var(--line)' : 'var(--accent)'; } });
 // Back from a bank redirect (some payment methods leave the page): finish the order.
 const paid = new URLSearchParams(location.search).get('paid');
 start().then(() => { if (paid) finishOrder(paid).catch(e => { $('#app').insertAdjacentHTML('afterbegin', `<div class="note warn">${esc(e.message)}</div>`); }); });

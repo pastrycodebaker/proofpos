@@ -165,7 +165,7 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 One page for both kinds of order, replacing Toast online ordering and Hotplate:
 
 - **Today, ASAP**: open during the hours in Menu editor → Settings → Online ordering, until a set number of minutes before close. Respects the online pause switch, 86s and counts, and an optional cap per 15 minutes.
-- **Pre-order a day**: any open day up to the days-ahead limit, until that day's deadline (default: 5pm the day before). Pre-orders sit on the KDS and print bridge until the fire time on pickup day.
+- **Pre-order a day**: any open day up to the days-ahead limit, until that day's deadline (default: 5pm the day before). Customers pick a pickup time in 15-minute steps within that day's hours (optional limit per time). Pre-orders appear on the KDS and print a few minutes before their pickup time (30 by default).
 - **Per item** (item page → Online ordering): pre-order only, specific dates only (one-off specials like pies), its own deadline, and a most-per-pickup-day limit. Items with specific dates float to a "Specials" row for those days.
 - Prices are rechecked on the server (`netlify/functions/online.mjs`) using the same rules as the page (`shared/online.mjs`). Payment is Stripe's Payment Element; the order is written once the payment succeeds, either from the page or from the Stripe webhook (`stripe-webhook`), so a closed tab never loses an order.
 - Orders and reports → **Pre-orders** lists every paid pre-order for a pickup day with a production count.

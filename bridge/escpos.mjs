@@ -35,7 +35,8 @@ export function ticket(order, lines, printer){
   const d = new Doc(printer.cols || 48);
   d.align('center').size(2, 2).bold(true).text(`#${order.num ?? ''} ${order.name || ''}`.trim()).bold(false).size();
   d.text(`${sourceName(order.source)} - ${time(order.fireAtMs || order.createdAtMs)}${order.rush ? '  ** RUSH **' : ''}`);
-  if (order.scheduled) d.text('Scheduled for ' + time(order.fireAtMs));
+  if (order.pickupTime && order.readyAt) d.size(1, 2).bold(true).text('PICKUP ' + time(order.readyAt)).bold(false).size();
+  else if (order.scheduled) d.text('Scheduled for ' + time(order.fireAtMs));
   d.align('left').rule();
   for (const {l, n} of groupLines(lines)){
     d.size(1, 2).bold(true).wrap(`${n > 1 ? n + 'x ' : ''}${[l.version, l.name].filter(Boolean).join(' ')}`).bold(false).size();

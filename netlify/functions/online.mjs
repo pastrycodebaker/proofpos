@@ -6,7 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, dayLabel } from '../../shared/online.mjs';
+import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, dayLabel, timeLabel } from '../../shared/online.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
 const db = getFirestore(app);
@@ -46,7 +46,10 @@ async function start(b){
   let pickup;
   if (b.pickup?.type === 'date'){
     if (!pickupDates(M.settings, now).includes(b.pickup.date)) throw new Error("We're not open for pickup that day.");
-    pickup = {type: 'date', date: b.pickup.date};
+    if (!pickupSlots(M.settings, b.pickup.date).includes(b.pickup.time)) throw new Error('Please pick a pickup time.');
+    pickup = {type: 'date', date: b.pickup.date, time: b.pickup.time};
+    const os = onlineSettings(M.settings);
+    if (os.slotLimit){ const snap = await getDocs(query(collection(db, 'orders'), where('pickupDate', '==', pickup.date))); const n = snap.docs.filter(d => d.data().status === 'paid' && d.data().pickup?.time === pickup.time).length; if (n >= os.slotLimit) throw new Error(`${timeLabel(pickup.time)} is full. Please pick another time.`); }
   } else {
     const a = asapState(M.settings, M.status, now); if (!a.ok) throw new Error(a.reason);
     const os = onlineSettings(M.settings);
@@ -66,7 +69,7 @@ async function start(b){
   const t = cartTotals(lines, M.settings, tipPct);
   if (t.charge < 0.5) throw new Error('Online orders must be at least $0.50.');
   const pi = await stripe('POST', 'payment_intents', {amount: Math.round(t.charge * 100), currency: 'usd', automatic_payment_methods: {enabled: true}, receipt_email: email,
-    description: `Online order for ${name}${pickup.type === 'date' ? ' · pick up ' + dayLabel(pickup.date) : ''}`, metadata: {source: 'online', pickup: pickup.type === 'date' ? pickup.date : 'asap'}});
+    description: `Online order for ${name}${pickup.type === 'date' ? ' · pick up ' + dayLabel(pickup.date) + ' at ' + timeLabel(pickup.time) : ''}`, metadata: {source: 'online', pickup: pickup.type === 'date' ? pickup.date + ' ' + pickup.time : 'asap'}});
   await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct});
   return {clientSecret: pi.client_secret, paymentIntent: pi.id, totals: t, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY};
 }
@@ -85,13 +88,14 @@ export async function finish(paymentIntent){
     const c = co.data(); const now = Date.now();
     const counter = doc(db, 'counters', 'orders-' + nyDate(now)); const cs = await tx.get(counter); const num = cs.exists() ? cs.data().next : 101;
     const pre = c.pickup.type === 'date' && c.pickup.date !== nyDate(now);
-    const fireAtMs = pre ? nyMs(c.pickup.date, os.fireTime) : now;
-    const readyAt = pre ? null : now + os.prepMinutes * 60000;
+    const at = pre && c.pickup.time ? nyMs(c.pickup.date, c.pickup.time) : null;
+    const fireAtMs = pre ? (at ? at - os.fireLead * 60000 : nyMs(c.pickup.date, os.fireTime)) : now;
+    const readyAt = pre ? at : now + os.prepMinutes * 60000;
     const card = pi.latest_charge?.payment_method_details?.card || {};
     const pay = {method: 'card', label: `${card.brand ? card.brand[0].toUpperCase() + card.brand.slice(1) : 'Card'} ${card.funding || ''} ••${card.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: c.totals.sub, tip: c.totals.tip, surcharge: 0, charged: pi.amount / 100, funding: card.funding || null, paymentIntent: pi.id, at: now, staff: 'Online'};
     tx.set(counter, {next: num + 1});
     tx.set(orderRef, {num, name: c.name, email: c.email, phone: c.phone || null, source: 'online', status: 'paid', staff: 'Online', rush: false, cleared: false, clearedAt: 0,
-      scheduled: pre, createdAtMs: now, fireAtMs, readyAt, pickup: c.pickup, pickupDate: c.pickup.type === 'date' ? c.pickup.date : nyDate(now),
+      scheduled: pre, createdAtMs: now, fireAtMs, readyAt, pickup: c.pickup, pickupDate: c.pickup.type === 'date' ? c.pickup.date : nyDate(now), pickupTime: c.pickup.time || null,
       lines: Object.fromEntries(c.lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: [pay], totals: c.totals, paidAt: now, taxExempt: false, discount: null,
       ...(c.phone ? {customerPhone: c.phone, customerName: c.name, pointsEarned: Math.floor(c.totals.total), pointsUsed: 0} : {})});
     tx.update(coRef, {status: 'done', orderId: orderRef.id});
