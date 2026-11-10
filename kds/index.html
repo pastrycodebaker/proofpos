@@ -507,7 +507,7 @@ function openDrawer(order){
 }
 function closeDrawer(){ drawerOpen = false; drawer.classList.remove('open'); }
 function renderMenuBtns(){
-  const usable = MENU.items.filter(i => i.visible?.register !== false && i.active !== false);
+  const usable = MENU.items.filter(i => i.visible?.register !== false && i.active !== false && !i.archived);
   const cats = [...new Set(usable.map(i => i.category || 'Other'))];
   $('#menuBtns').innerHTML = cats.map(c => `<div class="muted" style="margin:8px 0 4px">${esc(c)}</div><div class="menu">${usable.filter(i => (i.category || 'Other') === c).sort((a,b) => a.name.localeCompare(b.name)).map(i => `<button class="${i.eightySixed ? 'out' : ''}" data-add="${esc(i.id)}">${esc(i.name)}${i.eightySixed ? "<small>86'd</small>" : typeof i.stockCount === 'number' ? `<small>${i.stockCount} left</small>` : ''}</button>`).join('')}</div>`).join('') || '<p class="muted">No menu items yet. Load the starter menu in the menu editor.</p>';
 }

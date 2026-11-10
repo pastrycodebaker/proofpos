@@ -142,3 +142,11 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 - `admin/printers.html` (start page → Printers): each printer's name, IP, port 9100, what it prints (kitchen tickets, stickers, receipts), which stations print there by themselves, characters per line. Saved in `settings/printers` (owners only). "Send a test print" adds a `printJobs` doc.
 - `bridge/` is a small Node program that runs on a computer at the cafe (laptop to test, Raspberry Pi later): signs in with the shop account, watches new orders and prints tickets/stickers for the chosen stations (marks `orders.printed.<printerId>.<lineId>`, scheduled orders print when they fire), handles `printJobs` (receipts, reprints, tests), and sends a heartbeat to `menu/status.bridgeSeenAt`. Download: `/bridge/proof-print-bridge.zip` (rebuild the zip when bridge files change).
 - Register done screen → Print receipt; Orders and reports → Print receipt / Reprint kitchen ticket. Receipts show the credit card surcharge as its own line.
+
+## Menu v2 from Toast (Nov 10)
+- `data/seed-menu.json` is rebuilt from the Toast product mix (Sep 30–Oct 31) and modifier selections (Oct 11–Nov 7) by `scripts/build_menu_from_toast.py`. Old starter menu kept as `data/seed-menu-v1.json`. Load it from Settings → starter menu (type RELOAD); it replaces the current menu.
+- Drinks are one item each with hot/iced × size versions. Milk and syrups use "by size and temp" prices: `option.bySize["iced 20 oz"]`, falling back to `bySize["20 oz"]`, then `price`. Columns come from `settings.priceCols`.
+- Sandwiches are built from shared ingredient groups (base $1.90 = the bagel). Bagel flavors show only after Bagel.
+- `item.archived` hides an item everywhere (register, kiosk, online, editor list, spreadsheet); the editor's "Archived" filter shows them, with Restore.
+- Register search finds every current item, including ones not on the register buttons.
+- Item page: name, price and groups up top; built-from, price by count, where/days/stock and kitchen/tax/description fold into sections. "Copy groups from another item" copies groups, required switches and "only after" rules.

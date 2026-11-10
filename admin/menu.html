@@ -112,6 +112,11 @@
   .dragging{opacity:.35}
   label.req{display:flex;gap:5px;align-items:center;margin:0;flex:none;font-size:13px;color:var(--ink);padding:4px 8px;border:1px solid var(--line);border-radius:999px}
   label.req.on{background:var(--accent-bg);border-color:var(--accent)}
+  details.more{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:12px 0;background:#fff}
+  details.more > summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  details.more > summary::before{content:'▸';color:var(--quiet)}
+  details.more[open] > summary::before{content:'▾'}
+  details.more[open] > summary{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -216,6 +221,9 @@ async function firestoreStore(app){
 // ---------- State ----------
 let S = {settings:{}, items:[], groups:[]};
 let tab = 'items', selId = null, search = '', filter = 'all';
+// Columns for "by size and temp" modifier prices, e.g. "hot 16 oz", "iced 20 oz" (Settings → Drink price columns).
+const priceColsNow = () => S.settings.priceCols && S.settings.priceCols.length ? S.settings.priceCols : (S.settings.sizes || []);
+const colLabel = c => String(c).replace(/^(hot|iced) /, m => m[0].toUpperCase() + m.slice(1));
 const surchargeOn = (s, k) => s.surchargeChannels ? !!s.surchargeChannels[k] : k === 'register';
 const credit = p => Math.round(p * (1 + (S.settings.surchargeRate || 0)) * 100) / 100;
 
@@ -239,14 +247,15 @@ function priceSummary(it){
 }
 function renderItemList(){
   const q = search.toLowerCase();
-  let list = S.items.filter(i => !q || i.name.toLowerCase().includes(q));
+  // Archived items stay out of the way: only the Archived filter shows them.
+  let list = S.items.filter(i => (!q || i.name.toLowerCase().includes(q)) && (filter === 'archived' ? i.archived : !i.archived));
   if (filter === 'review') list = list.filter(i => i.review);
   if (filter === '86') list = list.filter(i => i.eightySixed);
   const cats = [...new Set(list.map(i => i.category || 'Other'))].sort((a,b) => (S.settings.categories || []).indexOf(a) - (S.settings.categories || []).indexOf(b));
-  const nRev = S.items.filter(i => i.review).length;
+  const nRev = S.items.filter(i => i.review && !i.archived).length;
   $('#listPane').innerHTML = `<div class="listhead">
       <div class="row"><input id="search" placeholder="Search items" value="${esc(search)}"><button class="primary" id="newItem" style="flex:none">New item</button></div>
-      <div class="row"><select id="filter"><option value="all">All items (${S.items.length})</option><option value="review" ${filter==='review'?'selected':''}>Needs review (${nRev})</option><option value="86" ${filter==='86'?'selected':''}>86'd</option></select></div>
+      <div class="row"><select id="filter"><option value="all">All items (${S.items.filter(i => !i.archived).length})</option><option value="review" ${filter==='review'?'selected':''}>Needs review (${nRev})</option><option value="86" ${filter==='86'?'selected':''}>86'd</option><option value="archived" ${filter==='archived'?'selected':''}>Archived (${S.items.filter(i => i.archived).length})</option></select></div>
     </div>` +
     (S.items.length ? '' : `<div style="padding:16px" class="muted">No items yet. Load the starter menu from Settings.</div>`) +
     cats.map(c => `<div class="cat">${esc(c)}</div>` + list.filter(i => (i.category || 'Other') === c).map(i =>
@@ -265,21 +274,7 @@ function renderItemEditor(){
     ${it.review ? `<div class="banner"><div><b>Check this item.</b> Price source: ${esc(it.review.source)}.${it.review.note ? ' ' + esc(it.review.note) : ''}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="f_reviewed"> Reviewed</label></div>` : ''}
     <h2>${esc(it.name)}</h2>
     <div class="row"><div><label>Name</label><input id="f_name" value="${esc(it.name)}"></div><div><label>Category</label><input id="f_cat" list="catlist" value="${esc(it.category)}"><datalist id="catlist">${(S.settings.categories || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>
-    <label>Description</label><input id="f_desc" value="${esc(it.description)}">
     <div class="row"><div><label>Section (column on the register)</label><select id="f_section"><option value="">No section</option>${((S.settings.sections || {})[it.category] || []).map(x => `<option ${x === it.section ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div><div></div></div>
-    <label>Days it's offered (online ordering and the register follow this)</label>
-    <div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !it.days || it.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-fday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}
-      <label class="${it.active !== false ? 'on' : ''}" style="margin-left:12px"><input type="checkbox" id="f_active" ${it.active !== false ? 'checked' : ''}>In season (on the menu)</label></div>
-    <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
-    <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-      <div><label>Weekend reroute to runner</label><select id="f_reroute">${[['none','Off'],['all','All versions'],['iced','Iced only']].map(([k,l]) => `<option value="${k}" ${(it.reroute || 'none') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-    <h3>Where it shows</h3>
-    <div class="toggles">
-      ${[['register','Register'],['kiosk','Kiosk'],['online','Online']].map(([k,l]) => `<label class="${it.visible?.[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${it.visible?.[k] ? 'checked' : ''}>${l}</label>`).join('')}
-      <label class="${it.alcohol ? 'on' : ''}"><input type="checkbox" id="f_alcohol" ${it.alcohol ? 'checked' : ''}>Alcohol (ID check, never kiosk or online)</label>
-      <label class="${it.eightySixed ? 'on' : ''}"><input type="checkbox" id="f_86" ${it.eightySixed ? 'checked' : ''}>86'd</label>
-    </div>
-    <label>Count on hand (blank = not tracked; the item 86s itself at zero)</label><input id="f_stock" type="number" min="0" step="1" style="max-width:160px" value="${typeof it.stockCount === 'number' ? it.stockCount : ''}">
     <h3>Price</h3>
     <div class="toggles"><label class="${mode==='single'?'on':''}"><input type="radio" name="pmode" value="single" ${mode==='single'?'checked':''}>One price</label><label class="${mode==='sizes'?'on':''}"><input type="radio" name="pmode" value="sizes" ${mode==='sizes'?'checked':''}>Hot / iced and sizes</label></div>
     <div id="singleBox" class="${mode==='single'?'':'hidden'}"><label>Price (cash and debit)</label><div class="row" style="max-width:320px"><input id="f_price" type="number" step="0.01" min="0" value="${esc(single)}"><span class="muted" id="singleCC">${single !== '' ? 'Credit card ' + money(credit(Number(single))) : ''}</span></div></div>
@@ -292,17 +287,37 @@ function renderItemEditor(){
     <h3>Modifier groups</h3>
     <p class="muted">Only the groups on this item show here, in ticket and register order.</p>
     <div id="grpOrder"></div>
-    <h3>Built from (included ingredients)</h3>
+    <details class="more" ${(it.included || []).length ? 'open' : ''}><summary><b>Built from ingredients</b> <span class="muted">${(it.included || []).length ? (it.included.length + ' included') : 'for sandwiches priced by their ingredients'}</span></summary>
     <p class="muted">For sandwiches like the BLT: add the groups above, then tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
     <div id="incBox"></div>
-    <h3>Price by count</h3>
+    </details>
+    <details class="more" ${it.countPricing ? 'open' : ''}><summary><b>Price by count</b> <span class="muted">${it.countPricing ? 'on' : 'for bulk bagels'}</span></summary>
     <p class="muted">For bulk bagels: staff tap flavors as the customer lists them, and the price works itself out. 8 bagels = half dozen price + 2 singles. The single price is the item price above.</p>
     <div id="cpBox"></div>
-    <h3>Production counts</h3>
+    </details>
+    <details class="more" ${false ? 'open' : ''}><summary><b>Where it shows, days and stock</b> <span class="muted">${[it.visible?.kiosk === false ? 'not on kiosk' : '', it.visible?.register === false ? 'not on register' : '', it.days && it.days.length ? 'some days only' : '', it.active === false ? 'off season' : '', typeof it.stockCount === 'number' ? it.stockCount + ' on hand' : '', it.eightySixed ? "86'd" : ''].filter(Boolean).join(' · ') || 'everywhere, every day'}</span></summary>
+    <div class="toggles">
+      ${[['register','Register'],['kiosk','Kiosk'],['online','Online']].map(([k,l]) => `<label class="${it.visible?.[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${it.visible?.[k] ? 'checked' : ''}>${l}</label>`).join('')}
+      <label class="${it.alcohol ? 'on' : ''}"><input type="checkbox" id="f_alcohol" ${it.alcohol ? 'checked' : ''}>Alcohol (ID check, never kiosk or online)</label>
+      <label class="${it.eightySixed ? 'on' : ''}"><input type="checkbox" id="f_86" ${it.eightySixed ? 'checked' : ''}>86'd</label>
+    </div>
+    <label>Count on hand (blank = not tracked; the item 86s itself at zero)</label><input id="f_stock" type="number" min="0" step="1" style="max-width:160px" value="${typeof it.stockCount === 'number' ? it.stockCount : ''}">
+    <label>Days it's offered (online ordering and the register follow this)</label>
+    <div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !it.days || it.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-fday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}
+      <label class="${it.active !== false ? 'on' : ''}" style="margin-left:12px"><input type="checkbox" id="f_active" ${it.active !== false ? 'checked' : ''}>In season (on the menu)</label></div>
+    </details>
+    <details class="more" ${false ? 'open' : ''}><summary><b>Kitchen, tax and description</b> <span class="muted">${[STATIONS[it.station] || '', it.taxable ? 'taxed' : 'not taxed', it.reroute && it.reroute !== 'none' ? 'weekend reroute' : ''].filter(Boolean).join(' · ')}</span></summary>
+    <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
+    <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div><label>Weekend reroute to runner</label><select id="f_reroute">${[['none','Off'],['all','All versions'],['iced','Iced only']].map(([k,l]) => `<option value="${k}" ${(it.reroute || 'none') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <label>Description</label><input id="f_desc" value="${esc(it.description)}">
+<label>Production counts</label>
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
     <div id="counts">${(it.counts || []).map(c => countRow(c, sizes)).join('')}</div>
     <button id="addCount">Add count</button>
-    <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button id="dupItem">Duplicate</button><button class="danger" id="delItem">Delete item</button></div>
+    </details>
+    <div class="bar"><button class="primary" id="saveItem">Save</button><span class="status" id="itemStatus"></span><span style="flex:1"></span><button id="dupItem">Duplicate</button><button id="archItem">${it.archived ? 'Restore from archive' : 'Archive'}</button><button class="danger" id="delItem">Delete item</button></div>
+    ${it.archived ? '<div class="banner" style="display:block">Archived: hidden from the register, kiosk, online ordering and the item list. Its sales history stays.</div>' : ''}
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
   grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id));
   incSel = (it.included || []).map(x => ({...x}));
@@ -340,13 +355,15 @@ function cpExample(){
 function renderInc(){
   const box = $('#incBox'); if (!box) return;
   incSel = incSel.filter(x => grpOrder.includes(x.g));
-  const groups = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
-  if (!groups.length){ box.innerHTML = '<span class="muted">Add the groups first (bread, protein, produce…), then tap what comes on it.</span>'; return; }
+  const all = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
+  // Only ingredient groups (ones with prices) are worth tapping here; toasting, requests and the customer's own picks stay out.
+  const groups = all.filter(g => incSel.some(x => x.g === g.id) || (!reqOn(g.id) && !whenSel[g.id] && g.options.some(o => Number(o.price || 0) > 0)));
+  if (!all.length){ box.innerHTML = '<span class="muted">Add the groups first (bread, protein, produce…), then tap what comes on it.</span>'; return; }
   const optP = o => Number(o.pricing === 'bySize' ? 0 : (o.price || 0));
   box.innerHTML = groups.map(g => `<div style="margin-bottom:8px"><div class="muted" style="font-size:13px">${esc(g.name)}${reqOn(g.id) ? ' · customer picks' : ''}</div><div class="toggles">${g.options.map(o => `<label class="${isIncl(g.id, o.name) ? 'on' : ''}"><input type="checkbox" data-inc="${esc(g.id)}|${esc(o.name)}" ${isIncl(g.id, o.name) ? 'checked' : ''}>${esc(o.name)}${optP(o) ? ' · ' + money(optP(o)) : ''}</label>`).join('')}</div></div>`).join('');
   // Price breakdown: base + each required group's pre-selected (or cheapest) pick + included ingredients
   const parts = []; let total = basePriceNow(); if (total) parts.push(['Item price', total]);
-  for (const g of groups) if (reqOn(g.id) && g.options.length){
+  for (const g of all) if (reqOn(g.id) && !whenSel[g.id] && g.options.length){
     const pick = g.options.find(o => o.name === g.default) || g.options.slice().sort((a, b) => optP(a) - optP(b))[0];
     if (!isIncl(g.id, pick.name)){ parts.push([pick.name + ' (cheapest pick)', optP(pick)]); total += optP(pick); }
   }
@@ -356,7 +373,8 @@ function renderInc(){
 function renderGrpOrder(){
   setTimeout(renderInc, 0);
   const avail = S.groups.filter(g => !grpOrder.includes(g.id));
-  const add = `<div class="row" style="max-width:420px;margin-top:6px"><select id="addGrpSel"><option value="">Add a modifier group…</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select></div>`;
+  const add = `<div class="row" style="max-width:640px;margin-top:6px"><select id="addGrpSel"><option value="">Add a modifier group…</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select>
+    <select id="copyGrpSel"><option value="">Copy groups from another item…</option>${S.items.filter(i => !i.archived && i.id !== selId && (i.modifierGroupIds || []).length).map(i => `<option value="${esc(i.id)}">${esc(i.name)}</option>`).join('')}</select></div>`;
   if (!grpOrder.length){ $('#grpOrder').innerHTML = '<span class="muted">No modifier groups on this item yet.</span>' + add; return; }
   $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:760px;margin-bottom:4px;flex-wrap:wrap"><span>${i + 1}. ${esc(g ? g.name : id)}</span><label class="req ${reqOn(id) ? 'on' : ''}"><input type="checkbox" data-req="${esc(id)}" ${reqOn(id) ? 'checked' : ''}>Required</label>${i > 0 ? `<select data-when="${esc(id)}" style="max-width:190px" aria-label="Show only after"><option value="">Always show</option>${grpOrder.slice(0, i).map(pid => S.groups.find(x => x.id === pid)).filter(Boolean).map(pg => pg.options.map(o => { const v = pg.id + '|' + o.name; return `<option value="${esc(v)}" ${whenSel[id] && whenSel[id].g === pg.id && whenSel[id].o === o.name ? 'selected' : ''}>Only after ${esc(o.name)}</option>`; }).join('')).join('')}</select>` : ''}<button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
   renderCount();
@@ -404,7 +422,7 @@ async function renderGroupEditor(){
   const g = S.groups.find(x => x.id === selId);
   if (g){ modStockNow = await store.getModStock().catch(() => ({})); groupIdNow = g.id; }
   if (!g){ $('#editPane').innerHTML = `<p class="muted">Pick a group on the left, or add a new one.</p>`; return; }
-  const sizes = S.settings.sizes || [];
+  const sizes = priceColsNow();
   const rule = `${g.min},${g.max}`;
   $('#editPane').innerHTML = `
     ${g.review ? `<div class="banner"><div><b>Check this group.</b> ${esc(g.review.note || '')}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="g_reviewed"> Reviewed</label></div>` : ''}
@@ -427,10 +445,10 @@ function optRow(o, sizes){
   const linked = !!o.stockAs;
   return `<div class="opt" data-stockas="${esc(o.stockAs || '')}">${linked ? `<div class="muted" style="font-size:13px;margin-bottom:4px">Shares stock with <b>${esc(stockLabel(o.stockAs))}</b>. Counts and 86 apply everywhere it's used.</div>` : ''}
     <div class="row"><div><label>Option</label><input data-o="name" value="${esc(o.name)}"></div>
-      <div><label>Pricing</label><select data-o="pricing"><option value="flat" ${o.pricing!=='bySize'?'selected':''}>Flat</option><option value="bySize" ${o.pricing==='bySize'?'selected':''}>By size</option></select></div>
+      <div><label>Pricing</label><select data-o="pricing"><option value="flat" ${o.pricing!=='bySize'?'selected':''}>Flat</option><option value="bySize" ${o.pricing==='bySize'?'selected':''}>By size and temp</option></select></div>
       <div><label>Price (negative for a discount)</label><input type="number" step="0.01" data-o="price" value="${esc(o.price ?? 0)}"></div>
       <div style="flex:none;align-self:end"><button data-o="del" aria-label="Remove option">✕</button></div></div>
-    <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(s)}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
+    <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(colLabel(s))}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
     <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
       <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[o.stockAs || groupIdNow + '~' + o.name] ?? '')}"></div></div>
     <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
@@ -465,6 +483,7 @@ async function renderSettings(){
   const s = S.settings;
   $('#editPane').innerHTML = `<h2>Settings</h2>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
+    <label>Drink price columns for milk, syrups and other "by size and temp" modifiers, separated by commas</label><input id="s_pcols" value="${esc((s.priceCols || []).join(', '))}" placeholder="hot 12 oz, hot 16 oz, iced 16 oz, iced 20 oz">
     <label>Credit card surcharge (%)</label><input id="s_rate" type="number" step="0.1" min="0" max="3" value="${esc(((s.surchargeRate || 0) * 100).toFixed(1))}" style="max-width:140px">
     <label>Where the credit card surcharge applies</label>
     <div class="toggles">${[['register','Register'],['kiosk','Kiosk'],['online','Online ordering']].map(([k, l]) => { const on = surchargeOn(s, k); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-sch="${k}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}</div>
@@ -518,11 +537,12 @@ document.addEventListener('change', e => {
   if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
   if (t.dataset?.inc){ const [g, o] = t.dataset.inc.split('|'); incSel = incSel.filter(x => !(x.g === g && x.o === o)); if (t.checked) incSel.push({g, o, q:1}); renderInc(); }
   if (t.id === 'addExisting' && t.value){ const [gid, name] = t.value.split('|'); const src = S.groups.find(x => x.id === gid).options.find(o => o.name === name);
-    $('#opts').insertAdjacentHTML('beforeend', optRow({...structuredClone(src), stockAs: gid + '~' + name}, S.settings.sizes || [])); t.value = ''; }
+    $('#opts').insertAdjacentHTML('beforeend', optRow({...structuredClone(src), stockAs: gid + '~' + name}, priceColsNow())); t.value = ''; }
   if (t.dataset?.when !== undefined){ const v = t.value; if (v){ const [g, o] = v.split('|'); whenSel[t.dataset.when] = {g, o}; } else delete whenSel[t.dataset.when]; }
   if (t.dataset?.req){ reqSel[t.dataset.req] = t.checked; renderGrpOrder(); }
   if (t.id === 'cp_on'){ cpSel = t.checked ? {group: grpOrder[0] || '', tiers: [{qty:6, name:'Half dozen', price:null}, {qty:12, name:'Dozen', price:null}]} : null; renderCount(); }
   if (t.id === 'cp_group' && cpSel){ cpSel.group = t.value; }
+  if (t.id === 'copyGrpSel' && t.value){ const src = S.items.find(i => i.id === t.value); grpOrder = (src.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id)); reqSel = {...(src.required || {})}; whenSel = structuredClone(src.showWhen || {}); renderGrpOrder(); }
   if (t.id === 'addGrpSel' && t.value){ grpOrder.push(t.value); renderGrpOrder(); }
   if (t.dataset?.grp){ grpOrder = grpOrder.filter(x => x !== t.dataset.grp); if (t.checked) grpOrder.push(t.dataset.grp); renderGrpOrder(); }
 });
@@ -547,6 +567,7 @@ document.addEventListener('click', async e => {
       const it = S.items.find(i => i.id === selId); const out = readItemForm(it);
       status('#itemStatus', 'Saving…'); await store.saveItem(out); await reload(); status('#itemStatus', 'Saved', 'ok');
     }
+    if (t.id === 'archItem'){ const it = S.items.find(x => x.id === selId); try { await store.saveItem({...it, archived: !it.archived}); await reload(); if (!it.archived){ status('#itemStatus', 'Archived. Find it under the Archived filter.', 'ok'); } } catch (err){ status('#itemStatus', err.message, 'err'); } return; }
     if (t.id === 'dupItem'){
       const src = S.items.find(i => i.id === selId); let id = slug(src.name + ' copy'), n = 1; while (S.items.some(i => i.id === id)) id = slug(src.name + ' copy') + '-' + (++n);
       await store.saveItem({...structuredClone(src), id, name: src.name + ' copy', review: null, octQtySold: 0, stockCount: null}); selId = id; await reload(); status('#itemStatus', 'Copy made. Rename it and save.', 'ok');
@@ -559,7 +580,7 @@ document.addEventListener('click', async e => {
       let id = 'new-group', n = 1; while (S.groups.some(g => g.id === id)) id = 'new-group-' + (++n);
       await store.saveGroup({id, name:'New group', min:0, max:1, options:[], review:null}); selId = id; await reload();
     }
-    if (t.id === 'addOpt'){ $('#opts').insertAdjacentHTML('beforeend', optRow({name:'', pricing:'flat', price:0, bySize:{}, counts:[]}, S.settings.sizes || [])); }
+    if (t.id === 'addOpt'){ $('#opts').insertAdjacentHTML('beforeend', optRow({name:'', pricing:'flat', price:0, bySize:{}, counts:[]}, priceColsNow())); }
     if (t.dataset?.o === 'del'){ t.closest('.opt').remove(); }
     if (t.id === 'saveGroup'){
       const g = S.groups.find(x => x.id === selId); const out = readGroupForm(g);
@@ -589,7 +610,7 @@ document.addEventListener('click', async e => {
       const rate = Math.min(3, Math.max(0, Number($('#s_rate').value || 0))) / 100;
       const disc = $('#s_disc').value.split('\n').map(l => l.match(/^(.+?):\s*(\$)?([\d.]+)\s*(%)?\s*$/)).filter(Boolean).map(m => ({name: m[1].trim(), type: m[4] ? 'percent' : 'amount', value: Number(m[3])}));
       const colors = Object.fromEntries($('#s_colors').value.split('\n').map(l => l.split(':')).filter(p => p.length >= 2 && p[0].trim()).map(p => [p[0].trim(), p.slice(1).join(':').trim()]));
-      const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), surchargeRate: rate, surchargeChannels: Object.fromEntries([...document.querySelectorAll('[data-sch]')].map(c => [c.dataset.sch, c.checked])), categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean),
+      const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), priceCols: $('#s_pcols').value.split(',').map(x => x.trim().toLowerCase()).filter(Boolean), surchargeRate: rate, surchargeChannels: Object.fromEntries([...document.querySelectorAll('[data-sch]')].map(c => [c.dataset.sch, c.checked])), categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean),
         noNameCategories: [...document.querySelectorAll('[data-noname]')].filter(c => c.checked).map(c => c.dataset.noname),
         taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
@@ -683,7 +704,7 @@ function renderSheet(){
 }
 function visibleRows(){
   const q = sheetQ.trim().toLowerCase(); const order = S.settings.categories || [];
-  return allItemsNow().filter(i => (!sheetCat || i.category === sheetCat) && (!q || i.name.toLowerCase().includes(q)) && (!sheetMissing || !hasPrice(i)))
+  return allItemsNow().filter(i => !i.archived && (!sheetCat || i.category === sheetCat) && (!q || i.name.toLowerCase().includes(q)) && (!sheetMissing || !hasPrice(i)))
     .sort((a, b) => (((order.indexOf(a.category) + 1) || 99) - ((order.indexOf(b.category) + 1) || 99)) || (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name));
 }
 function massBar(){
@@ -696,7 +717,7 @@ function massBar(){
     <input id="mPrice" placeholder="+0.25 or -5%" style="width:110px"><button data-mass="price">Change prices</button>
     <button data-mass="86">86</button><button data-mass="un86">Un-86</button>
     <span class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => `<label><input type="checkbox" data-mday="${n}">${l}</label>`).join('')}</span><button data-mass="days">Set days</button>
-    <button data-mass="on">In season</button><button data-mass="off">Off season</button>
+    <button data-mass="on">In season</button><button data-mass="off">Off season</button><button data-mass="archive">Archive</button>
     <button data-mass="dup">Duplicate</button><button data-mass="del" class="danger">Delete</button>
     <button data-mass="clear">Clear selection</button></div>`;
 }
@@ -722,14 +743,14 @@ function itemsTable(){
   }).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No items match.</td></tr>`}</tbody></table>`;
 }
 function modsTable(){
-  const sizes = S.settings.sizes || []; const q = sheetQ.trim().toLowerCase();
+  const sizes = priceColsNow(); const q = sheetQ.trim().toLowerCase();
   const groups = S.groups.map(g => groupNow(g.id));
   const rows = [];
   for (const g of groups) g.options.forEach((o, oi) => { if (!q || o.name.toLowerCase().includes(q) || g.name.toLowerCase().includes(q)) rows.push({g, o, oi}); });
-  return `<table class="sheet"><thead><tr><th>Group</th><th>Option</th><th>Pricing</th><th>Price</th>${sizes.map(sz => `<th>${esc(sz)}</th>`).join('')}<th>Hide on kiosk and online</th></tr></thead><tbody>
+  return `<table class="sheet"><thead><tr><th>Group</th><th>Option</th><th>Pricing</th><th>Price</th>${sizes.map(sz => `<th>${esc(colLabel(sz))}</th>`).join('')}<th>Hide on kiosk and online</th></tr></thead><tbody>
   ${rows.map(({g, o, oi}) => `<tr data-g="${esc(g.id)}" data-oi="${oi}" class="${draftGroups.has(g.id) ? 'chg' : ''}"><td class="grp">${esc(g.name)}</td>
     <td><input data-mf="name" value="${esc(o.name)}"></td>
-    <td><select data-mf="pricing"><option value="flat" ${o.pricing !== 'bySize' ? 'selected' : ''}>Flat</option><option value="bySize" ${o.pricing === 'bySize' ? 'selected' : ''}>By size</option></select></td>
+    <td><select data-mf="pricing"><option value="flat" ${o.pricing !== 'bySize' ? 'selected' : ''}>Flat</option><option value="bySize" ${o.pricing === 'bySize' ? 'selected' : ''}>By size and temp</option></select></td>
     <td><input type="number" step="0.01" data-mf="price" value="${Number(o.price || 0).toFixed(2)}"></td>
     ${sizes.map(sz => `<td><input type="number" step="0.01" data-mf="bs" data-s="${esc(sz)}" ${o.pricing === 'bySize' ? '' : 'disabled'} value="${esc(o.bySize?.[sz] ?? '')}"></td>`).join('')}
     <td style="text-align:center"><input type="checkbox" data-mf="hide" ${o.hideOnline ? 'checked' : ''}></td></tr>`).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No modifiers match.</td></tr>`}</tbody></table>`;
@@ -827,6 +848,7 @@ $('#sheetPane').addEventListener('click', async e => {
     }
     if (m === 'days'){ const od = openDays(); const days = [...document.querySelectorAll('[data-mday]')].filter(c => c.checked).map(c => Number(c.dataset.mday)); if (!days.length){ sheetMsg('Tick the days first.', 'err'); return; } ids.forEach(id => editItem(id, it => { it.days = od.every(d => days.includes(d)) ? null : days.sort(); })); }
     if (m === 'on' || m === 'off') ids.forEach(id => editItem(id, it => { it.active = m === 'on'; }));
+    if (m === 'archive') ids.forEach(id => editItem(id, it => { it.archived = true; }));
     if (m === '86' || m === 'un86') ids.forEach(id => editItem(id, it => { it.eightySixed = m === '86'; }));
     if (m === 'dup'){ const made = []; ids.forEach(id => { const src = itemNow(id); const nid = uniqueId(src.name + ' copy'); draftItems.set(nid, {...structuredClone(src), id: nid, name: src.name + ' copy', review: null, octQtySold: 0, stockCount: null}); made.push(nid); }); selRows.clear(); made.forEach(x => selRows.add(x)); sheetQ = ''; sheetMissing = false; renderSheet(); sheetMsg(`Made ${made.length} cop${made.length === 1 ? 'y' : 'ies'}, selected below. Rename them, then Save.`); return; }
     if (m === 'del'){

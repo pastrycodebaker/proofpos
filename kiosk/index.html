@@ -223,9 +223,9 @@ const itemById = id => MENU.items.find(i => i.id === id);
 const groupById = id => MENU.groups.find(g => g.id === id);
 const modKey = (g, o) => { const opt = (MENU.groups.find(x => x.id === g)?.options || []).find(x => x.name === o); return (opt && opt.stockAs) || g + '~' + o; };
 const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
-const optPrice = (o, size) => { if (!o) return 0; if (o.pricing === 'bySize' && size && o.bySize && o.bySize[size] !== undefined) return Number(o.bySize[size]); return Number(o.price || 0); };
+const optPrice = (o, size, temp) => { if (!o) return 0; if (o.pricing === 'bySize' && o.bySize){ const k = temp && size ? temp + ' ' + size : null; if (k && o.bySize[k] !== undefined) return Number(o.bySize[k]); if (size && o.bySize[size] !== undefined) return Number(o.bySize[size]); } return Number(o.price || 0); };
 const hiddenCats = () => S().kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails'];
-const kioskItems = () => MENU.items.filter(i => i.visible?.kiosk !== false && i.active !== false && !i.alcohol && !hiddenCats().includes(i.category));
+const kioskItems = () => MENU.items.filter(i => i.visible?.kiosk !== false && i.active !== false && !i.archived && !i.alcohol && !hiddenCats().includes(i.category));
 const cats = () => { const order = S().categories || []; const c = [...new Set(kioskItems().map(i => i.category || 'Other'))]; return c.sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999)); };
 // Drinks pause: made-to-order drinks (espresso bar) only. Bottled drinks stay on.
 const drinksPaused = () => Number(STATUS.kioskDrinksPausedUntil || 0) > Date.now();
@@ -252,7 +252,7 @@ function lineFrom(d){
   const it = itemById(d.itemId); const v = (it.versions || [])[d.versionIdx ?? 0] || {};
   let price = Number(v.price || 0); const counts = {};
   for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
-  for (const m of d.mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); price += optPrice(o, v.size) * (m.q || 1); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
+  for (const m of d.mods){ const g = groupById(m.g); const o = g && g.options.find(x => x.name === m.o); price += optPrice(o, v.size, v.temp) * (m.q || 1); for (const c of (o && o.counts) || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * (m.q || 1); }
   let countNote = '';
   const cp = it.countPricing;
   if (cp && cp.group){ const n = d.mods.filter(m => m.g === cp.group).reduce((s, m) => s + (m.q || 1), 0); const r = countPrice(n, Number(v.price || 0), cp.tiers); price = r.price + (price - Number(v.price || 0)); countNote = n ? `${n} total: ${r.parts.join(' + ')}` : ''; }
@@ -314,13 +314,13 @@ function groupCount(gid){ return draft.mods.filter(m => m.g === gid).reduce((s, 
 function ready(){ const it = itemById(draft.itemId); if ((it.versions || []).length > 1 && draft.versionIdx === null) return false; return itemGroups(it).every(g => groupCount(g.id) >= minFor(it, g)); }
 function renderItem(){
   pruneHidden();
-  const it = itemById(draft.itemId); const vers = it.versions || []; const size = (vers[draft.versionIdx ?? 0] || {}).size;
+  const it = itemById(draft.itemId); const vers = it.versions || []; const size = (vers[draft.versionIdx ?? 0] || {}).size, temp = (vers[draft.versionIdx ?? 0] || {}).temp;
   const parts = [];
   if (vers.length > 1) parts.push(`<div class="grp"><h4>Size <span class="req ${draft.versionIdx === null ? 'need' : ''}">Required</span></h4><div class="opts">${vers.map((v, i) => `<button class="${draft.versionIdx === i ? 'on' : ''}" data-ver="${i}">${esc(versionLabel(v) || 'Regular')} <small>${money(Number(v.price || 0))}</small></button>`).join('')}</div></div>`);
   for (const g of itemGroups(it)){
     const min = minFor(it, g), n = groupCount(g.id); const counted = it.countPricing && it.countPricing.group === g.id;
     const head = `<h4>${esc(g.name)}${min ? ` <span class="req ${n < min ? 'need' : ''}">Required</span>` : ' <span class="req">Optional</span>'}${counted ? ` <span class="req">${n} picked</span>` : ''}</h4>`;
-    const opts = visibleOpts(g).map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = optPrice(o, size); const out = modOut(g.id, o.name);
+    const opts = visibleOpts(g).map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = optPrice(o, size, temp); const out = modOut(g.id, o.name);
       return `<button class="${m ? 'on' : ''}" data-opt="${esc(g.id)}|${esc(o.name)}" ${out && !m ? 'disabled' : ''}>${esc(o.name)}${p ? ` <small>${p > 0 ? '+' : ''}${money(p)}</small>` : ''}${out ? ' <small>Sold out</small>' : ''}</button>`; }).join('');
     const steps = counted ? visibleOpts(g).map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? (m.q || 1) : 0; const out = modOut(g.id, o.name);
       return `<div class="step ${q ? 'on' : ''}"><span>${esc(o.name)}${out ? ' · sold out' : ''}</span><button data-minus="${esc(g.id)}|${esc(o.name)}" aria-label="One less ${esc(o.name)}" ${q ? '' : 'disabled'}>−</button><b>${q}</b><button data-plus="${esc(g.id)}|${esc(o.name)}" aria-label="One more ${esc(o.name)}" ${out ? 'disabled' : ''}>+</button></div>`; }).join('') : '';
