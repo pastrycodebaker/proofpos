@@ -150,6 +150,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
+import { onlineWhen } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
@@ -297,7 +298,7 @@ function renderItemEditor(){
     </details>
     <details class="more" ${false ? 'open' : ''}><summary><b>Where it shows, days and stock</b> <span class="muted">${[it.visible?.kiosk === false ? 'not on kiosk' : '', it.visible?.register === false ? 'not on register' : '', it.days && it.days.length ? 'some days only' : '', it.active === false ? 'off season' : '', typeof it.stockCount === 'number' ? it.stockCount + ' on hand' : '', it.eightySixed ? "86'd" : ''].filter(Boolean).join(' · ') || 'everywhere, every day'}</span></summary>
     <div class="toggles">
-      ${[['register','Register'],['kiosk','Kiosk'],['online','Online']].map(([k,l]) => `<label class="${it.visible?.[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${it.visible?.[k] ? 'checked' : ''}>${l}</label>`).join('')}
+      ${[['register','Register'],['kiosk','Kiosk']].map(([k,l]) => `<label class="${it.visible?.[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${it.visible?.[k] ? 'checked' : ''}>${l}</label>`).join('')}
       <label class="${it.alcohol ? 'on' : ''}"><input type="checkbox" id="f_alcohol" ${it.alcohol ? 'checked' : ''}>Alcohol (ID check, never kiosk or online)</label>
       <label class="${it.eightySixed ? 'on' : ''}"><input type="checkbox" id="f_86" ${it.eightySixed ? 'checked' : ''}>86'd</label>
     </div>
@@ -306,8 +307,10 @@ function renderItemEditor(){
     <div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !it.days || it.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-fday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}
       <label class="${it.active !== false ? 'on' : ''}" style="margin-left:12px"><input type="checkbox" id="f_active" ${it.active !== false ? 'checked' : ''}>In season (on the menu)</label></div>
     </details>
-    <details class="more" ${it.preorderOnly || (it.dates || []).length ? 'open' : ''}><summary><b>Online ordering</b> <span class="muted">${[it.preorderOnly ? 'pre-order only' : '', (it.dates || []).length ? (it.dates.length + ' date' + (it.dates.length > 1 ? 's' : '') + ' only') : '', it.deadline ? 'own deadline' : '', it.dateLimit ? it.dateLimit + ' per day' : ''].filter(Boolean).join(' · ') || 'normal'}</span></summary>
-    <div class="toggles" style="margin-top:10px"><label class="${it.preorderOnly ? 'on' : ''}"><input type="checkbox" id="f_preonly" ${it.preorderOnly ? 'checked' : ''}>Pre-order only (not for same-day ASAP orders)</label></div>
+    <details class="more" ${(it.dates || []).length ? 'open' : ''}><summary><b>Online ordering</b> <span class="muted">${[it.visible?.online === false ? 'not online' : ({both: 'today and pre-order', asap: 'today only', preorder: 'pre-order only'})[onlineWhen(it)], (it.dates || []).length ? (it.dates.length + ' date' + (it.dates.length > 1 ? 's' : '') + ' only') : '', it.deadline ? 'own deadline' : '', it.dateLimit ? it.dateLimit + ' per day' : ''].filter(Boolean).join(' · ') || 'normal'}</span></summary>
+    <label style="margin-top:10px">Which online page it shows on</label>
+    <select id="f_when">${[['both', 'Both: today (ASAP) and pre-order'], ['asap', 'Today (ASAP) only'], ['preorder', 'Pre-order only'], ['none', 'Neither (not online)']].map(([v, l]) => `<option value="${v}" ${(it.visible?.online === false ? 'none' : onlineWhen(it)) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    ${it.onlineWhen ? '' : `<p class="muted" style="margin:4px 0 0">Not set yet, so it follows the default for ${esc(it.category || 'its category')}. Sandwiches and drinks default to today only; pastries, breads and bulk bagels to both.</p>`}
     <label>Only on these pickup dates (one-off specials). Leave blank for every day it's offered.</label>
     <input id="f_dates" placeholder="2026-11-25, 2026-11-26" value="${esc((it.dates || []).join(', '))}">
     <div class="row"><div><label>Order deadline: days before pickup (blank = shop default)</label><input id="f_dlDays" type="number" min="0" step="1" value="${it.deadline ? esc(it.deadline.daysBefore) : ''}"></div>
@@ -416,7 +419,7 @@ function readItemForm(it){
   out.countPricing = cpSel && cpSel.group && out.modifierGroupIds.includes(cpSel.group) ? readTiers() : null;
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
-  out.preorderOnly = $('#f_preonly').checked;
+  { const w = $('#f_when').value; if (w === 'none') out.visible.online = false; else { out.onlineWhen = w; if (!out.alcohol) out.visible.online = true; } out.preorderOnly = w === 'preorder'; }
   out.dates = $('#f_dates').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   { const dd = $('#f_dlDays').value, dt = $('#f_dlTime').value; out.deadline = dd === '' && !dt ? null : {daysBefore: Math.max(0, Math.floor(Number(dd || 0))), time: dt || '17:00'}; }
   { const dl = $('#f_dateLimit').value; out.dateLimit = dl === '' ? null : Math.max(1, Math.floor(Number(dl))); }
@@ -756,7 +759,7 @@ function massBar(){
     <input id="mCat" list="sheetCats" placeholder="Category"><button data-mass="cat">Move</button>
     <select id="mSt"><option value="">Station…</option>${Object.entries(STATIONS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
     <select id="mGrp"><option value="">Modifier group…</option>${S.groups.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select><button data-mass="addGrp">Add</button><button data-mass="rmGrp">Remove</button>
-    <select id="mVis"><option value="">Show / hide…</option><option value="kiosk:1">Show on kiosk</option><option value="kiosk:0">Hide from kiosk</option><option value="online:1">Show online</option><option value="online:0">Hide online</option><option value="register:1">Show on register</option><option value="register:0">Hide from register</option></select>
+    <select id="mVis"><option value="">Show / hide…</option><option value="kiosk:1">Show on kiosk</option><option value="kiosk:0">Hide from kiosk</option><option value="when:both">Online: today and pre-order</option><option value="when:asap">Online: today only</option><option value="when:preorder">Online: pre-order only</option><option value="online:0">Online: neither</option><option value="register:1">Show on register</option><option value="register:0">Hide from register</option></select>
     <input id="mPrice" placeholder="+0.25 or -5%" style="width:110px"><button data-mass="price">Change prices</button>
     <button data-mass="86">86</button><button data-mass="un86">Un-86</button>
     <span class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => `<label><input type="checkbox" data-mday="${n}">${l}</label>`).join('')}</span><button data-mass="days">Set days</button>
@@ -844,6 +847,7 @@ $('#sheetPane').addEventListener('change', e => {
   if (t.id === 'selAll'){ for (const r of visibleRows()) t.checked ? selRows.add(r.id) : selRows.delete(r.id); renderSheet(); return; }
   if (t.dataset.sel){ t.checked ? selRows.add(t.dataset.sel) : selRows.delete(t.dataset.sel); renderSheet(); return; }
   if (t.id === 'mSt' && t.value){ for (const id of selRows) editItem(id, it => { it.station = t.value; }); renderSheet(); sheetMsg(`Station set on ${selRows.size} items. Save to keep it.`); return; }
+  if (t.id === 'mVis' && t.value.startsWith('when:')){ const w = t.value.slice(5); for (const id of selRows) editItem(id, it => { it.onlineWhen = w; it.preorderOnly = w === 'preorder'; it.visible = {...(it.visible || {}), online: !it.alcohol}; }); renderSheet(); sheetMsg(`Updated ${selRows.size} items. Save to keep it.`); return; }
   if (t.id === 'mVis' && t.value){ const [k, on] = t.value.split(':'); for (const id of selRows) editItem(id, it => { it.visible = {...(it.visible || {}), [k]: on === '1'}; }); renderSheet(); sheetMsg(`Updated ${selRows.size} items. Save to keep it.`); return; }
   if (t.id === 'csvIn' && t.files[0]){ importCsv(t.files[0]); return; }
   if (t.type === 'checkbox' || t.tagName === 'SELECT') onSheetEdit(e);

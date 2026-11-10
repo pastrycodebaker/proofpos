@@ -6,7 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, dayLabel, timeLabel } from '../../shared/online.mjs';
+import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel } from '../../shared/online.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
 const db = getFirestore(app);
@@ -45,7 +45,7 @@ async function start(b){
   // Pickup: ASAP today, or a pre-order day
   let pickup;
   if (b.pickup?.type === 'date'){
-    if (!pickupDates(M.settings, now).includes(b.pickup.date)) throw new Error("We're not open for pickup that day.");
+    if (!preorderDays(M.settings, now).open.some(x => x.date === b.pickup.date)) throw new Error("Pre-orders for that day are closed. Please pick another day.");
     if (!pickupSlots(M.settings, b.pickup.date).includes(b.pickup.time)) throw new Error('Please pick a pickup time.');
     pickup = {type: 'date', date: b.pickup.date, time: b.pickup.time};
     const os = onlineSettings(M.settings);

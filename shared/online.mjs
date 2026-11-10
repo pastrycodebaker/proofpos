@@ -87,11 +87,28 @@ export function deadlineFor(item, date, settings){
   }
   return nyMs(addDays(date, -Number(dl.daysBefore || 0)), dl.time || '23:59');
 }
+// Which online page an item shows on: 'asap' (today only), 'preorder' (future days only) or 'both'.
+// Items not set yet: pastries, breads and bulk bagels go on both; pre-order-only items on pre-order; everything else (sandwiches, drinks) today only.
+export const BOTH_CATEGORIES = ['Pastries + Breads', 'Bulk Bagels'];
+export function onlineWhen(item){
+  if (['asap', 'preorder', 'both'].includes(item.onlineWhen)) return item.onlineWhen;
+  if (item.preorderOnly) return 'preorder';
+  return BOTH_CATEGORIES.includes(item.category) ? 'both' : 'asap';
+}
+// Future pickup days still open for pre-orders (the shop's deadline hasn't passed), and the days already closed.
+export function preorderDays(settings, now = Date.now()){
+  const today = nyDate(now); const open = [], closed = [];
+  for (const d of pickupDates(settings, now)){ if (d === today) continue; const dl = deadlineFor({}, d, settings); (now > dl ? closed : open).push({date: d, deadline: dl}); }
+  return {open, closed};
+}
+export const daysFromToday = (date, now = Date.now()) => Math.round((Date.parse(date + 'T12:00:00Z') - Date.parse(nyDate(now) + 'T12:00:00Z')) / 86400000);
 export function availability(item, pickup, settings, now = Date.now(), soldOnDate = 0){
   if (!item || item.archived || item.active === false || item.alcohol || item.visible?.online === false) return {ok: false, reason: 'Not available online'};
   const date = pickup.type === 'asap' ? nyDate(now) : pickup.date;
+  const when = onlineWhen(item);
+  if (pickup.type === 'asap' && when === 'preorder') return {ok: false, reason: 'Pre-order only'};
+  if (pickup.type === 'date' && when === 'asap') return {ok: false, reason: 'Today only, not for pre-order'};
   if (pickup.type === 'asap'){
-    if (item.preorderOnly) return {ok: false, reason: 'Pre-order only'};
     if (item.eightySixed || (typeof item.stockCount === 'number' && item.stockCount <= 0)) return {ok: false, reason: 'Sold out today'};
   }
   if (Array.isArray(item.dates) && item.dates.length && !item.dates.includes(date)){

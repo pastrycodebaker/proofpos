@@ -162,7 +162,7 @@ Proof Box lives in Firebase project `flour-and-salt-orders`; Proof POS in `proof
 
 ## Online ordering (`/order/`)
 
-One page for both kinds of order, replacing Toast online ordering and Hotplate:
+Customers first choose **Today, ASAP** or **Pre-order for a future day**; each opens its own page (`#asap`, `#later`). Each item's "Which online page it shows on" setting (both, today only, pre-order only, neither) decides where it appears; unset items default to today only, except Pastries + Breads and Bulk Bagels (both). The pre-order page says plainly that sandwiches and drinks are today only, lists each open day with how far away it is and its deadline, and checkout asks the customer to confirm the pickup day and time.
 
 - **Today, ASAP**: open during the hours in Menu editor → Settings → Online ordering, until a set number of minutes before close. Respects the online pause switch, 86s and counts, and an optional cap per 15 minutes.
 - **Pre-order a day**: any open day up to the days-ahead limit, until that day's deadline (default: 5pm the day before). Customers pick a pickup time in 15-minute steps within that day's hours (optional limit per time). Pre-orders appear on the KDS and print a few minutes before their pickup time (30 by default).
