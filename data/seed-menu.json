@@ -97,6 +97,16 @@
    "Sandwiches",
    "Alcohol"
   ],
+  "favorites": [
+   "build-your-own-sandwich",
+   "the-colgate",
+   "latte",
+   "the-chipotle-potato",
+   "maple-new-day",
+   "drip-coffee",
+   "cold-brew",
+   "chai"
+  ],
   "categoryColors": {
    "Sandwiches": "#e8a33d",
    "Coffee Bar": "#8b5e3c",

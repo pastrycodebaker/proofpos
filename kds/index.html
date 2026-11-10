@@ -327,7 +327,9 @@ function sortedMods(l){
   const gi = g => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
   const oi = m => { const g = groupById(m.g); const i = g ? g.options.findIndex(o => o.name === m.o) : -1; return i < 0 ? 999 : i; };
   // Built-from items: hide kept included ingredients, show "No X" for removed ones.
-  const shown = [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub)];
+  // Defaults (Toasted, To go cup) don't need saying on a ticket; only changes show.
+  const isDef = m => m.def || (!m.pre && (m.q || 1) === 1 && !m.sub && (groupById(m.g) || {}).default === m.o);
+  const shown = [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !isDef(m) && (!m.inc || m.pre || (m.q || 1) > 1 || m.sub))];
   return shown.sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
 }
 const linesFor = (o, v) => v.shows === 'all' ? o.lines : o.lines.filter(l => l.station === v.shows);

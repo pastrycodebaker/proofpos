@@ -372,7 +372,7 @@ function renderInc(){
 }
 function renderGrpOrder(){
   setTimeout(renderInc, 0);
-  const avail = S.groups.filter(g => !grpOrder.includes(g.id));
+  const avail = S.groups.filter(g => !grpOrder.includes(g.id) && !g.archived);
   const add = `<div class="row" style="max-width:640px;margin-top:6px"><select id="addGrpSel"><option value="">Add a modifier group…</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select>
     <select id="copyGrpSel"><option value="">Copy groups from another item…</option>${S.items.filter(i => !i.archived && i.id !== selId && (i.modifierGroupIds || []).length).map(i => `<option value="${esc(i.id)}">${esc(i.name)}</option>`).join('')}</select></div>`;
   if (!grpOrder.length){ $('#grpOrder').innerHTML = '<span class="muted">No modifier groups on this item yet.</span>' + add; return; }
@@ -415,7 +415,7 @@ function readItemForm(it){
 // ---------- Modifier groups ----------
 function renderGroupList(){
   $('#listPane').innerHTML = `<div class="listhead"><div class="row"><b>Modifier groups</b><button class="primary" id="newGroup" style="flex:none">New group</button></div><div class="muted">Build a group once and attach it to every item that uses it.</div></div>` +
-    S.groups.map(g => `<div class="li ${g.id === selId ? 'sel' : ''}" data-gid="${esc(g.id)}"><div><div class="n">${esc(g.name)}</div><div class="s">${g.options.length} options · used by ${S.items.filter(i => (i.modifierGroupIds || []).includes(g.id)).length} items</div></div>${g.review ? '<span class="pill p-rev">Review</span>' : ''}</div>`).join('');
+    S.groups.slice().sort((a, b) => (a.archived ? 1 : 0) - (b.archived ? 1 : 0)).map(g => `<div class="li ${g.id === selId ? 'sel' : ''}" style="${g.archived ? 'opacity:.55' : ''}" data-gid="${esc(g.id)}"><div><div class="n">${esc(g.name)}${g.archived ? ' (archived)' : ''}</div><div class="s">${g.options.length} options · used by ${S.items.filter(i => (i.modifierGroupIds || []).includes(g.id)).length} items</div></div>${g.review ? '<span class="pill p-rev">Review</span>' : ''}</div>`).join('');
 }
 const RULES = [['1,1','Pick exactly one'],['0,1','Pick up to one'],['0,9','Pick any number'],['1,9','Pick at least one']];
 async function renderGroupEditor(){
@@ -433,8 +433,8 @@ async function renderGroupEditor(){
     <p class="muted">"By size" lets an add-on cost more in a bigger drink. Blank sizes use the flat price.</p>
     <div id="opts">${g.options.map(o => optRow(o, sizes)).join('')}</div>
     <div class="row" style="max-width:640px;align-items:end"><button id="addOpt" style="flex:none">Add option</button>
-      <div><label>Or add an existing modifier (shares its stock)</label><select id="addExisting"><option value="">Pick one…</option>${S.groups.filter(x => x.id !== g.id).map(x => `<optgroup label="${esc(x.name)}">${x.options.filter(o => !o.stockAs).map(o => `<option value="${esc(x.id)}|${esc(o.name)}">${esc(o.name)}</option>`).join('')}</optgroup>`).join('')}</select></div></div>
-    <div class="bar"><button class="primary" id="saveGroup">Save</button><span class="status" id="groupStatus"></span><span style="flex:1"></span><button class="danger" id="delGroup">Delete group</button></div>`;
+      <div><label>Or add an existing modifier (shares its stock)</label><select id="addExisting"><option value="">Pick one…</option>${S.groups.filter(x => x.id !== g.id && !x.archived).map(x => `<optgroup label="${esc(x.name)}">${x.options.filter(o => !o.stockAs).map(o => `<option value="${esc(x.id)}|${esc(o.name)}">${esc(o.name)}</option>`).join('')}</optgroup>`).join('')}</select></div></div>
+    <div class="bar"><button class="primary" id="saveGroup">Save</button><span class="status" id="groupStatus"></span><span style="flex:1"></span><button id="archGroup">${g.archived ? 'Restore from archive' : 'Archive'}</button><button class="danger" id="delGroup">Delete group</button></div>`;
 }
 let modStockNow = {}, groupIdNow = '';
 // An option can share stock with the same modifier in another group (o.stockAs = "groupId~Option").
@@ -483,6 +483,8 @@ async function renderSettings(){
   const s = S.settings;
   $('#editPane').innerHTML = `<h2>Settings</h2>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
+    <label>Favorites row on the register (up to 8, in order)</label>
+    <div class="row" style="flex-wrap:wrap">${Array.from({length: 8}, (_, n) => `<select data-fav="${n}" style="max-width:220px"><option value="">—</option>${S.items.filter(i => !i.archived).sort((a, b) => a.name.localeCompare(b.name)).map(i => `<option value="${esc(i.id)}" ${(s.favorites || [])[n] === i.id ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}</select>`).join('')}</div>
     <label>Drink price columns for milk, syrups and other "by size and temp" modifiers, separated by commas</label><input id="s_pcols" value="${esc((s.priceCols || []).join(', '))}" placeholder="hot 12 oz, hot 16 oz, iced 16 oz, iced 20 oz">
     <label>Credit card surcharge (%)</label><input id="s_rate" type="number" step="0.1" min="0" max="3" value="${esc(((s.surchargeRate || 0) * 100).toFixed(1))}" style="max-width:140px">
     <label>Where the credit card surcharge applies</label>
@@ -567,6 +569,8 @@ document.addEventListener('click', async e => {
       const it = S.items.find(i => i.id === selId); const out = readItemForm(it);
       status('#itemStatus', 'Saving…'); await store.saveItem(out); await reload(); status('#itemStatus', 'Saved', 'ok');
     }
+    if (t.id === 'archGroup'){ const g = S.groups.find(x => x.id === selId); const used = S.items.filter(i => !i.archived && (i.modifierGroupIds || []).includes(g.id)).length;
+      try { await store.saveGroup({...g, archived: !g.archived}); await reload(); const msg = g.archived ? 'Restored' : `Archived. It no longer shows in the "Add a modifier group" lists.${used ? ` Still on ${used} item${used > 1 ? 's' : ''}: remove it there if you want it gone from the register.` : ''}`; setTimeout(() => status('#groupStatus', msg, 'ok'), 300); } catch (err){ status('#groupStatus', err.message, 'err'); } return; }
     if (t.id === 'archItem'){ const it = S.items.find(x => x.id === selId); try { await store.saveItem({...it, archived: !it.archived}); await reload(); if (!it.archived){ status('#itemStatus', 'Archived. Find it under the Archived filter.', 'ok'); } } catch (err){ status('#itemStatus', err.message, 'err'); } return; }
     if (t.id === 'dupItem'){
       const src = S.items.find(i => i.id === selId); let id = slug(src.name + ' copy'), n = 1; while (S.items.some(i => i.id === id)) id = slug(src.name + ' copy') + '-' + (++n);
@@ -610,7 +614,7 @@ document.addEventListener('click', async e => {
       const rate = Math.min(3, Math.max(0, Number($('#s_rate').value || 0))) / 100;
       const disc = $('#s_disc').value.split('\n').map(l => l.match(/^(.+?):\s*(\$)?([\d.]+)\s*(%)?\s*$/)).filter(Boolean).map(m => ({name: m[1].trim(), type: m[4] ? 'percent' : 'amount', value: Number(m[3])}));
       const colors = Object.fromEntries($('#s_colors').value.split('\n').map(l => l.split(':')).filter(p => p.length >= 2 && p[0].trim()).map(p => [p[0].trim(), p.slice(1).join(':').trim()]));
-      const s = {...S.settings, sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), priceCols: $('#s_pcols').value.split(',').map(x => x.trim().toLowerCase()).filter(Boolean), surchargeRate: rate, surchargeChannels: Object.fromEntries([...document.querySelectorAll('[data-sch]')].map(c => [c.dataset.sch, c.checked])), categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean),
+      const s = {...S.settings, favorites: [...document.querySelectorAll('[data-fav]')].map(x => x.value).filter(Boolean), sizes: $('#s_sizes').value.split(',').map(x => x.trim()).filter(Boolean), priceCols: $('#s_pcols').value.split(',').map(x => x.trim().toLowerCase()).filter(Boolean), surchargeRate: rate, surchargeChannels: Object.fromEntries([...document.querySelectorAll('[data-sch]')].map(c => [c.dataset.sch, c.checked])), categories: $('#s_cats').value.split(',').map(x => x.trim()).filter(Boolean),
         noNameCategories: [...document.querySelectorAll('[data-noname]')].filter(c => c.checked).map(c => c.dataset.noname),
         taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');

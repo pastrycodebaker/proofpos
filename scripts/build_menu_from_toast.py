@@ -185,6 +185,7 @@ settings = {
   'discounts': [{'name': 'Comp', 'type': 'percent', 'value': 100}, {'name': 'Donation', 'type': 'percent', 'value': 100}, {'name': 'Bagel token', 'type': 'amount', 'value': 1.5}, {'name': 'Pastry token', 'type': 'amount', 'value': 3.0}],
   'noNameCategories': ['Bulk Bagels', 'Pastries + Breads', 'Retail'],
   'kioskHideCategories': ['Sandwiches', 'Alcohol'],
+  'favorites': ['build-your-own-sandwich', 'the-colgate', 'latte', 'the-chipotle-potato', 'maple-new-day', 'drip-coffee', 'cold-brew', 'chai'],
   'categoryColors': {'Sandwiches': '#e8a33d', 'Coffee Bar': '#8b5e3c', 'Pastries + Breads': '#d9774b', 'Bulk Bagels': '#c9a227', 'Retail': '#5b8a72', 'Alcohol': '#7a4f9a'},
 }
 json.dump({'_about': 'Built from Toast product mix (Sep 30–Oct 31, 2026) and modifier selections (Oct 11–Nov 7, 2026). Items marked review need a look.', 'settings': settings, 'modifierGroups': G, 'items': items}, open(OUT, 'w'), indent=1)

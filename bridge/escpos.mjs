@@ -25,7 +25,9 @@ const money = n => (n < 0 ? '-$' : '$') + Math.abs(Number(n) || 0).toFixed(2);
 const time = ms => new Date(ms).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'});
 const modLine = m => [m.pre && m.pre !== 'No' ? m.pre : '', (m.q || 1) > 1 ? m.q + 'x' : '', m.o, m.sub ? '(' + m.sub + ')' : ''].filter(Boolean).join(' ');
 // What the kitchen needs to see: changes only (No tomato, extras), plus the bread pick.
-const shownMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods || []).filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub).map(modLine)];
+const shownMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods || []).filter(m => !m.def && (!m.inc || m.pre || (m.q || 1) > 1 || m.sub)).map(modLine)];
+// Receipts list what was charged, so a priced default (the to-go cup) stays on.
+const receiptMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods || []).filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub).map(modLine)];
 const sourceName = s => ({register: 'Register', kiosk: 'Kiosk', online: 'Online', hotplate: 'Hotplate', phone: 'Phone'})[s] || 'Register';
 function groupLines(lines){ const out = []; for (const l of lines){ const k = JSON.stringify([l.name, l.version, l.mods, l.noMods, l.price]); const g = out.find(x => x.k === k); if (g) g.n++; else out.push({k, l, n: 1}); } return out; }
 
@@ -60,7 +62,7 @@ export function receipt(order, printer, shop = {}){
   d.align('center').size(2, 2).bold(true).text(shop.name || 'Flour & Salt').bold(false).size();
   for (const x of shop.lines || ['37 Lebanon Street, Hamilton, NY']) d.text(x);
   d.text(new Date(order.paidAt || order.createdAtMs).toLocaleString('en-US')).bold(true).text(`Order #${order.num ?? ''}${order.name ? ' - ' + order.name : ''}`).bold(false).align('left').rule();
-  for (const {l, n} of groupLines(lines)){ d.pair(`${n > 1 ? n + 'x ' : ''}${[l.version, l.name].filter(Boolean).join(' ')}`, money(l.price * n)); for (const m of shownMods(l)) d.wrap(m, 3); }
+  for (const {l, n} of groupLines(lines)){ d.pair(`${n > 1 ? n + 'x ' : ''}${[l.version, l.name].filter(Boolean).join(' ')}`, money(l.price * n)); for (const m of receiptMods(l)) d.wrap(m, 3); }
   d.rule().pair('Subtotal', money(t.sub));
   if (t.disc) d.pair('Discount' + (order.discount ? ' (' + order.discount.name + ')' : ''), money(-t.disc));
   if (order.taxExempt) d.pair('Tax exempt (tax removed)', money(-(t.inTax || 0))); else d.pair('Includes sales tax', money(t.tax || 0));

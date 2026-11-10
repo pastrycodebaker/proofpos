@@ -261,7 +261,7 @@ function lineFrom(d){
   const rr = KDS.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
   return {lid: uid(), itemId: it.id, name: it.name, station: rr ? 'none' : (it.station || 'none'), rerouted: !!rr,
     versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '',
-    mods: d.mods.map(m => { const c = {...m}; if (inc.some(x => x.g === m.g && x.o === m.o)) c.inc = true; return c; }), noMods, countNote, counts, price: r2(price),
+    mods: d.mods.map(m => { const c = {...m}; if (inc.some(x => x.g === m.g && x.o === m.o)) c.inc = true; const g = groupById(m.g); if (g && g.default === m.o && (m.q || 1) === 1) c.def = true; return c; }), noMods, countNote, counts, price: r2(price),
     taxable: !!it.taxable, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
 }
 const modText = m => [m.pre && m.pre !== 'No' ? m.pre : '', (m.q || 1) > 1 ? (m.q + '×') : '', m.o].filter(Boolean).join(' ');

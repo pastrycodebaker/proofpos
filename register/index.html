@@ -128,6 +128,11 @@
   .cl .qn{color:var(--accent,#1a5fb4)}
   .cl .qbtns{display:flex;gap:6px;justify-content:flex-end}
   .cl .qbtns .x{min-width:40px}
+  .favs{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;padding:0 0 8px}
+  .favs button{min-height:48px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:600;font-size:14px;text-align:left;line-height:1.15}
+  .favs button small{display:none}
+  .favs button.out,.favs button.notday{opacity:.45}
+  @media(max-width:900px){.favs{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -288,7 +293,7 @@ function lineFrom(d){
   const noMods = inc.filter(x => !d.mods.some(m => m.g === x.g && m.o === x.o)).map(x => ({g: x.g, o: x.o}));
   const rr = KDS.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
   return {lid: d.lid || uid(), itemId: it.id, name: d.openName || it.name, station: d.openStation || (rr ? 'none' : (it.station || 'none')), rerouted: !!rr,
-    versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods: d.mods.map(m => { const c = {...m}; if (isInc(m)) c.inc = true; else delete c.inc; return c; }), noMods, countNote, countHint, counts, price: r2(price),
+    versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods: d.mods.map(m => { const c = {...m}; if (isInc(m)) c.inc = true; else delete c.inc; const g = groupById(m.g); if (g && g.default === m.o && !m.pre && (m.q || 1) === 1 && !m.sub) c.def = true; else delete c.def; return c; }), noMods, countNote, countHint, counts, price: r2(price),
     taxable: !!it.taxable, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
 }
 // What a ticket or check shows: changes only. Kept included ingredients stay hidden unless changed (light, 2×, style).
@@ -378,7 +383,10 @@ function renderMenu(){
     const rest = list.filter(i => !secs.includes(i.section)); if (rest.length) cols.push(['More', rest]);
     body = `<div class="secs">${cols.filter(([, l]) => l.length).map(([sec, l]) => `<div class="sec"><div class="sech">${esc(sec)}</div>${l.map(i => itemBtn(i, tint)).join('')}</div>`).join('')}</div>`;
   } else body = `<div class="items">${list.map(i => itemBtn(i, tint)).join('') || '<p class="muted">No items.</p>'}</div>`;
-  $('#main').innerHTML = renderTop() + `<div class="menuwrap"><div class="cats">${cs.map(c => `<button class="${c === cat && !q ? 'on' : ''}" style="--c:${catColor(c)};background:${tint(c)}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>${body}</div>`;
+  // Favorites: the busiest items, always one tap away (menu editor → Settings → Favorites).
+  const favs = (settings().favorites || []).map(id => MENU.items.find(i => i.id === id)).filter(i => i && !i.archived && i.active !== false);
+  const favRow = favs.length && !q ? `<div class="favs">${favs.map(i => itemBtn(i, () => '#fff')).join('')}</div>` : '';
+  $('#main').innerHTML = renderTop() + favRow + `<div class="menuwrap"><div class="cats">${cs.map(c => `<button class="${c === cat && !q ? 'on' : ''}" style="--c:${catColor(c)};background:${tint(c)}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>${body}</div>`;
 }
 
 // ---------- Modifier view ----------
