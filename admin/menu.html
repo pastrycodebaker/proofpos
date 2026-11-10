@@ -117,6 +117,10 @@
   details.more > summary::before{content:'▸';color:var(--quiet)}
   details.more[open] > summary::before{content:'▾'}
   details.more[open] > summary{margin-bottom:8px}
+  .photorow{display:flex;gap:14px;align-items:center;margin:12px 0}
+  .photo{width:120px;height:120px;border-radius:14px;background:#EFE7DA;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
+  .photo img{width:100%;height:100%;object-fit:cover}
+  label.btn{background:#fff;border:1px solid #E3D9CA;border-radius:10px;padding:8px 14px;font-weight:600}
 </style>
 </head>
 <body>
@@ -153,6 +157,7 @@ import { firebaseConfig } from '../firebase-config.js';
 import { onlineWhen } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
+let authRef = null;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const money = n => (n === null || n === undefined || n === '' || isNaN(n)) ? '' : '$' + Number(n).toFixed(2);
@@ -263,8 +268,28 @@ function renderItemList(){
       `<div class="li ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}"><div><div class="n">${esc(i.name)}</div><div class="s">${esc(priceSummary(i))} · ${esc(STATIONS[i.station] || '')}</div></div><div class="chips">${i.eightySixed ? '<span class="pill p-86">86</span>' : ''}${i.review ? '<span class="pill p-rev">Review</span>' : ''}</div></div>`).join('')).join('');
 }
 function versionMode(it){ return (it.versions || []).some(v => v.size || v.temp) ? 'sizes' : 'single'; }
+let pendingImage, pendingFor = null;   // photo picked but not saved yet (null = removed)
+function photoBox(it){
+  const src = pendingFor === it.id && pendingImage !== undefined ? pendingImage : it.image;
+  return `<div class="photo">${src ? `<img src="${esc(src)}" alt="">` : '<span class="muted">No photo</span>'}</div>
+    <div><label class="btn" style="display:inline-block;margin:0;cursor:pointer">${src ? 'Change photo' : 'Add a photo'}<input type="file" id="f_photo" accept="image/*" style="display:none"></label>
+    ${src ? '<button id="f_photoRm" style="margin-left:6px">Remove</button>' : ''}<div class="muted" id="photoStatus" style="margin-top:6px;font-size:13px">Shows on online ordering and the kiosk. Square-ish photos look best.</div></div>`;
+}
+// Shrink to at most 1000px on the long side and save as WebP, so photos load fast on phones.
+async function shrinkPhoto(file){
+  const bmp = await createImageBitmap(file); const k = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return await new Promise(res => c.toBlob(res, 'image/webp', 0.82));
+}
+async function uploadPhoto(blob){
+  if (DEMO) return await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+  const token = await authRef.currentUser.getIdToken();
+  const r = await fetch('/.netlify/functions/images', {method: 'POST', headers: {authorization: 'Bearer ' + token, 'content-type': blob.type}, body: blob});
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Upload failed'); return d.url;
+}
 function renderItemEditor(){
-  const it = S.items.find(i => i.id === selId);
+  const it = S.items.find(i => i.id === selId); if (pendingFor !== selId){ pendingFor = selId; pendingImage = undefined; }
   if (!it){ $('#editPane').innerHTML = `<p class="muted">Pick an item on the left, or add a new one.</p>`; return; }
   const mode = versionMode(it);
   const single = mode === 'single' ? (it.versions?.[0]?.price ?? '') : '';
@@ -275,6 +300,8 @@ function renderItemEditor(){
     ${it.review ? `<div class="banner"><div><b>Check this item.</b> Price source: ${esc(it.review.source)}.${it.review.note ? ' ' + esc(it.review.note) : ''}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="f_reviewed"> Reviewed</label></div>` : ''}
     <h2>${esc(it.name)}</h2>
     <div class="row"><div><label>Name</label><input id="f_name" value="${esc(it.name)}"></div><div><label>Category</label><input id="f_cat" list="catlist" value="${esc(it.category)}"><datalist id="catlist">${(S.settings.categories || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>
+    <div class="photorow">${photoBox(it)}</div>
+    <label>Description <span class="muted">(customers see this online and on the kiosk)</span></label><input id="f_desc" value="${esc(it.description || '')}" placeholder="Laminated three days, finished with flaky salt">
     <div class="row"><div><label>Section (column on the register)</label><select id="f_section"><option value="">No section</option>${((S.settings.sections || {})[it.category] || []).map(x => `<option ${x === it.section ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div><div></div></div>
     <h3>Price</h3>
     <div class="toggles"><label class="${mode==='single'?'on':''}"><input type="radio" name="pmode" value="single" ${mode==='single'?'checked':''}>One price</label><label class="${mode==='sizes'?'on':''}"><input type="radio" name="pmode" value="sizes" ${mode==='sizes'?'checked':''}>Hot / iced and sizes</label></div>
@@ -321,7 +348,6 @@ function renderItemEditor(){
     <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
     <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       <div><label>Weekend reroute to runner</label><select id="f_reroute">${[['none','Off'],['all','All versions'],['iced','Iced only']].map(([k,l]) => `<option value="${k}" ${(it.reroute || 'none') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-    <label>Description</label><input id="f_desc" value="${esc(it.description)}">
 <label>Production counts</label>
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
     <div id="counts">${(it.counts || []).map(c => countRow(c, sizes)).join('')}</div>
@@ -398,6 +424,7 @@ function readItemForm(it){
   out.name = $('#f_name').value.trim() || it.name;
   out.category = $('#f_cat').value.trim();
   out.description = $('#f_desc').value.trim();
+  if (pendingFor === it.id && pendingImage !== undefined){ out.image = pendingImage; }
   out.section = $('#f_section').value;
   { const od = openDays(); const days = [...document.querySelectorAll('[data-fday]')].filter(c => c.checked).map(c => Number(c.dataset.fday)); out.days = od.every(d => days.includes(d)) ? null : days.sort(); }
   out.active = $('#f_active').checked;
@@ -564,7 +591,15 @@ document.addEventListener('input', e => {
   if (e.target.id === 'f_price'){ const v = e.target.value; $('#singleCC').textContent = v !== '' ? 'Credit card ' + money(credit(Number(v))) : ''; }
   if (e.target.dataset?.s !== undefined && e.target.closest('#sizesBox')){ e.target.nextElementSibling.textContent = e.target.value !== '' ? money(credit(Number(e.target.value))) : ''; }
 });
-document.addEventListener('change', e => {
+document.addEventListener('change', async e => {
+  { const t = e.target;
+  if (t.id === 'f_photo' && t.files[0]){
+    const box = t.closest('.photorow'); $('#photoStatus').textContent = 'Uploading…';
+    try { const blob = await shrinkPhoto(t.files[0]); pendingImage = await uploadPhoto(blob); pendingFor = selId; box.innerHTML = photoBox(S.items.find(i => i.id === selId)); $('#photoStatus').textContent = 'Uploaded. Tap Save to keep it.'; }
+    catch (err){ $('#photoStatus').textContent = 'Could not upload: ' + err.message; }
+    return;
+  }
+  }
   const t = e.target;
   if (t.id === 'filter'){ filter = t.value; renderItemList(); }
   if (t.name === 'pmode'){ $('#singleBox').classList.toggle('hidden', t.value !== 'single'); $('#sizesBox').classList.toggle('hidden', t.value !== 'sizes'); }
@@ -583,6 +618,7 @@ document.addEventListener('change', e => {
 });
 function status(id, msg, kind){ const el = $(id); if (el){ if (/insufficient permissions|permission-denied/i.test(msg)) msg = 'You do not have permission to change this. Sign in with an owner account.'; el.textContent = msg; el.className = 'status ' + (kind || ''); } }
 document.addEventListener('click', async e => {
+  if (e.target.id === 'f_photoRm'){ pendingImage = null; pendingFor = selId; e.target.closest('.photorow').innerHTML = photoBox(S.items.find(i => i.id === selId)); $('#photoStatus').textContent = 'Removed. Tap Save to keep it.'; return; }
   const t = e.target;
   const tabBtn = t.closest('#tabs button'); if (tabBtn){ if (tab === 'sheet' && sheetDirty() && tabBtn.dataset.tab !== 'sheet'){ sheetMsg('Save or discard your spreadsheet changes first.', 'err'); return; } if (tab === 'layout' && layoutDirty && tabBtn.dataset.tab !== 'layout'){ status('#layoutStatus', 'Save or discard your layout changes first.', 'err'); return; } if (tabBtn.dataset.tab === 'layout') L = null; scrollTo(0, 0); tab = tabBtn.dataset.tab; selId = null; render(); return; }
   const li = t.closest('.li[data-id]'); if (li){ selId = li.dataset.id; renderItemList(); renderItemEditor(); if (innerWidth < 860) $('#editPane').scrollIntoView({behavior:'smooth'}); return; }
@@ -1081,7 +1117,7 @@ if (DEMO){
 } else {
   const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app); authRef = auth;
   store = await firestoreStore(app);
   A.onAuthStateChanged(auth, user => {
     $('#loginView').classList.toggle('hidden', !!user); $('#appView').classList.toggle('hidden', !user);

@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "jose": "^5.9.6",
-    "firebase": "^10.12.2"
+    "firebase": "^10.12.2",
+    "@netlify/blobs": "^8.1.0"
   }
 }

@@ -8,3 +8,9 @@
 # The Firebase web config key is public by design (Firestore rules protect the data), so the secret scan skips it.
 [build.environment]
   SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY"
+
+# Menu photos: /img/<id> is served by the images function.
+[[redirects]]
+  from = "/img/*"
+  to = "/.netlify/functions/images/:splat"
+  status = 200

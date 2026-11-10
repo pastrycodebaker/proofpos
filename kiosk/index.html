@@ -51,6 +51,10 @@
   .tile{text-align:left;padding:18px;display:flex;flex-direction:column;gap:6px;min-height:120px;justify-content:space-between}
   .tile .t{font-size:20px;font-weight:600}.tile .s{font-size:16px;color:var(--quiet)}
   .tile:disabled{opacity:.5}
+  .tile.img{padding:0 0 14px;overflow:hidden;justify-content:flex-start}
+  .tile.img img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;margin-bottom:6px}
+  .tile.img .t,.tile.img .s,.tile.img .why{padding:0 16px}
+  .tile:disabled img{filter:grayscale(1)}
   .tile .why{font-size:14px;font-weight:700;color:var(--crit)}
   .banner{background:var(--warn);border-radius:18px;padding:16px 20px;display:flex;flex-direction:column;gap:2px}
   .banner b{font-family:"Bricolage Grotesque",sans-serif;font-size:22px}
@@ -291,7 +295,7 @@ function renderShop(){
   const order = (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name);
   $('#grid').innerHTML = kioskItems().filter(i => (i.category || 'Other') === cat).sort(order).map(i => { const w = whyNot(i); const v = (i.versions || [])[0] || {};
     const ps = (i.versions || []).map(x => Number(x.price || 0)); const from = ps.length ? Math.min(...ps) : 0;
-    return `<button class="tile" data-item="${esc(i.id)}" ${w ? 'disabled' : ''}><span class="t">${esc(i.name)}</span>${w ? `<span class="why">${esc(w)}</span>` : `<span class="s">${(i.versions || []).length > 1 ? 'From ' : ''}${from ? money(from) : ''}</span>`}</button>`; }).join('') || '<p class="muted">Nothing here right now.</p>';
+    return `<button class="tile ${i.image ? 'img' : ''}" data-item="${esc(i.id)}" ${w ? 'disabled' : ''}>${i.image ? `<img src="${esc(i.image)}" alt="" loading="lazy">` : ''}<span class="t">${esc(i.name)}</span>${w ? `<span class="why">${esc(w)}</span>` : `<span class="s">${(i.versions || []).length > 1 ? 'From ' : ''}${from ? money(from) : ''}</span>`}</button>`; }).join('') || '<p class="muted">Nothing here right now.</p>';
   renderCart();
 }
 function renderCart(){
