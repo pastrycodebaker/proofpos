@@ -14,3 +14,10 @@
   from = "/img/*"
   to = "/.netlify/functions/images/:splat"
   status = 200
+
+# order.flourandsalt.com opens the customer order page (the staff screens stay at proofpos.netlify.app).
+[[redirects]]
+  from = "https://order.flourandsalt.com/"
+  to = "/order/"
+  status = 301
+  force = true
