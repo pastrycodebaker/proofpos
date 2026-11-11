@@ -1,5 +1,5 @@
 // Emails (Resend) and texts (Twilio) for online orders. Each one is skipped quietly until its keys are set in Netlify:
-//   RESEND_API_KEY, MAIL_FROM (e.g. "Flour & Salt <hello@flourandsalt.com>", domain verified in Resend), OWNER_EMAIL
+//   RESEND_API_KEY, MAIL_FROM (e.g. "Flour & Salt <orders@flourandsalt.com>", on the domain verified in Resend), REPLY_TO (where customer replies go), OWNER_EMAIL
 //   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM (the registered texting number)
 import { dayLabel, timeLabel } from './online.mjs';
 
@@ -11,7 +11,7 @@ export const canText = () => !!(process.env.TWILIO_ACCOUNT_SID && process.env.TW
 export async function sendEmail(to, subject, html, text){
   if (!canEmail() || !to) return {skipped: true};
   const r = await fetch('https://api.resend.com/emails', {method: 'POST', headers: {authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'content-type': 'application/json'},
-    body: JSON.stringify({from: process.env.MAIL_FROM, to: Array.isArray(to) ? to : [to], subject, html, text})});
+    body: JSON.stringify({from: process.env.MAIL_FROM, to: Array.isArray(to) ? to : [to], subject, html, text, ...(process.env.REPLY_TO ? {reply_to: process.env.REPLY_TO} : {})})});
   if (!r.ok) console.error('email failed', r.status, await r.text().catch(() => ''));
   return {ok: r.ok};
 }
