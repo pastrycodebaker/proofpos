@@ -118,7 +118,32 @@ export async function finish(paymentIntent){
   return {paid: true, num: result.num, readyAt: result.readyAt, pickup: result.pickup};
 }
 
+// Pre-order counts for the Proof Box production planner: items and choices per pickup day. No customer details.
+async function production(from, to){
+  await signIn();
+  const snap = await getDocs(query(collection(db, 'orders'), where('pickupDate', '>=', from), where('pickupDate', '<=', to)));
+  const sums = {};
+  for (const d of snap.docs){
+    const o = d.data(); if (!(o.special || o.pickup?.type === 'date') || o.status === 'void' || o.cancelled) continue;
+    for (const l of Object.values(o.lines || {})){
+      if (l.removed) continue;
+      const name = [l.version, l.name].filter(Boolean).join(' ');
+      const mods = (l.mods || []).filter(m => !m.def && !m.inc).map(m => (m.q || 1) + 'X ' + String(m.o).toUpperCase()).join(' • ');
+      const k = o.pickupDate + '|' + name + '|' + mods; sums[k] = (sums[k] || 0) + 1;
+    }
+  }
+  return Object.entries(sums).map(([k, qty]) => { const [date, name, mods] = k.split('|'); return {date, name, mods, qty}; });
+}
+
 export default async (req) => {
+  if (req.method === 'GET'){
+    const u = new URL(req.url); const cors = {'access-control-allow-origin': '*', 'content-type': 'application/json', 'cache-control': 'no-store'};
+    if (u.searchParams.get('action') !== 'production') return new Response('{"error":"Unknown action"}', {status: 400, headers: cors});
+    const from = u.searchParams.get('from') || '', to = u.searchParams.get('to') || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return new Response('{"error":"Bad dates"}', {status: 400, headers: cors});
+    try { return new Response(JSON.stringify({lines: await production(from, to)}), {headers: cors}); }
+    catch (e){ return new Response(JSON.stringify({error: e.message}), {status: 400, headers: cors}); }
+  }
   if (req.method !== 'POST') return json(405, {error: 'POST only'});
   let b; try { b = await req.json(); } catch { return json(400, {error: 'Bad request'}); }
   try {
