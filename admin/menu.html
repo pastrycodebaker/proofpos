@@ -154,7 +154,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onlineWhen, packAs } from '../shared/online.mjs';
+import { onlineWhen, packAs, CHANNELS } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 let authRef = null;
@@ -477,6 +477,8 @@ async function renderGroupEditor(){
     <h2>${esc(g.name)}</h2>
     <div class="row"><div><label>Name</label><input id="g_name" value="${esc(g.name)}"></div><div><label>Choices</label><select id="g_rule">${RULES.map(([v,l]) => `<option value="${v}" ${v===rule?'selected':''}>${l}</option>`).join('')}${RULES.some(([v]) => v === rule) ? '' : `<option value="${rule}" selected>Min ${g.min}, max ${g.max}</option>`}</select></div></div>
     <label>Pre-selected option (optional, must match an option name)</label><input id="g_default" value="${esc(g.default || '')}" style="max-width:320px">
+    <label>Shows on</label><div class="toggles">${Object.entries(CHANNELS).map(([k, l]) => `<label class="${g.showOn?.[k] !== false ? 'on' : ''}"><input type="checkbox" data-show="${k}" ${g.showOn?.[k] !== false ? 'checked' : ''}>${l}</label>`).join('')}</div>
+    <p class="muted" style="margin:2px 0 0;font-size:13px">Untick a place to leave this whole group off there. For example, a Slicing group set to Online, pre-order only.</p>
     <h3>Options</h3>
     <p class="muted">"By size" lets an add-on cost more in a bigger drink. Blank sizes use the flat price.</p>
     <div id="opts">${g.options.map(o => optRow(o, sizes)).join('')}</div>
@@ -508,6 +510,7 @@ function readGroupForm(g){
   out.name = $('#g_name').value.trim() || g.name;
   const [mn, mx] = $('#g_rule').value.split(',').map(Number); out.min = mn; out.max = mx;
   out.default = $('#g_default').value.trim();
+  out.showOn = Object.fromEntries([...document.querySelectorAll('[data-show]')].map(i => [i.dataset.show, i.checked]));
   out.options = [...document.querySelectorAll('#opts .opt')].map(el => {
     const bySize = {}; el.querySelectorAll('[data-bs]').forEach(i => { if (i.value !== '') bySize[i.dataset.bs] = Number(i.value); });
     const cname = el.querySelector('[data-o=cname]').value.trim();

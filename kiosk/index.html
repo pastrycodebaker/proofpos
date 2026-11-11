@@ -167,6 +167,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
+import { onChannel } from '../shared/online.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -223,7 +224,7 @@ async function firebaseStore(app){
 let store, MENU = {items:[], groups:[], settings:{}}, MODSTOCK = {}, STATUS = {}, KDS = {}, STAFF = {members:[]};
 let cart = [], cat = null, draft = null, tipPct = null, custName = '', lastTouch = Date.now();
 const S = () => MENU.settings || {};
-const itemById = id => MENU.items.find(i => i.id === id);
+const itemById = id => onChannel(MENU.items.find(i => i.id === id), groupById, 'kiosk');
 const groupById = id => MENU.groups.find(g => g.id === id);
 const modKey = (g, o) => { const opt = (MENU.groups.find(x => x.id === g)?.options || []).find(x => x.name === o); return (opt && opt.stockAs) || g + '~' + o; };
 const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };

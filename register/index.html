@@ -172,6 +172,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
+import { onChannel } from '../shared/online.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -262,7 +263,7 @@ function newCheck(){ return {orderId:null, name:'', lines:[], taxExempt:false, d
 function audit(type, detail = {}){ const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null; store.logEvent({type, staff: user ? user.name : '', orderId: check.orderId || null, num: o ? o.num : null, ...detail}).catch(console.error); }
 const REWARD = {points: 150, amount: 3}; // 150 points = $3 off; 1 point per $1
 const normPhone = p => String(p || '').replace(/\D/g, '').slice(-10);
-const itemById = id => MENU.items.find(i => i.id === id);
+const itemById = id => onChannel(MENU.items.find(i => i.id === id), groupById, 'register');
 const groupById = id => MENU.groups.find(g => g.id === id);
 const settings = () => MENU.settings || {};
 const preMods = () => settings().preMods || DEFAULT_PREMODS;

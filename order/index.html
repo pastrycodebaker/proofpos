@@ -137,7 +137,9 @@ const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; 
 let M = {items: [], groups: [], settings: {}, status: {}, kds: {}};
 let pickup = {type: 'asap'}, cart = [], cat = null, draft = null, tipPct = null, me = load('fs.me', {name: '', email: '', phone: ''});
 const S = () => M.settings || {};
-const itemById = id => M.items.find(i => i.id === id);
+const chan = () => mode() === 'later' ? 'preorder' : 'asap';
+const BL = (d) => R.buildLine(M, d, M.kds, chan());
+const itemById = id => R.onChannel(M.items.find(i => i.id === id), groupById, chan());
 const groupById = id => M.groups.find(g => g.id === id);
 const onlineItems = () => M.items.filter(i => !i.archived && i.active !== false && !i.alcohol && i.visible?.online !== false);
 const order = (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name);
@@ -148,7 +150,7 @@ async function loadLeft(date){
 }
 const avail = it => { const a = R.availability(it, pickup, S(), Date.now()); if (!a.ok || pickup.type !== 'date' || LEFT[it.id] === undefined) return a; return LEFT[it.id] <= 0 ? {ok: false, reason: 'Sold out for that day'} : {...a, left: LEFT[it.id]}; };
 // What the usual build costs (built-from sandwiches price from their included ingredients).
-const fromPrice = it => { const ps = (it.versions || []).map((v, i) => { try { return R.buildLine(M, {itemId: it.id, versionIdx: i, mods: [...(it.included || []).map(x => ({g: x.g, o: x.o, q: 1})), ...(it.modifierGroupIds || []).map(groupById).filter(g => g && g.default).map(g => ({g: g.id, o: g.default, q: 1}))]}).price; } catch (e){ return Number(v.price || 0); } }); return ps.length ? Math.min(...ps) : 0; };
+const fromPrice = it => { const ps = (it.versions || []).map((v, i) => { try { return BL({itemId: it.id, versionIdx: i, mods: [...(it.included || []).map(x => ({g: x.g, o: x.o, q: 1})), ...(it.modifierGroupIds || []).map(groupById).filter(g => g && g.default).map(g => ({g: g.id, o: g.default, q: 1}))]}).price; } catch (e){ return Number(v.price || 0); } }); return ps.length ? Math.min(...ps) : 0; };
 const ownDeadline = it => !!(it.deadline || it.preorderOnly || (it.dates || []).length);
 const deadlineText = ms => new Date(ms).toLocaleString('en-US', {timeZone: R.TZ, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
 
@@ -178,7 +180,7 @@ async function api(action, body = {}){
   if (!r.ok) throw new Error(d.error || 'Something went wrong.'); return d;
 }
 function demoApi(action, b){
-  if (action === 'start'){ const lines = b.cart.map(d => R.buildLine(M, d)); return {demo: true, paymentIntent: 'pi_demo', totals: R.cartTotals(lines, S(), b.tipPct)}; }
+  if (action === 'start'){ const lines = b.cart.map(d => BL(d)); return {demo: true, paymentIntent: 'pi_demo', totals: R.cartTotals(lines, S(), b.tipPct)}; }
   if (action === 'finish') return {paid: true, num: 142, readyAt: pickup.type === 'asap' ? Date.now() + 15 * 60000 : null, pickup};
 }
 
@@ -264,7 +266,7 @@ function openItem(id){
   renderItem();
 }
 const gCount = gid => draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0);
-function tryLine(){ try { return R.buildLine(M, structuredClone(draft), M.kds); } catch (e){ return null; } }
+function tryLine(){ try { return BL(structuredClone(draft), M.kds); } catch (e){ return null; } }
 function renderItem(){
   const it = itemById(draft.itemId); const vers = it.versions || []; const v = vers[draft.versionIdx ?? 0] || {};
   // Drop picks from groups that are now hidden (e.g. bagel flavor after switching away from Bagel)
@@ -284,13 +286,13 @@ function renderItem(){
   $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="${esc(it.name)}">${it.image ? `<img class="hero" src="${esc(it.image)}" alt="">` : ''}<div class="hd"><div><h2>${esc(it.name)}</h2>${it.description ? `<div class="muted">${esc(it.description)}</div>` : ''}</div><button class="x" data-close="1" aria-label="Close">✕</button></div>
     <div class="bd">${parts.join('')}</div><div class="ft"><span class="muted">${l && l.countNote ? esc(l.countNote) : ''}</span><span class="sp"></span><button class="primary" id="addBtn" ${l ? '' : 'disabled'}>${l ? 'Add · ' + money(l.price) : 'Make your choices'}</button></div></div></div>`;
 }
-function addDraft(){ const l = R.buildLine(M, structuredClone(draft), M.kds); cart.push({...structuredClone(draft), price: l.price, name: l.name, version: l.version, label: lineLabel(l)}); save(cartKey(), cart); draft = null; $('#sheetRoot').innerHTML = ''; renderBar(); }
+function addDraft(){ const l = BL(structuredClone(draft), M.kds); cart.push({...structuredClone(draft), price: l.price, name: l.name, version: l.version, label: lineLabel(l)}); save(cartKey(), cart); draft = null; $('#sheetRoot').innerHTML = ''; renderBar(); }
 const lineLabel = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...l.mods.filter(m => !m.inc && !m.def).map(m => (m.q > 1 ? m.q + '× ' : '') + m.o)].join(' · ');
 
 // ---------- Cart and checkout ----------
-function cartIssues(){ return cart.map(x => { const it = itemById(x.itemId); const a = it ? avail(it) : {ok: false, reason: 'No longer on the menu'}; if (!a.ok) return a.reason; try { R.buildLine(M, structuredClone(x), M.kds); return null; } catch (e){ return e.message; } }); }
+function cartIssues(){ return cart.map(x => { const it = itemById(x.itemId); const a = it ? avail(it) : {ok: false, reason: 'No longer on the menu'}; if (!a.ok) return a.reason; try { BL(structuredClone(x), M.kds); return null; } catch (e){ return e.message; } }); }
 function renderCart(err = ''){
-  const issues = cartIssues(); const lines = cart.map((x, i) => issues[i] ? null : R.buildLine(M, structuredClone(x), M.kds));
+  const issues = cartIssues(); const lines = cart.map((x, i) => issues[i] ? null : BL(structuredClone(x), M.kds));
   const t = R.cartTotals(lines.filter(Boolean), S(), tipPct || 0);
   const os = R.onlineSettings(S());
   const tips = [['0', 'No tip'], ...os.tips.map(p => [String(p), Math.round(p * 100) + '%'])];

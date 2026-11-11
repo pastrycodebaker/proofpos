@@ -161,10 +161,19 @@ function countPrice(n, unit, tiersIn){
 }
 export const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
 export function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
+// Where a modifier group shows: register, kiosk, asap (online today) and preorder (online for a future day). Unset means everywhere.
+export const CHANNELS = {register: 'Register', kiosk: 'Kiosk', asap: 'Online, today', preorder: 'Online, pre-order'};
+export const groupOn = (g, ch) => !ch || !g || !g.showOn || g.showOn[ch] !== false;
+// A copy of an item with only the modifier groups that show on this channel.
+export function onChannel(it, groupById, ch){
+  if (!it || !ch || !(it.modifierGroupIds || []).length) return it;
+  const ids = it.modifierGroupIds.filter(id => groupOn(groupById(id), ch)); if (ids.length === it.modifierGroupIds.length) return it;
+  return {...it, modifierGroupIds: ids, included: (it.included || []).filter(x => ids.includes(x.g))};
+}
 export const groupShown = (it, gid, mods) => { const w = (it.showWhen || {})[gid]; return !w || mods.some(m => m.g === w.g && m.o === w.o); };
 // Builds a kitchen line from a customer's choice and checks it is a valid build. Throws a plain-English error if not.
-export function buildLine(menu, d, kds = {}){
-  const it = menu.items.find(i => i.id === d.itemId); if (!it) throw new Error('An item in your cart is no longer on the menu.');
+export function buildLine(menu, d, kds = {}, channel = null){
+  const it = onChannel(menu.items.find(i => i.id === d.itemId), id => menu.groups.find(g => g.id === id), channel); if (!it) throw new Error('An item in your cart is no longer on the menu.');
   const vers = it.versions || []; const vi = vers.length > 1 ? d.versionIdx : 0;
   if (vi === null || vi === undefined || !vers[vi]) throw new Error(`Pick a size for ${it.name}.`);
   const v = vers[vi]; const groups = (it.modifierGroupIds || []).map(id => menu.groups.find(g => g.id === id)).filter(Boolean);

@@ -66,7 +66,7 @@ async function start(b){
     const it = M.items.find(i => i.id === d.itemId);
     const av = availability(it, pickup, M.settings, now, (sold[d.itemId] || 0) + (inCart[d.itemId] || 0), M.limits);
     if (!av.ok) throw new Error(`${it ? it.name : 'An item'}: ${av.reason}.`);
-    const l = buildLine(M, d, M.kds);
+    const l = buildLine(M, d, M.kds, pickup.type === 'date' ? 'preorder' : 'asap');
     if (onlineSettings(M.settings).taxFree) l.taxable = false;
     if (pickup.type === 'date'){ Object.assign(l, lineLabels(it, l)); if (!it.fromCafe) l.station = 'none'; }  // only cafe-made items go to the KDS
     lines.push(l); inCart[d.itemId] = (inCart[d.itemId] || 0) + 1;
