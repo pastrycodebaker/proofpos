@@ -28,7 +28,7 @@ export const timeLabel = t => { const [h, m] = t.split(':').map(Number); return 
 export function onlineSettings(settings = {}){
   const o = settings.online || {};
   return {
-    asap: o.asap !== false,
+    asap: o.asap === true,                     // "Today, ASAP" ordering: off until the shop moves off Toast; pre-orders only
     hours: o.hours || {},                     // {3: {open:'07:00', close:'14:00'}, ...} by weekday; missing = closed
     prepMinutes: Number(o.prepMinutes ?? 15),
     asapPer15: Number(o.asapPer15 || 0),       // most ASAP online orders per 15 minutes (0 = no limit)
@@ -37,7 +37,9 @@ export function onlineSettings(settings = {}){
     deadline: o.deadline || {weekly: true, weekday: 1, time: '13:00'}, // default pre-order deadline: Monday 1pm for that week's pickups (or {daysBefore, time})
     fireTime: o.fireTime || '06:00',           // older setting, used only for pre-orders without a pickup time
     fireLead: Number(o.fireLead ?? 30),        // pre-orders appear on the KDS this many minutes before their pickup time
-    slotLimit: Number(o.slotLimit || 0),       // most pre-orders per 15-minute pickup time (0 = no limit)
+    slotLimit: Number(o.slotLimit || 0),
+    taxFree: o.taxFree !== false,              // pre-orders are sold tax-free
+    reminderDay: o.reminderDay ?? 0, reminderTime: o.reminderTime || '18:00', // weekly pre-order reminder text       // most pre-orders per 15-minute pickup time (0 = no limit)
     closedDates: o.closedDates || [],
     pickupNote: o.pickupNote || '',
     tips: settings.tipPercents || [0.18, 0.20, 0.22],
@@ -102,7 +104,29 @@ export function preorderDays(settings, now = Date.now()){
   return {open, closed};
 }
 export const daysFromToday = (date, now = Date.now()) => Math.round((Date.parse(date + 'T12:00:00Z') - Date.parse(nyDate(now) + 'T12:00:00Z')) / 86400000);
-export function availability(item, pickup, settings, now = Date.now(), soldOnDate = 0){
+// Most of an item that can be pre-ordered for one pickup day. limits = menu/preorderLimits {usual: {itemId: {weekday: n}}, dates: {date: {itemId: n}}}.
+// Blank means no limit. A date's own number wins over the usual number for that weekday.
+export function limitFor(item, date, limits){
+  const d = limits?.dates?.[date]?.[item.id]; if (d !== undefined && d !== null && d !== '') return Number(d);
+  const u = limits?.usual?.[item.id]?.[weekday(date)]; if (u !== undefined && u !== null && u !== '') return Number(u);
+  return item.dateLimit ? Number(item.dateLimit) : null;
+}
+// How staff pack and label a pre-order line.
+export const PACK = {bagels: 'Bagels', pastries: 'Pastries', breads: 'Breads', cafe: 'From the cafe'};
+export function packAs(item){
+  if (item.fromCafe) return 'cafe';
+  if (PACK[item.packAs]) return item.packAs;
+  if (item.category === 'Bulk Bagels') return 'bagels';
+  if (/bread|sourdough|loaf|rye|focaccia|baguette|challah|ciabatta|boule|batard/i.test(item.name || '')) return 'breads';
+  return 'pastries';
+}
+const FRIDGE_WORDS = /cream cheese|schmear|cold brew|butter|lox|spread/i;
+export function lineLabels(item, line){
+  const picks = [...(line.mods || []).map(m => m.o), ...(line.noMods || []).map(() => '')].join(' ');
+  return {packAs: packAs(item), fromCafe: !!item.fromCafe, fridge: !!item.refrigerated || FRIDGE_WORDS.test(item.name || '') || (line.mods || []).some(m => FRIDGE_WORDS.test(m.o)),
+    sliced: !!item.sliced || /\bslic/i.test(picks)};
+}
+export function availability(item, pickup, settings, now = Date.now(), soldOnDate = 0, limits = null){
   if (!item || item.archived || item.active === false || item.alcohol || item.visible?.online === false) return {ok: false, reason: 'Not available online'};
   const date = pickup.type === 'asap' ? nyDate(now) : pickup.date;
   const when = onlineWhen(item);
@@ -119,8 +143,9 @@ export function availability(item, pickup, settings, now = Date.now(), soldOnDat
   if (pickup.type === 'date' && date !== nyDate(now) || item.preorderOnly){
     const dl = deadlineFor(item, date, settings);
     if (now > dl) return {ok: false, reason: 'Order deadline has passed'};
-    if (item.dateLimit && soldOnDate >= item.dateLimit) return {ok: false, reason: 'Sold out for that day'};
-    return {ok: true, deadline: dl, left: item.dateLimit ? item.dateLimit - soldOnDate : null};
+    const lim = limitFor(item, date, limits);
+    if (lim !== null && soldOnDate >= lim) return {ok: false, reason: 'Sold out for that day'};
+    return {ok: true, deadline: dl, left: lim !== null ? lim - soldOnDate : null};
   }
   return {ok: true};
 }
@@ -163,7 +188,8 @@ export function buildLine(menu, d, kds = {}){
 export function cartTotals(lines, settings, tipPct = 0){
   const rate = Number(settings.taxRate || 0);
   const sub = r2(lines.reduce((s, l) => s + l.price, 0));
-  const taxable = r2(lines.filter(l => l.taxable).reduce((s, l) => s + l.price, 0));
+  // Online ordering is tax-free unless settings.online.taxFree is turned off.
+  const taxable = onlineSettings(settings).taxFree ? 0 : r2(lines.filter(l => l.taxable).reduce((s, l) => s + l.price, 0));
   const tax = r2(taxable * rate / (1 + rate)); // prices include tax
   const tip = r2(sub * (Number(tipPct) || 0));
   return {sub, disc: 0, taxable, tax, inTax: tax, tip, tips: tip, surcharge: 0, total: sub, charge: r2(sub + tip)};

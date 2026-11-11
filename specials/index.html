@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F7F3EC">
+<link rel="icon" href="/icons/icon-192.png">
+<title>Special orders · Proof POS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F7F3EC;--card:#fff;--ink:#2B2622;--quiet:#6B6157;--soft:#EFE7DA;--line:#E3D9CA;--accent:#1F5C55;--accent-bg:#E6F0EE;--crit:#A32D1F;
+    --yellow:#F6D55C;--blue:#A9D1F5;--pink:#F6BDD0}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Inter,system-ui,sans-serif}
+  button,select,input{font:inherit;color:inherit}
+  button{border:0;background:var(--card);border-radius:12px;padding:10px 14px;cursor:pointer;border:1px solid var(--line)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+  button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.danger{color:var(--crit)}
+  input,select{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff}
+  h1,h2,h3{font-family:"Bricolage Grotesque",Inter,sans-serif;font-weight:800;margin:0}
+  .muted{color:var(--quiet)} .hidden{display:none !important} .err{color:var(--crit);font-weight:600} .ok{color:var(--accent);font-weight:600}
+  header{position:sticky;top:0;z-index:5;background:rgba(247,243,236,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:10px 16px}
+  .hrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:1200px;margin:0 auto}
+  .hrow h1{font-size:22px;margin-right:auto}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tabs button{font-weight:700}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
+  main{max-width:1200px;margin:0 auto;padding:16px 16px 80px}
+  .day{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;min-width:220px;text-align:center}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;min-width:120px}
+  .kpi b{display:block;font-size:24px;font-family:"Bricolage Grotesque",sans-serif}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+  .ord{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .ord.done{opacity:.55}
+  .ord.cancelled{opacity:.45;text-decoration:line-through}
+  .ord.missed{border:2px solid var(--crit)}
+  .ord .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .ord .nm{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;line-height:1.1}
+  .ord .tm{font-weight:800;font-size:18px;text-align:right;white-space:nowrap}
+  .ord a.ph{color:var(--accent);font-weight:600;text-decoration:none}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .b{font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.08)}
+  .b.fridgeb{background:#fff;border:2px solid #4A90C2;color:#2D6E9C} .b.yellow{background:var(--yellow)} .b.blue{background:var(--blue)} .b.pink{background:var(--pink)} .b.gray{background:var(--soft)} .b.red{background:var(--crit);color:#fff} .b.green{background:var(--accent);color:#fff}
+  .fridge{background:#fff;border:2px dashed #4A90C2;color:#2D6E9C;border-radius:12px;padding:8px 10px;font-weight:800;display:flex;gap:8px;align-items:center}
+  .items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  .items li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--soft)}
+  .items li:first-child{border-top:0}
+  .items .mods{font-size:14px;color:var(--quiet)}
+  .items .lb{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+  .items .lb .b{font-size:11px;padding:2px 7px}
+  .chk{width:26px;height:26px;flex:none;accent-color:var(--accent);margin-top:1px}
+  .bigchk{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;background:var(--accent-bg);border-radius:12px;padding:10px 12px;cursor:pointer}
+  .bigchk input{width:28px;height:28px;accent-color:var(--accent)}
+  .acts{display:flex;gap:6px;flex-wrap:wrap}
+  .acts button{font-size:14px;padding:6px 10px}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--soft);text-align:left;vertical-align:top}
+  th{font-size:13px;color:var(--quiet);font-weight:700;background:#FBF8F3}
+  td.n,th.n{text-align:right;white-space:nowrap}
+  tr.cat td{background:var(--soft);font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:17px}
+  .counts input{width:64px;padding:6px 8px;text-align:right}
+  .counts td small{display:block;color:var(--quiet);font-size:12px;text-align:right}
+  .scrim{position:fixed;inset:0;background:rgba(43,38,34,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+  .sheet{background:var(--bg);border-radius:18px;max-width:480px;width:100%;padding:18px;display:flex;flex-direction:column;gap:10px}
+  .login{max-width:360px;margin:60px auto;display:flex;flex-direction:column;gap:10px}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;margin-bottom:12px}
+  @media print{header,.acts,.noprint{display:none !important} body{background:#fff} .ord{break-inside:avoid;border:1px solid #999} main{padding:0}}
+</style>
+</head>
+<body>
+<div id="loginBox" class="login hidden"><h1>Special orders</h1><input id="email" type="email" placeholder="Email" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button class="primary" id="signIn">Sign in</button><div class="err" id="loginErr"></div></div>
+<div id="appBox" class="hidden">
+<header>
+  <div class="hrow"><h1>Special orders</h1>
+    <div class="tabs" id="tabs"><button data-tab="pickup">Pickup</button><button data-tab="pack">Packing</button><button data-tab="prep">Prep</button><button data-tab="counts">Counts</button></div>
+    <a href="../?pick" class="muted" style="font-size:14px">Switch screen</a></div>
+  <div class="bar" id="dateBar"></div>
+</header>
+<main id="main"><p class="muted">Loading…</p></main>
+</div>
+<div id="modal"></div>
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+import * as R from '../shared/online.mjs';
+import { createPayments } from '../payments.js';
+
+const DEMO = new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const money = n => '$' + (Number(n) || 0).toFixed(2);
+const r2 = n => Math.round(n * 100) / 100;
+const today = () => R.nyDate();
+const tl = t => t ? R.timeLabel(t) : '';
+const dl = d => R.dayLabel(d);
+const longDay = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', {timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric'});
+const PACKN = R.PACK;
+const linesOf = o => Object.values(o.lines || {}).filter(l => !l.removed).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
+const modText = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...(l.mods || []).filter(m => !m.def && !m.inc).map(m => (m.q > 1 ? m.q + '× ' : '') + m.o)].join(', ');
+const lineName = l => [l.version, l.name].filter(Boolean).join(' ');
+const isSpecial = o => o.special || o.pickup?.type === 'date';
+const live = o => isSpecial(o) && o.status !== 'void' && !o.cancelled;
+
+let store, PAY, MENU = {items: [], settings: {}, limits: {}}, ORDERS = [], unsub = null;
+let tab = localStorage.getItem('proof.sp.tab') || 'pickup', day = today(), sortBy = 'time', packCat = 'bagels', range = {kind: 'week'}, query = '';
+const itemOf = id => MENU.items.find(i => i.id === id) || {};
+// Labels saved on the line when ordered; fall back to the item's current settings for older orders.
+const labels = l => l.packAs ? l : {...l, ...R.lineLabels(itemOf(l.itemId), l)};
+
+// ---------- Data ----------
+function demoStore(){
+  const d0 = today(); const d1 = R.addDays(d0, 1);
+  const L = (name, price, extra = {}) => ({lid: Math.random().toString(36).slice(2, 9), itemId: name.toLowerCase().replace(/\W+/g, '-'), name, price, mods: [], ...extra});
+  const mk = (num, name, phone, date, time, lines, extra = {}) => ({id: 'web_' + num, num, name, phone, email: name.toLowerCase().split(' ')[0] + '@example.com', special: true, status: 'paid', pickup: {type: 'date', date, time}, pickupDate: date, pickupTime: time,
+    lines: Object.fromEntries(lines.map((l, i) => [l.lid, {...labels(l), pos: i}])), packed: {}, pickedUp: false, totals: {charge: r2(lines.reduce((s, l) => s + l.price, 0))}, payments: [{method: 'card', amount: r2(lines.reduce((s, l) => s + l.price, 0)), paymentIntent: 'pi_demo_' + num}], ...extra});
+  let orders = [
+    mk(1001, 'Maya Chen', '3155551234', d0, '08:30', [L('Bagels, dozen', 30, {itemId: 'bulk-dozen', packAs: 'bagels', mods: [{g: 'f', o: 'Everything', q: 6}, {g: 'f', o: 'Plain', q: 6}, {g: 's', o: 'Sliced', q: 1}], sliced: true}), L('Plain Cream Cheese, half pint', 7, {packAs: 'bagels', fridge: true})]),
+    mk(1002, 'Theo Park', '3155559876', d0, '10:15', [L('House Sourdough', 9, {packAs: 'breads'}), L('Croissant', 4.5, {packAs: 'pastries'}), L('Croissant', 4.5, {packAs: 'pastries'})], {allergySeparate: true, allergyNote: 'Nut allergy, keep the almond croissant apart'}),
+    mk(1003, 'Colgate Admissions', '3155550000', d0, '09:00', [L('Cold Brew Box', 38, {packAs: 'cafe', fromCafe: true, fridge: true}), L('Team Bagel Sandwich Pack', 85, {packAs: 'cafe', fromCafe: true}), L('Bagels, half dozen', 16, {packAs: 'bagels', mods: [{g: 'f', o: 'Sesame', q: 6}]})]),
+    mk(1004, 'Rae Lopez', '3155554321', d1, '11:00', [L('Pumpkin Pie', 34, {packAs: 'pastries'}), L('House Sourdough', 9, {packAs: 'breads', mods: [{g: 's', o: 'Sliced', q: 1}], sliced: true})]),
+  ];
+  const events = [];
+  return {
+    listen(from, to, cb){ cb(orders.filter(o => o.pickupDate >= from && o.pickupDate <= to)); this._cb = () => cb(orders.filter(o => o.pickupDate >= from && o.pickupDate <= to)); return () => {}; },
+    async update(id, patch){ const o = orders.find(x => x.id === id); for (const [k, v] of Object.entries(patch)){ const ks = k.split('.'); let t = o; for (const p of ks.slice(0, -1)) t = t[p] = t[p] || {}; t[ks[ks.length - 1]] = v; } this._cb && this._cb(); },
+    async addRefund(id, r, patch = {}){ const o = orders.find(x => x.id === id); o.refunds = [...(o.refunds || []), r]; await this.update(id, patch); },
+    async menu(){ const s = await (await fetch('../data/seed-menu.json')).json(); return {items: s.items, settings: {...s.settings, online: {hours: {3:{open:'07:00',close:'14:00'},4:{open:'07:00',close:'14:00'},5:{open:'07:00',close:'14:00'},6:{open:'08:00',close:'14:00'},0:{open:'08:00',close:'14:00'}}}}, limits: {}}; },
+    async saveLimits(l){ MENU.limits = l; },
+    async log(e){ events.push(e); },
+    async notifyOwner(subject, text){ console.log('Owner email:', subject, text); },
+  };
+}
+async function firestoreStore(app, auth){
+  const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const db = F.getFirestore(app);
+  return {
+    listen(from, to, cb){ return F.onSnapshot(F.query(F.collection(db, 'orders'), F.where('pickupDate', '>=', from), F.where('pickupDate', '<=', to)), s => cb(s.docs.map(d => ({id: d.id, ...d.data()})))); },
+    async update(id, patch){ await F.updateDoc(F.doc(db, 'orders', id), patch); },
+    async addRefund(id, r, patch = {}){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r), ...patch}); },
+    async menu(){ const [i, m, l] = await Promise.all([F.getDocs(F.collection(db, 'menu', 'main', 'items')), F.getDoc(F.doc(db, 'menu', 'main')), F.getDoc(F.doc(db, 'menu', 'preorderLimits'))]);
+      return {items: i.docs.map(d => d.data()), settings: m.exists() ? m.data() : {}, limits: l.exists() ? l.data() : {}}; },
+    async saveLimits(l){ await F.setDoc(F.doc(db, 'menu', 'preorderLimits'), l); },
+    async log(e){ await F.addDoc(F.collection(db, 'events'), {...e, at: Date.now()}); },
+    async notifyOwner(subject, text){ const t = await auth.currentUser.getIdToken(); await fetch('/.netlify/functions/notify', {method: 'POST', headers: {authorization: 'Bearer ' + t, 'content-type': 'application/json'}, body: JSON.stringify({subject, text})}); },
+  };
+}
+
+// The date range each view needs; pickup and packing look at one day, prep at a range, counts at the coming weeks.
+function rangeDates(){
+  if (tab === 'pickup' || tab === 'pack') return [day, day];
+  if (tab === 'counts') return [today(), R.addDays(today(), 28)];
+  const t = today();
+  if (range.kind === 'day') return [range.from || t, range.from || t];
+  if (range.kind === 'tomorrow') return [R.addDays(t, 1), R.addDays(t, 1)];
+  if (range.kind === 'week'){ let s = t; while (R.weekday(s) !== 1) s = R.addDays(s, -1); return [t > s ? t : s, R.addDays(s, 6)]; }  // the rest of this Mon–Sun week
+  if (range.kind === 'next7') return [t, R.addDays(t, 6)];
+  if (range.kind === 'all') return [t, R.addDays(t, 120)];
+  return [range.from || t, range.to || range.from || t];
+}
+let listening = '';
+function listen(){
+  const [from, to] = rangeDates(); const key = from + to; if (key === listening) return render(); listening = key;
+  if (unsub) unsub(); unsub = store.listen(from, to, o => { ORDERS = o; render(); });
+}
+
+// ---------- Shared bits ----------
+function orderBadges(o){
+  const ls = linesOf(o).map(labels); const b = [];
+  if (o.allergySeparate) b.push(`<span class="b pink">Separate for allergies</span>`);
+  if (ls.some(l => l.sliced)) b.push(`<span class="b yellow">Sliced</span>`);
+  if (ls.some(l => l.fromCafe)) b.push(`<span class="b blue">From the cafe</span>`);
+  return b.join('');
+}
+function fridgeAlert(o){
+  const f = linesOf(o).map(labels).filter(l => l.fridge); if (!f.length) return '';
+  return `<div class="fridge"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2D6E9C" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2v20M4.9 6l14.2 12M19.1 6 4.9 18M9 4l3 2 3-2M9 20l3-2 3 2"/></svg>Fridge: ${esc(f.map(lineName).join(', '))}</div>`;
+}
+const packProgress = o => { const ls = linesOf(o); const n = ls.filter(l => o.packed?.[l.lid]).length; return {n, of: ls.length, all: ls.length && n === ls.length}; };
+function missed(o){
+  if (o.pickedUp || o.cancelled) return false;
+  if (o.pickupDate < today()) return true;
+  if (o.pickupDate > today()) return false;
+  const h = R.onlineSettings(MENU.settings).hours[R.weekday(o.pickupDate)];
+  return h && h.close ? Date.now() > R.nyMs(o.pickupDate, h.close) : false;
+}
+function dateBar(){
+  if (tab === 'counts'){ $('#dateBar').innerHTML = `<span class="muted">Most each item can sell per pickup day online. Blank means no limit. This is separate from the shop's counts.</span>`; return; }
+  if (tab === 'prep'){
+    const kinds = [['day', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week'], ['next7', 'Next 7 days'], ['all', 'All upcoming'], ['custom', 'Pick dates']];
+    const [f, t] = rangeDates();
+    $('#dateBar').innerHTML = `${kinds.map(([k, l]) => `<button data-range="${k}" class="${range.kind === k ? 'on' : ''}">${l}</button>`).join('')}
+      ${range.kind === 'custom' ? `<input type="date" id="rFrom" value="${f}"> to <input type="date" id="rTo" value="${t}">` : `<span class="muted">${esc(dl(f))}${f !== t ? ' – ' + esc(dl(t)) : ''}</span>`}<button id="printBtn" class="noprint">Print</button>`;
+    return;
+  }
+  $('#dateBar').innerHTML = `<button data-day="-1" aria-label="Previous day">‹</button><span class="day">${day === today() ? 'Today · ' : ''}${esc(longDay(day))}</span><button data-day="1" aria-label="Next day">›</button>
+    ${day !== today() ? '<button data-day="0">Today</button>' : ''}<input type="date" id="pickDay" value="${day}" style="width:auto">
+    ${tab === 'pickup' ? `<span style="margin-left:auto"></span><input id="q" placeholder="Search name or phone" value="${esc(query)}" style="width:200px"><button data-sort="time" class="${sortBy === 'time' ? 'on' : ''}">By time</button><button data-sort="name" class="${sortBy === 'name' ? 'on' : ''}">By name</button>` : '<span style="margin-left:auto"></span><button id="printBtn">Print</button>'}`;
+}
+
+// ---------- Pickup ----------
+function renderPickup(){
+  let os = ORDERS.filter(isSpecial).filter(o => o.status !== 'void');
+  if (query){ const q = query.toLowerCase().replace(/\D/g, '') || null; os = os.filter(o => (o.name || '').toLowerCase().includes(query.toLowerCase()) || (q && String(o.phone || '').includes(q)) || String(o.num) === query); }
+  os.sort(sortBy === 'name' ? (a, b) => (a.name || '').localeCompare(b.name || '') : (a, b) => (a.pickupTime || '').localeCompare(b.pickupTime || '') || (a.name || '').localeCompare(b.name || ''));
+  const act = os.filter(o => !o.cancelled); const picked = act.filter(o => o.pickedUp).length;
+  return `<div class="kpis"><div class="kpi"><b>${act.length}</b>orders</div><div class="kpi"><b>${picked}</b>picked up</div><div class="kpi"><b>${act.filter(o => packProgress(o).all).length}</b>fully packed</div>${act.some(missed) ? `<div class="kpi" style="border-color:var(--crit)"><b class="err">${act.filter(missed).length}</b>not picked up</div>` : ''}</div>
+    <div class="legend"><span class="b yellow">Sliced</span><span class="b blue">From the cafe</span><span class="b pink">Separate for allergies</span><span class="b fridgeb">Fridge</span><span class="muted">grab from the fridge at pickup</span></div>
+    <div class="grid">${os.map(o => { const p = packProgress(o); const ms = missed(o);
+      return `<div class="ord ${o.pickedUp ? 'done' : ''} ${o.cancelled ? 'cancelled' : ''} ${ms ? 'missed' : ''}">
+        <div class="top"><div><div class="nm">${esc(o.name)}</div><div class="muted">#${esc(o.num)} · ${o.phone ? `<a class="ph" href="tel:${esc(o.phone)}">${esc(fmtPhone(o.phone))}</a>` : 'no phone'}</div></div><div class="tm">${esc(tl(o.pickupTime))}</div></div>
+        <div class="badges">${o.cancelled ? '<span class="b red">Cancelled</span>' : ''}${ms ? '<span class="b red">Not picked up</span>' : ''}${p.all ? '<span class="b green">Packed</span>' : `<span class="b gray">${p.n} of ${p.of} packed</span>`}${orderBadges(o)}</div>
+        ${o.allergySeparate && o.allergyNote ? `<div class="muted" style="font-weight:600">Allergy note: ${esc(o.allergyNote)}</div>` : ''}
+        ${fridgeAlert(o)}
+        <ul class="items">${linesOf(o).map(l => `<li><div><b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div></li>`).join('')}</ul>
+        ${o.cancelled ? '' : `<label class="bigchk"><input type="checkbox" data-picked="${esc(o.id)}" ${o.pickedUp ? 'checked' : ''}>${o.pickedUp ? 'Picked up' + (o.pickedUpAt ? ' at ' + new Date(o.pickedUpAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '') : 'Picked up'}</label>
+        <div class="acts"><button data-change="${esc(o.id)}">Remove an item</button><button class="danger" data-cancel="${esc(o.id)}">Cancel and refund</button></div>`}
+      </div>`; }).join('') || '<p class="muted">No special orders for this day.</p>'}</div>`;
+}
+const fmtPhone = p => { const d = String(p).replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
+
+// ---------- Packing ----------
+function renderPack(){
+  const os = ORDERS.filter(live).sort((a, b) => (a.pickupTime || '').localeCompare(b.pickupTime || ''));
+  const cats = Object.keys(PACKN);
+  const count = c => { let n = 0, d = 0; for (const o of os) for (const l of linesOf(o)) if (labels(l).packAs === c){ n++; if (o.packed?.[l.lid]) d++; } return {n, d}; };
+  const mine = os.map(o => ({o, ls: linesOf(o).filter(l => labels(l).packAs === packCat)})).filter(x => x.ls.length);
+  const tally = {}; for (const {ls} of mine) for (const l of ls){ const t = tally[lineName(l)] = tally[lineName(l)] || {n: 0, m: {}}; t.n++; for (const m of (l.mods || []).filter(m => !m.def && !m.inc)) t.m[m.o] = (t.m[m.o] || 0) + (m.q || 1); }
+  return `<div class="tabs noprint" style="margin-bottom:12px">${cats.map(c => { const k = count(c); return `<button data-pack="${c}" class="${packCat === c ? 'on' : ''}">${PACKN[c]} <span class="muted" style="${packCat === c ? 'color:#ddd' : ''}">${k.d}/${k.n}</span></button>`; }).join('')}</div>
+    <h2 style="margin:0 0 8px">${esc(PACKN[packCat])} for ${esc(longDay(day))}</h2>
+    ${Object.keys(tally).length ? `<table style="margin-bottom:14px"><thead><tr><th>Item</th><th class="n">Count</th><th>Choices</th></tr></thead><tbody>${Object.entries(tally).sort((a, b) => b[1].n - a[1].n).map(([k, t]) => `<tr><td><b>${esc(k)}</b></td><td class="n"><b>${t.n}</b></td><td class="muted">${Object.entries(t.m).map(([m, n]) => `${n} ${esc(m)}`).join(' · ')}</td></tr>`).join('')}</tbody></table>` : ''}
+    <div class="grid">${mine.map(({o, ls}) => { const all = ls.every(l => o.packed?.[l.lid]);
+      return `<div class="ord ${all ? 'done' : ''}"><div class="top"><div><div class="nm">${esc(o.name)}</div><div class="muted">#${esc(o.num)}</div></div><div class="tm">${esc(tl(o.pickupTime))}</div></div>
+        <div class="badges">${orderBadges(o)}</div>${o.allergySeparate && o.allergyNote ? `<div style="font-weight:700">Allergy note: ${esc(o.allergyNote)}</div>` : ''}
+        <ul class="items">${ls.map(l => { const lb = labels(l); return `<li><input type="checkbox" class="chk" data-pk="${esc(o.id)}|${esc(l.lid)}" ${o.packed?.[l.lid] ? 'checked' : ''} aria-label="Packed ${esc(lineName(l))}"><div><b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div><span class="lb">${lb.sliced ? '<span class="b yellow">Sliced</span>' : ''}${lb.fridge ? '<span class="b fridgeb">Fridge</span>' : ''}</span></li>`; }).join('')}</ul></div>`; }).join('') || `<p class="muted">Nothing to pack in ${esc(PACKN[packCat].toLowerCase())} for this day.</p>`}</div>`;
+}
+
+// ---------- Prep ----------
+function renderPrep(){
+  const os = ORDERS.filter(live); const dates = [...new Set(os.map(o => o.pickupDate))].sort();
+  const showDays = dates.length > 1 && dates.length <= 10;
+  const rows = {};
+  for (const o of os) for (const l of linesOf(o)){
+    const lb = labels(l); const k = lb.packAs + '|' + lineName(l);
+    const r = rows[k] = rows[k] || {cat: lb.packAs, name: lineName(l), n: 0, by: {}, m: {}};
+    r.n++; r.by[o.pickupDate] = (r.by[o.pickupDate] || 0) + 1;
+    for (const m of (l.mods || []).filter(m => !m.def && !m.inc)) r.m[m.o] = (r.m[m.o] || 0) + (m.q || 1);
+  }
+  const body = Object.keys(PACKN).map(c => { const rs = Object.values(rows).filter(r => r.cat === c).sort((a, b) => b.n - a.n); if (!rs.length) return '';
+    return `<tr class="cat"><td colspan="${3 + (showDays ? dates.length : 0)}">${esc(PACKN[c])}</td></tr>` + rs.map(r => `<tr><td><b>${esc(r.name)}</b>${Object.keys(r.m).length ? `<div class="muted" style="font-size:14px">${Object.entries(r.m).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${n} ${esc(m)}`).join(' · ')}</div>` : ''}</td>${showDays ? dates.map(d => `<td class="n">${r.by[d] || ''}</td>`).join('') : ''}<td class="n"><b>${r.n}</b></td></tr>`).join(''); }).join('');
+  return `<div class="kpis"><div class="kpi"><b>${os.length}</b>orders</div><div class="kpi"><b>${Object.values(rows).reduce((s, r) => s + r.n, 0)}</b>items</div><div class="kpi"><b>${money(os.reduce((s, o) => s + Number(o.totals?.sub ?? o.totals?.charge ?? 0), 0))}</b>sales</div></div>
+    ${body ? `<table><thead><tr><th>Item</th>${showDays ? dates.map(d => `<th class="n">${esc(dl(d))}</th>`).join('') : ''}<th class="n">Total</th></tr></thead><tbody>${body}</tbody></table>` : '<p class="muted">No special orders in these dates.</p>'}`;
+}
+
+// ---------- Counts (online limits per item per day) ----------
+function renderCounts(){
+  const s = MENU.settings; const days = R.preorderDays(s).open.slice(0, 10).map(x => x.date).concat(R.preorderDays(s).closed.map(x => x.date)).sort().slice(0, 12);
+  const openWd = [3, 4, 5, 6, 0, 1, 2].filter(w => R.onlineSettings(s).hours[w]);
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const items = MENU.items.filter(i => !i.archived && i.visible?.online !== false && !i.alcohol && R.onlineWhen(i) !== 'asap').sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name));
+  const sold = {}; for (const o of ORDERS.filter(live)) for (const l of linesOf(o)){ sold[o.pickupDate + '|' + l.itemId] = (sold[o.pickupDate + '|' + l.itemId] || 0) + 1; }
+  const L = MENU.limits || {}; const v = x => x === undefined || x === null ? '' : x;
+  let lastCat = '';
+  return `<p class="muted" style="margin-top:0">"Usual" numbers repeat every week. A number on a date replaces the usual for that day only. Under each date: how many are already ordered.</p>
+    <div style="overflow:auto"><table class="counts"><thead><tr><th>Item</th>${openWd.map(w => `<th class="n">Usual ${WD[w]}</th>`).join('')}${days.map(d => `<th class="n">${esc(dl(d))}</th>`).join('')}</tr></thead><tbody>
+    ${items.map(i => { const cat = i.category !== lastCat ? `<tr class="cat"><td colspan="${1 + openWd.length + days.length}">${esc(i.category || 'Other')}</td></tr>` : ''; lastCat = i.category;
+      return cat + `<tr><td>${esc(i.name)}</td>${openWd.map(w => `<td class="n"><input type="number" min="0" data-usual="${esc(i.id)}|${w}" value="${v(L.usual?.[i.id]?.[w])}" aria-label="Usual ${WD[w]} ${esc(i.name)}"></td>`).join('')}
+        ${days.map(d => { const lim = R.limitFor(i, d, L); const n = sold[d + '|' + i.id] || 0; return `<td class="n"><input type="number" min="0" data-date="${esc(i.id)}|${d}" value="${v(L.dates?.[d]?.[i.id])}" placeholder="${lim ?? ''}" aria-label="${esc(dl(d))} ${esc(i.name)}"><small>${n ? n + ' ordered' : ''}${lim !== null && n >= lim ? ' · full' : ''}</small></td>`; }).join('')}</tr>`; }).join('')}
+    </tbody></table></div>
+    <div class="bar" style="margin-top:12px"><button class="primary" id="saveCounts">Save counts</button><span id="cMsg"></span></div>`;
+}
+
+// ---------- Render ----------
+function render(){
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  dateBar();
+  $('#main').innerHTML = tab === 'pickup' ? renderPickup() : tab === 'pack' ? renderPack() : tab === 'prep' ? renderPrep() : renderCounts();
+}
+
+// ---------- Actions ----------
+async function staffName(){ const n = prompt('Your name, for the record:', localStorage.getItem('proof.sp.staff') || ''); if (n) localStorage.setItem('proof.sp.staff', n.trim()); return (n || '').trim(); }
+function modal(html){ $('#modal').innerHTML = `<div class="scrim" data-close="1"><div class="sheet">${html}</div></div>`; }
+async function refundAndRecord(o, amount, reason, staff, patch){
+  const p = (o.payments || []).find(x => x.paymentIntent) || (o.payments || [])[0];
+  let stripeRefund = null;
+  if (p && p.paymentIntent && !String(p.paymentIntent).startsWith('pi_demo') && amount > 0) stripeRefund = (await PAY.refund(p.paymentIntent, amount, staff)).id;
+  await store.addRefund(o.id, {at: Date.now(), amount, pay: (o.payments || []).indexOf(p), method: p ? p.method : 'card', paymentIntent: p?.paymentIntent || null, stripeRefund, reason, staff}, patch);
+}
+function cancelSheet(o){
+  const paid = Number(o.totals?.charge ?? (o.payments || []).reduce((s, p) => s + Number(p.amount || 0) + Number(p.tip || 0), 0));
+  modal(`<h2>Cancel ${esc(o.name)}'s order?</h2><p class="muted" style="margin:0">#${esc(o.num)} · ${esc(longDay(o.pickupDate))} at ${esc(tl(o.pickupTime))}. Refunds ${money(paid)} to their card. The owner gets an email about it.</p>
+    <input id="cReason" placeholder="Reason (required)"><div class="bar" style="margin:0"><button data-close="1">Keep the order</button><button class="primary" style="background:var(--crit);border-color:var(--crit)" id="doCancel" data-id="${esc(o.id)}" data-amt="${paid}">Cancel and refund</button></div><div id="mMsg"></div>`);
+}
+function changeSheet(o){
+  modal(`<h2>Remove an item</h2><p class="muted" style="margin:0">${esc(o.name)} · #${esc(o.num)}. The item's price is refunded to their card, and the owner gets an email about it.</p>
+    <ul class="items">${linesOf(o).map(l => `<li><label style="display:flex;gap:10px;align-items:center;width:100%"><input type="radio" name="rmLine" value="${esc(l.lid)}" class="chk"><span><b>${esc(lineName(l))}</b>${modText(l) ? `<span class="mods"> ${esc(modText(l))}</span>` : ''}</span><span style="margin-left:auto">${money(l.price)}</span></label></li>`).join('')}</ul>
+    <input id="cReason" placeholder="Reason (required)"><div class="bar" style="margin:0"><button data-close="1">Never mind</button><button class="primary" id="doRemove" data-id="${esc(o.id)}">Remove and refund</button></div><div id="mMsg"></div>`);
+}
+document.addEventListener('click', async e => {
+  const t = e.target.closest('button,[data-close]') || e.target;
+  if (t.dataset?.close && e.target === t){ $('#modal').innerHTML = ''; return; }
+  if (t.dataset?.tab){ tab = t.dataset.tab; localStorage.setItem('proof.sp.tab', tab); listen(); return; }
+  if (t.dataset?.day !== undefined && t.tagName === 'BUTTON'){ const n = Number(t.dataset.day); day = n === 0 ? today() : R.addDays(day, n); listen(); return; }
+  if (t.dataset?.sort){ sortBy = t.dataset.sort; render(); return; }
+  if (t.dataset?.pack){ packCat = t.dataset.pack; render(); return; }
+  if (t.dataset?.range){ range = {kind: t.dataset.range, from: range.from, to: range.to}; listen(); return; }
+  if (t.id === 'printBtn'){ window.print(); return; }
+  if (t.dataset?.cancel){ cancelSheet(ORDERS.find(o => o.id === t.dataset.cancel)); return; }
+  if (t.dataset?.change){ changeSheet(ORDERS.find(o => o.id === t.dataset.change)); return; }
+  if (t.id === 'doCancel' || t.id === 'doRemove'){
+    const o = ORDERS.find(x => x.id === t.dataset.id); const reason = $('#cReason').value.trim();
+    const lid = t.id === 'doRemove' ? (document.querySelector('[name=rmLine]:checked') || {}).value : null;
+    if (t.id === 'doRemove' && !lid){ $('#mMsg').innerHTML = '<p class="err">Pick the item to remove.</p>'; return; }
+    if (!reason){ $('#mMsg').innerHTML = '<p class="err">Please add a reason.</p>'; return; }
+    const staff = await staffName(); if (!staff){ $('#mMsg').innerHTML = '<p class="err">Please add your name.</p>'; return; }
+    t.disabled = true; t.textContent = 'Working…';
+    try {
+      if (t.id === 'doCancel'){
+        const amt = r2(Number(t.dataset.amt));
+        await refundAndRecord(o, amt, 'Cancelled: ' + reason, staff, {cancelled: true, cancelledAt: Date.now(), cancelledBy: staff, cancelReason: reason});
+        store.log({type: 'special_cancel', staff, orderId: o.id, num: o.num, amount: amt, reason}).catch(console.error);
+        store.notifyOwner(`Special order cancelled: ${o.name} #${o.num}`, `${staff} cancelled ${o.name}'s order #${o.num} for ${longDay(o.pickupDate)} at ${tl(o.pickupTime)}.\nRefunded: ${money(amt)}\nReason: ${reason}\n\nItems:\n${linesOf(o).map(l => '- ' + lineName(l)).join('\n')}`).catch(console.error);
+      } else {
+        const l = o.lines[lid]; const amt = r2(Number(l.price || 0));
+        await refundAndRecord(o, amt, 'Removed ' + lineName(l) + ': ' + reason, staff, {[`lines.${lid}.removed`]: true, [`lines.${lid}.removedBy`]: staff, changedAt: Date.now()});
+        store.log({type: 'special_change', staff, orderId: o.id, num: o.num, amount: amt, items: [lineName(l)], reason}).catch(console.error);
+        store.notifyOwner(`Special order changed: ${o.name} #${o.num}`, `${staff} removed ${lineName(l)} from ${o.name}'s order #${o.num} for ${longDay(o.pickupDate)} at ${tl(o.pickupTime)}.\nRefunded: ${money(amt)}\nReason: ${reason}`).catch(console.error);
+      }
+      $('#modal').innerHTML = '';
+    } catch (err){ console.error(err); $('#mMsg').innerHTML = `<p class="err">${esc(err.message)}</p>`; t.disabled = false; t.textContent = 'Try again'; }
+    return;
+  }
+  if (t.id === 'saveCounts'){
+    const L = {usual: {}, dates: {}};
+    document.querySelectorAll('[data-usual]').forEach(i => { if (i.value === '') return; const [id, w] = i.dataset.usual.split('|'); (L.usual[id] ||= {})[w] = Math.max(0, Math.floor(Number(i.value))); });
+    document.querySelectorAll('[data-date]').forEach(i => { if (i.value === '') return; const [id, d] = i.dataset.date.split('|'); (L.dates[d] ||= {})[id] = Math.max(0, Math.floor(Number(i.value))); });
+    // keep numbers already set for dates further out than this screen shows
+    for (const [d, v] of Object.entries(MENU.limits?.dates || {})) if (!document.querySelector(`[data-date$="|${d}"]`) && d >= today()) L.dates[d] = v;
+    try { await store.saveLimits(L); MENU.limits = L; render(); $('#cMsg').innerHTML = '<span class="ok">Saved</span>'; }
+    catch (err){ $('#cMsg').innerHTML = `<span class="err">${/permission/i.test(err.message) ? 'You do not have permission to change counts.' : esc(err.message)}</span>`; }
+    return;
+  }
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.dataset.picked){ const id = t.dataset.picked; await store.update(id, t.checked ? {pickedUp: true, pickedUpAt: Date.now()} : {pickedUp: false, pickedUpAt: null}); return; }
+  if (t.dataset.pk){ const [id, lid] = t.dataset.pk.split('|'); await store.update(id, {[`packed.${lid}`]: t.checked}); return; }
+  if (t.id === 'pickDay' && t.value){ day = t.value; listen(); return; }
+  if (t.id === 'rFrom' || t.id === 'rTo'){ range = {kind: 'custom', from: $('#rFrom').value, to: $('#rTo').value || $('#rFrom').value}; listen(); return; }
+});
+document.addEventListener('input', e => { if (e.target.id === 'q'){ query = e.target.value.trim(); const pos = e.target.selectionStart; $('#main').innerHTML = renderPickup(); } });
+
+// ---------- Start ----------
+async function boot(){ $('#appBox').classList.remove('hidden'); MENU = await store.menu(); listen(); setInterval(() => { if (tab === 'pickup') render(); }, 60000); }
+if (DEMO){ store = demoStore(); PAY = createPayments({demo: true}); boot(); }
+else {
+  const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
+  store = await firestoreStore(app, auth); PAY = createPayments({getToken: () => auth.currentUser.getIdToken()});
+  let booted = false;
+  A.onAuthStateChanged(auth, u => { if (u && !booted){ booted = true; $('#loginBox').classList.add('hidden'); boot(); } if (!u) $('#loginBox').classList.remove('hidden'); });
+  $('#signIn').addEventListener('click', async () => { try { await A.signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#password').value); } catch (err){ $('#loginErr').textContent = 'That email and password did not work.'; } });
+}
+</script>
+</body>
+</html>

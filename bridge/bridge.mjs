@@ -60,7 +60,7 @@ async function printNew(){
     if (o.status === 'void' || (o.fireAtMs || o.createdAtMs) > now) continue; // scheduled orders print when they fire
     for (const p of PRINTERS.filter(p => p.kind === 'tickets' || p.kind === 'stickers')){
       const done = (o.printed || {})[p.id] || {};
-      const lines = linesOf(o).filter(l => !l.removed && !done[l.lid] && (p.stations || []).includes(l.station || 'none'));
+      const lines = linesOf(o).filter(l => !l.removed && !(o.special && l.packAs && !l.fromCafe) && !done[l.lid] && (p.stations || []).includes(l.station || 'none'));
       if (!lines.length) continue;
       const mark = Object.fromEntries(lines.map(l => [`printed.${p.id}.${l.lid}`, true]));
       o.printed = {...(o.printed || {}), [p.id]: {...done, ...Object.fromEntries(lines.map(l => [l.lid, true]))}}; // claim first so nothing prints twice

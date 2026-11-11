@@ -171,3 +171,15 @@ Customers first choose **Today, ASAP** or **Pre-order for a future day**; each o
 - Orders and reports → **Pre-orders** lists every paid pre-order for a pickup day with a production count.
 
 Setup (Netlify environment variables): `STRIPE_PUBLISHABLE_KEY`, `ORDER_BOT_EMAIL` and `ORDER_BOT_PASSWORD` (a Firebase sign-in just for the order function), and `STRIPE_WEBHOOK_SECRET` (Stripe webhook to `/.netlify/functions/stripe-webhook`, event `payment_intent.succeeded`).
+
+## Special orders page (`/specials/`)
+
+For staff, on any signed-in tablet or phone. Four views:
+- **Pickup**: one day's pre-orders by time or name, with name, phone, pickup time, every item, badges (yellow Sliced, blue From the cafe, pink Separate for allergies), a fridge alert, packing progress and a Picked up checkbox. Orders not picked up by close are flagged. Staff can remove an item or cancel the order; either refunds the card and emails the owner (OWNER_EMAIL, default hello@flourandsalt.com).
+- **Packing**: one day split into Bagels, Pastries, Breads and From the cafe, with a count summary and a checkbox per item per order.
+- **Prep**: totals for today, tomorrow, this week, the next 7 days, all upcoming, or picked dates, by item and choice, with a column per day.
+- **Counts**: how many of each item can sell online per pickup day (usual per weekday, or a number for one date), saved in `menu/preorderLimits`. Separate from the shop's counts.
+
+Item settings (Menu editor → item → Online ordering): packed with, made at the cafe (blue, the only pre-order items that reach the KDS and printers, 30 minutes before pickup), keep refrigerated, always sliced. Pre-orders are tax-free and count as **Special orders** in End of day.
+
+Messages (each switched on by its Netlify keys): order confirmation email (`RESEND_API_KEY`, `MAIL_FROM`) and text (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`), and a pickup text about 15 minutes before pickup (`pickup-reminders`, runs every 5 minutes).

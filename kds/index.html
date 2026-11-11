@@ -336,13 +336,14 @@ function sortedMods(l){
   const shown = [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !isDef(m) && (!m.inc || m.pre || (m.q || 1) > 1 || m.sub))];
   return shown.sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
 }
-const linesFor = (o, v) => v.shows === 'all' ? o.lines : o.lines.filter(l => l.station === v.shows);
+// Pre-orders (special orders) only bring their cafe-made items (coffee boxes, sandwich packs) to the KDS; the rest are packed from the special orders page.
+const linesFor = (o, v) => { const ls = o.special ? o.lines.filter(l => l.fromCafe || !l.packAs) : o.lines; return v.shows === 'all' ? ls : ls.filter(l => l.station === v.shows); };
 
 // ---------- Rendering ----------
 const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function visibleOrders(v){
   const now = Date.now();
-  return ORDERS.filter(o => !o.cleared && fireAt(o) <= now && (v.shows === 'all' ? o.lines.some(live) : linesFor(o, v).some(l => live(l) && !l.done)))
+  return ORDERS.filter(o => !o.cleared && fireAt(o) <= now && (v.shows === 'all' ? linesFor(o, v).some(live) : linesFor(o, v).some(l => live(l) && !l.done)))
     .sort((a, b) => (b.rush - a.rush) || (fireAt(a) - fireAt(b)));
 }
 function colorClass(o, v){

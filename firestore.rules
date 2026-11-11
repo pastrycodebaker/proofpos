@@ -24,6 +24,8 @@ service cloud.firestore {
     // Live counts and on/off switches (online ordering, kiosk drinks): any signed-in tablet.
     match /menu/modStock { allow write: if signedIn(); }
     match /menu/status { allow write: if signedIn(); }
+    // Online pre-order limits per item per day: owners only.
+    match /menu/preorderLimits { allow write: if isOwner(); }
 
     // Owner list and staff codes: owners change them; signed-in tablets read staff codes to unlock.
     match /settings/owners { allow read: if signedIn(); allow write: if isOwner(); }

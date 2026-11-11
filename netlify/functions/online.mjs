@@ -6,7 +6,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel } from '../../shared/online.mjs';
+import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor } from '../../shared/online.mjs';
+import { orderConfirmation } from '../../shared/notify.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
 const db = getFirestore(app);
@@ -24,8 +25,8 @@ async function stripe(method, path, body){
   const data = await r.json(); if (!r.ok) throw new Error(data.error?.message || 'Payment error'); return data;
 }
 async function loadMenu(){
-  const [items, groups, main, status, kds] = await Promise.all([getDocs(collection(db, 'menu', 'main', 'items')), getDocs(collection(db, 'menu', 'main', 'modifierGroups')), getDoc(doc(db, 'menu', 'main')), getDoc(doc(db, 'menu', 'status')), getDoc(doc(db, 'settings', 'kds'))]);
-  return {items: items.docs.map(d => d.data()), groups: groups.docs.map(d => d.data()), settings: main.exists() ? main.data() : {}, status: status.exists() ? status.data() : {}, kds: kds.exists() ? kds.data() : {}};
+  const [items, groups, main, status, kds, limits] = await Promise.all([getDocs(collection(db, 'menu', 'main', 'items')), getDocs(collection(db, 'menu', 'main', 'modifierGroups')), getDoc(doc(db, 'menu', 'main')), getDoc(doc(db, 'menu', 'status')), getDoc(doc(db, 'settings', 'kds')), getDoc(doc(db, 'menu', 'preorderLimits'))]);
+  return {items: items.docs.map(d => d.data()), groups: groups.docs.map(d => d.data()), settings: main.exists() ? main.data() : {}, status: status.exists() ? status.data() : {}, kds: kds.exists() ? kds.data() : {}, limits: limits.exists() ? limits.data() : {}};
 }
 // How many of each item are already ordered for a pickup day (for per-day limits).
 async function soldOn(date){
@@ -42,6 +43,8 @@ async function start(b){
   const c = b.customer || {}; const name = String(c.name || '').trim().slice(0, 40), email = String(c.email || '').trim().slice(0, 120), phone = String(c.phone || '').replace(/\D/g, '').slice(-10);
   if (!name) throw new Error('Please add your name.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Please add an email for your receipt.');
+  if (b.pickup?.type === 'date' && phone.length !== 10) throw new Error('Please add a phone number so we can reach you about your pre-order.');
+  const allergySeparate = !!c.allergySeparate, allergyNote = String(c.allergyNote || '').trim().slice(0, 200);
   // Pickup: ASAP today, or a pre-order day
   let pickup;
   if (b.pickup?.type === 'date'){
@@ -57,20 +60,23 @@ async function start(b){
     pickup = {type: 'asap'};
   }
   const date = pickup.type === 'asap' ? nyDate(now) : pickup.date;
-  const sold = pickup.type === 'date' || cart.some(x => (M.items.find(i => i.id === x.itemId) || {}).dateLimit) ? await soldOn(date) : {};
+  const sold = pickup.type === 'date' ? await soldOn(date) : {};
   const lines = []; const inCart = {};
   for (const d of cart){
     const it = M.items.find(i => i.id === d.itemId);
-    const av = availability(it, pickup, M.settings, now, (sold[d.itemId] || 0) + (inCart[d.itemId] || 0));
+    const av = availability(it, pickup, M.settings, now, (sold[d.itemId] || 0) + (inCart[d.itemId] || 0), M.limits);
     if (!av.ok) throw new Error(`${it ? it.name : 'An item'}: ${av.reason}.`);
-    lines.push(buildLine(M, d, M.kds)); inCart[d.itemId] = (inCart[d.itemId] || 0) + 1;
+    const l = buildLine(M, d, M.kds);
+    if (onlineSettings(M.settings).taxFree) l.taxable = false;
+    if (pickup.type === 'date'){ Object.assign(l, lineLabels(it, l)); if (!it.fromCafe) l.station = 'none'; }  // only cafe-made items go to the KDS
+    lines.push(l); inCart[d.itemId] = (inCart[d.itemId] || 0) + 1;
   }
   const tipPct = Math.max(0, Math.min(0.5, Number(b.tipPct) || 0));
   const t = cartTotals(lines, M.settings, tipPct);
   if (t.charge < 0.5) throw new Error('Online orders must be at least $0.50.');
   const pi = await stripe('POST', 'payment_intents', {amount: Math.round(t.charge * 100), currency: 'usd', automatic_payment_methods: {enabled: true}, receipt_email: email,
     description: `Online order for ${name}${pickup.type === 'date' ? ' · pick up ' + dayLabel(pickup.date) + ' at ' + timeLabel(pickup.time) : ''}`, metadata: {source: 'online', pickup: pickup.type === 'date' ? pickup.date + ' ' + pickup.time : 'asap'}});
-  await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct});
+  await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct, allergySeparate, allergyNote});
   return {clientSecret: pi.client_secret, paymentIntent: pi.id, totals: t, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY};
 }
 
@@ -86,8 +92,9 @@ export async function finish(paymentIntent){
     if (existing.exists()) return {num: existing.data().num, readyAt: existing.data().readyAt, pickup: existing.data().pickup, already: true};
     if (!co.exists()) throw new Error('Order details not found.');
     const c = co.data(); const now = Date.now();
-    const counter = doc(db, 'counters', 'orders-' + nyDate(now)); const cs = await tx.get(counter); const num = cs.exists() ? cs.data().next : 101;
     const pre = c.pickup.type === 'date' && c.pickup.date !== nyDate(now);
+    // Pre-orders get their own running numbers (1001, 1002…) so they never clash with the day's shop numbers.
+    const counter = doc(db, 'counters', pre ? 'preorders' : 'orders-' + nyDate(now)); const cs = await tx.get(counter); const num = cs.exists() ? cs.data().next : (pre ? 1001 : 101);
     const at = pre && c.pickup.time ? nyMs(c.pickup.date, c.pickup.time) : null;
     const fireAtMs = pre ? (at ? at - os.fireLead * 60000 : nyMs(c.pickup.date, os.fireTime)) : now;
     const readyAt = pre ? at : now + os.prepMinutes * 60000;
@@ -97,13 +104,15 @@ export async function finish(paymentIntent){
     tx.set(orderRef, {num, name: c.name, email: c.email, phone: c.phone || null, source: 'online', status: 'paid', staff: 'Online', rush: false, cleared: false, clearedAt: 0,
       scheduled: pre, createdAtMs: now, fireAtMs, readyAt, pickup: c.pickup, pickupDate: c.pickup.type === 'date' ? c.pickup.date : nyDate(now), pickupTime: c.pickup.time || null,
       lines: Object.fromEntries(c.lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: [pay], totals: c.totals, paidAt: now, taxExempt: false, discount: null,
+      special: pre, allergySeparate: !!c.allergySeparate, allergyNote: c.allergyNote || '', packed: {}, pickedUp: false, reminderSent: false,
       ...(c.phone ? {customerPhone: c.phone, customerName: c.name, pointsEarned: Math.floor(c.totals.total), pointsUsed: 0} : {})});
     tx.update(coRef, {status: 'done', orderId: orderRef.id});
-    return {num, readyAt, pickup: c.pickup, lines: c.lines, phone: c.phone, name: c.name, total: c.totals.total, pre};
+    return {num, readyAt, pickup: c.pickup, lines: c.lines, phone: c.phone, name: c.name, email: c.email, totals: c.totals, total: c.totals.total, pre, allergySeparate: c.allergySeparate, allergyNote: c.allergyNote};
   });
   if (!result.already){
     // Same-day orders count down stock; rewards points for customers who gave a phone number.
     if (!result.pre) for (const l of result.lines){ const it = M.items.find(i => i.id === l.itemId); if (it && typeof it.stockCount === 'number') await updateDoc(doc(db, 'menu', 'main', 'items', it.id), {stockCount: increment(-1), ...(it.stockCount - 1 <= 0 ? {eightySixed: true} : {})}).catch(() => {}); }
+    await orderConfirmation({...result, lines: Object.fromEntries(result.lines.map((l, i) => [l.lid, {...l, pos: i}]))}).catch(e => console.error(e));
     if (result.phone) await setDoc(doc(db, 'customers', result.phone), {phone: result.phone, name: result.name, points: increment(Math.floor(result.total)), visits: increment(1), lastVisit: Date.now()}, {merge: true}).catch(() => {});
   }
   return {paid: true, num: result.num, readyAt: result.readyAt, pickup: result.pickup};
@@ -115,6 +124,12 @@ export default async (req) => {
   try {
     if (b.action === 'config') return json(200, {publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null, ready: !!(process.env.STRIPE_PUBLISHABLE_KEY && process.env.ORDER_BOT_EMAIL)});
     if (b.action === 'start') return json(200, await start(b));
+    if (b.action === 'counts'){ // how many are left of each limited item for a pickup day (no customer details)
+      await signIn(); const date = String(b.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json(400, {error: 'Bad date'});
+      const [M, sold] = [await loadMenu(), await soldOn(date)]; const left = {};
+      for (const it of M.items){ const lim = limitFor(it, date, M.limits); if (lim !== null) left[it.id] = Math.max(0, lim - (sold[it.id] || 0)); }
+      return json(200, {left});
+    }
     if (b.action === 'finish') return json(200, await finish(String(b.paymentIntent || '')));
     return json(400, {error: 'Unknown action'});
   } catch (e){ console.error(e); return json(400, {error: e.message}); }

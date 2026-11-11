@@ -141,7 +141,12 @@ const itemById = id => M.items.find(i => i.id === id);
 const groupById = id => M.groups.find(g => g.id === id);
 const onlineItems = () => M.items.filter(i => !i.archived && i.active !== false && !i.alcohol && i.visible?.online !== false);
 const order = (a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999) || a.name.localeCompare(b.name);
-const avail = it => R.availability(it, pickup, S(), Date.now());
+let LEFT = {}, leftFor = '';  // how many are left of limited items for the chosen pickup day
+async function loadLeft(date){
+  if (!date || leftFor === date) return; leftFor = date;
+  try { const r = DEMO ? {left: {}} : await api('counts', {date}); LEFT = r.left || {}; render(); } catch (e){ LEFT = {}; }
+}
+const avail = it => { const a = R.availability(it, pickup, S(), Date.now()); if (!a.ok || pickup.type !== 'date' || LEFT[it.id] === undefined) return a; return LEFT[it.id] <= 0 ? {ok: false, reason: 'Sold out for that day'} : {...a, left: LEFT[it.id]}; };
 // What the usual build costs (built-from sandwiches price from their included ingredients).
 const fromPrice = it => { const ps = (it.versions || []).map((v, i) => { try { return R.buildLine(M, {itemId: it.id, versionIdx: i, mods: [...(it.included || []).map(x => ({g: x.g, o: x.o, q: 1})), ...(it.modifierGroupIds || []).map(groupById).filter(g => g && g.default).map(g => ({g: g.id, o: g.default, q: 1}))]}).price; } catch (e){ return Number(v.price || 0); } }); return ps.length ? Math.min(...ps) : 0; };
 const ownDeadline = it => !!(it.deadline || it.preorderOnly || (it.dates || []).length);
@@ -199,9 +204,11 @@ function render(){
   if (!M.items.length){ $('#app').innerHTML = '<p class="muted">Loading the menu…</p>'; return; }
   setPickupForMode();
   const top = TOP;
+  if (mode() === 'start' && !R.onlineSettings(S()).asap){ history.replaceState(null, '', '#later'); return render(); }
   if (mode() === 'start') return renderStart(top);
   if (mode() === 'later' && !(later.date && later.time && R.preorderDays(S()).open.some(x => x.date === later.date) && R.pickupSlots(S(), later.date).includes(later.time))) return renderDayPick(top);
   if (mode() === 'asap'){ const a = R.asapState(S(), M.status); if (!a.ok){ $('#bar').classList.add('hidden'); $('#app').innerHTML = `${top}<div class="pickupban asap"><div><div class="lbl">TODAY · ASAP</div><div class="big">Not available right now</div><div>${esc(a.reason)}</div></div><a href="#">Back</a></div>${R.preorderDays(S()).open.length ? '<a class="choice" href="#later" style="margin-top:12px"><span class="ct">Pre-order for a future day instead</span></a>' : ''}`; return; } }
+  if (mode() === 'later') loadLeft(later.date);
   renderMenu(top);
 }
 function renderStart(top){
@@ -217,7 +224,7 @@ function renderDayPick(top){
   $('#bar').classList.add('hidden');
   const pd = R.preorderDays(S()); const slots = later.date ? R.pickupSlots(S(), later.date) : [];
   const closedNote = pd.closed.length ? `<p class="muted" style="margin:10px 0 0">Pre-orders for ${esc(R.dayLabel(pd.closed[0].date))}${pd.closed.length > 1 ? ' – ' + esc(R.dayLabel(pd.closed[pd.closed.length - 1].date)) : ''} are closed. That deadline was ${esc(deadlineText(pd.closed[0].deadline))}.</p>` : '';
-  $('#app').innerHTML = `${top}<a href="#" class="muted" style="font-weight:600">← Back</a><h1 style="font-size:30px;margin:8px 0 10px">Pre-order for a future day</h1>${preNotice()}
+  $('#app').innerHTML = `${top}${R.onlineSettings(S()).asap ? '<a href="#" class="muted" style="font-weight:600">← Back</a>' : ''}<h1 style="font-size:30px;margin:8px 0 10px">Pre-order for a future day</h1>${preNotice()}${!R.onlineSettings(S()).asap ? `<p class="muted" style="margin:8px 0 0">Ordering for today? Use our <a href="${esc(S().online?.sameDayUrl || 'https://www.toasttab.com/flourandsalt')}" style="color:var(--accent);font-weight:700">same-day ordering</a>.</p>` : ''}
     <h2 class="cat">1. Pick your pickup day</h2>${closedNote}
     <div style="display:grid;gap:8px;margin-top:10px">${pd.open.map(x => `<button class="day ${later.date === x.date ? 'on' : ''}" data-day="${x.date}"><span class="ct">${esc(longDay(x.date))}</span><span class="muted">${esc(howFar(x.date))}</span><span class="dl">Order by ${esc(deadlineText(x.deadline))}</span></button>`).join('') || '<p class="muted">No pre-order days are open right now.</p>'}</div>
     ${later.date ? `<h2 class="cat">2. Pick your pickup time</h2><select id="pTime" style="font:inherit;font-size:18px;padding:14px;border:2px solid var(--accent);border-radius:12px;width:100%;background:#fff"><option value="">Pick a time on ${esc(longDay(later.date))}</option>${slots.map(t => `<option value="${t}" ${later.time === t ? 'selected' : ''}>${esc(R.timeLabel(t))}</option>`).join('')}</select>` : ''}`;
@@ -292,7 +299,9 @@ function renderCart(err = ''){
     <div>${cart.map((x, i) => `<div class="ln"><b>${esc([x.version, x.name].filter(Boolean).join(' '))}</b><span>${money(lines[i] ? lines[i].price : x.price)}</span>${x.label ? `<span class="m">${esc(x.label)}</span>` : ''}${issues[i] ? `<span class="bad">${esc(issues[i])}. Please remove it.</span>` : ''}<button data-rm="${i}">Remove</button></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}</div>
     <div class="fields"><div><label for="fName">Name for the order</label><input id="fName" autocomplete="given-name" value="${esc(me.name)}"></div>
       <div><label for="fEmail">Email for your receipt</label><input id="fEmail" type="email" autocomplete="email" value="${esc(me.email)}"></div>
-      <div><label for="fPhone">Phone, to earn rewards (optional)</label><input id="fPhone" type="tel" autocomplete="tel" value="${esc(me.phone)}"></div></div>
+      <div><label for="fPhone">${pickup.type === 'date' ? 'Phone, for your pickup texts' : 'Phone, to earn rewards (optional)'}</label><input id="fPhone" type="tel" autocomplete="tel" value="${esc(me.phone)}"></div>
+      ${pickup.type === 'date' ? `<label class="confirm" style="background:#FCE8EF;border-color:#E9A3BA"><input type="checkbox" id="fAllergy" ${allergy.separate ? 'checked' : ''}><span>Please pack my items separately for allergies</span></label>
+      <div id="allergyBox" class="${allergy.separate ? '' : 'hidden'}"><label for="fAllergyNote">What should we keep apart?</label><input id="fAllergyNote" value="${esc(allergy.note)}" placeholder="e.g. nut allergy, keep the almond croissant separate"></div>` : ''}</div>
     <div><label>Add a tip for the team?</label><div class="tips">${tips.map(([p, l]) => `<button class="${tipPct !== null && String(tipPct) === p ? 'on' : ''}" data-tip="${p}">${l}${p !== '0' ? `<small>${money(t.sub * Number(p))}</small>` : ''}</button>`).join('')}</div></div>
     <div class="tot"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:18px"><span>Total</span><span>${money(t.charge)}</span></div><div class="muted" style="font-size:13px"><span>Prices include sales tax</span><span>${money(t.tax)}</span></div></div>
     ${pickup.type === 'date' ? `<label class="confirm"><input type="checkbox" id="fConfirm" ${confirmed ? 'checked' : ''}><span>I'm picking this up on <b>${esc(longDay(pickup.date))}</b> at <b>${esc(R.timeLabel(pickup.time))}</b>, ${esc(howFar(pickup.date))}.</span></label>` : ''}
@@ -300,18 +309,21 @@ function renderCart(err = ''){
     <div class="ft"><span class="sp"></span><button class="primary" id="checkout" ${cart.length && !issues.some(Boolean) ? '' : 'disabled'} style="font-size:18px;padding:14px 22px">Continue to payment</button></div></div></div>`;
   ['fName', 'fEmail', 'fPhone'].forEach(id => $('#' + id).addEventListener('input', () => { me = {name: $('#fName').value, email: $('#fEmail').value, phone: $('#fPhone').value}; save('fs.me', me); }));
 }
-let confirmed = false;
+let confirmed = false, allergy = {separate: false, note: ''};
 let stripeJs = null, elements = null, current = null;
 async function checkout(){
   me = {name: $('#fName').value.trim(), email: $('#fEmail').value.trim(), phone: $('#fPhone').value.trim()}; save('fs.me', me);
   if (!me.name) return renderCart('Please add a name for the order.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(me.email)) return renderCart('Please add an email for your receipt.');
+  if ($('#fAllergyNote')) allergy.note = $('#fAllergyNote').value.trim();
   if (pickup.type === 'date' && !pickup.time) return renderCart('Please pick a pickup time.');
+  if (pickup.type === 'date' && me.phone.replace(/\D/g, '').length < 10) return renderCart('Please add a phone number so we can text you about your pickup.');
+  if (allergy.separate && !allergy.note) return renderCart('Please tell us what to keep separate for allergies.');
   if (pickup.type === 'date' && !$('#fConfirm').checked) return renderCart('Please confirm your pickup day and time.');
   if (tipPct === null) return renderCart('Please pick a tip option (No tip is fine).');
   const btn = $('#checkout'); btn.disabled = true; btn.textContent = 'One moment…';
   try {
-    current = await api('start', {cart: cart.map(({itemId, versionIdx, mods}) => ({itemId, versionIdx, mods})), pickup, tipPct, customer: me});
+    current = await api('start', {cart: cart.map(({itemId, versionIdx, mods}) => ({itemId, versionIdx, mods})), pickup, tipPct, customer: {...me, allergySeparate: allergy.separate, allergyNote: allergy.note}});
     if (current.demo){ $('#payBox').innerHTML = `<div class="note warn">Demo: no card is charged.</div>`; btn.textContent = 'Pay ' + money(current.totals.charge); btn.disabled = false; btn.id = 'payNow'; return; }
     if (!current.publishableKey) throw new Error('Online payments are not set up yet.');
     if (!window.Stripe) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://js.stripe.com/v3/'; s.onload = res; s.onerror = () => rej(new Error('Could not load the payment form.')); document.head.appendChild(s); });
@@ -358,12 +370,14 @@ document.addEventListener('click', e => {
   if (t.dataset.minus){ const [gid, name] = t.dataset.minus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur){ cur.q--; if (cur.q <= 0) draft.mods = draft.mods.filter(m => m !== cur); } renderItem(); return; }
   if (t.id === 'cartBtn'){ tipPct = null; confirmed = false; renderCart(); return; }
   if (t.id === 'fConfirm'){ confirmed = t.checked; return; }
+  if (t.id === 'fAllergy'){ allergy.separate = t.checked; $('#allergyBox').classList.toggle('hidden', !t.checked); return; }
   if (t.dataset.rm !== undefined){ cart.splice(Number(t.dataset.rm), 1); save(cartKey(), cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
   if (t.dataset.tip !== undefined){ confirmed = $('#fConfirm') ? $('#fConfirm').checked : confirmed; tipPct = Number(t.dataset.tip); const err = $('#cErr') ? $('#cErr').textContent : ''; renderCart(err.includes('tip') ? '' : err); return; }
   if (t.id === 'checkout'){ checkout(); return; }
   if (t.id === 'payNow'){ payNow(); return; }
   if (t.id === 'again'){ location.hash = ''; render(); return; }
 });
+document.addEventListener('input', e => { if (e.target.id === 'fAllergyNote') allergy.note = e.target.value; });
 document.addEventListener('change', e => { if (e.target.id === 'pTime'){ later = {...later, time: e.target.value}; save('fs.later', later); if (later.time){ window.scrollTo(0, 0); render(); } } });
 window.addEventListener('hashchange', () => { draft = null; $('#sheetRoot').innerHTML = ''; cat = null; tipPct = null; window.scrollTo(0, 0); render(); });
 // Back from a bank redirect (some payment methods leave the page): finish the order.

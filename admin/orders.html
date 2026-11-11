@@ -197,7 +197,7 @@ async function refund(o, i){
 // ---------- Summaries ----------
 function summarize(orders){
   const paid = orders.filter(o => o.status === 'paid'); const S = {count: paid.length, open: orders.filter(o => o.status !== 'paid' && o.status !== 'void').length, voids: orders.filter(o => o.status === 'void').length,
-    sub: 0, disc: 0, net: 0, taxableIncl: 0, tax: 0, exempt: 0, nontaxable: 0, tips: 0, surcharge: 0, refunds: 0, byMethod: {}, bySource: {}, cashRefunds: 0};
+    sub: 0, disc: 0, net: 0, taxableIncl: 0, tax: 0, exempt: 0, nontaxable: 0, tips: 0, surcharge: 0, refunds: 0, byMethod: {}, bySource: {}, byGroup: {'Shop sales': 0, 'Special orders': 0}, cashRefunds: 0};
   for (const o of paid){ const f = figures(o);
     S.sub += f.sub; S.disc += f.disc; S.net += f.net; S.tips += f.tips; S.surcharge += f.surcharge; S.refunds += f.refunds;
     if (o.taxExempt) S.exempt += r2(f.taxable - f.inTax); else { S.taxableIncl += f.taxable; S.tax += f.tax; }
@@ -205,6 +205,7 @@ function summarize(orders){
     for (const p of o.payments || []){ const k = p.method === 'card' ? 'Card' : (p.label || p.method); S.byMethod[k] = (S.byMethod[k] || 0) + Number(p.charged ?? (Number(p.amount || 0) + Number(p.tip || 0) + Number(p.surcharge || 0))); }
     for (const r of o.refunds || []) if (r.method === 'cash') S.cashRefunds += Number(r.amount || 0);
     S.bySource[sourceName(o.source)] = (S.bySource[sourceName(o.source)] || 0) + f.net;
+    const grp = (o.special || o.pickup?.type === 'date' || o.budgetCode) ? 'Special orders' : 'Shop sales'; S.byGroup[grp] = (S.byGroup[grp] || 0) + f.net;
   }
   for (const k of ['sub','disc','net','taxableIncl','tax','exempt','nontaxable','tips','surcharge','refunds','cashRefunds']) S[k] = r2(S[k]);
   return S;
@@ -217,6 +218,7 @@ async function renderEod(){
     <div class="kpis">${kpi('Net sales', money(S.net), 'tax included, after discounts')}${kpi('Orders', S.count)}${kpi('Tips', money(S.tips))}${kpi('Sales tax collected', money(S.tax))}${kpi('Credit card surcharge', money(S.surcharge))}${kpi('Refunds', money(-S.refunds))}</div>
     <div class="split"><div class="card"><h2 style="margin-top:0">By payment type</h2><table>${Object.entries(S.byMethod).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('') || '<tr><td class="muted">No payments.</td></tr>'}</table>
       <h2>Cash drawer</h2><table><tr><td>Cash taken in</td><td class="n">${money(S.byMethod.Cash || 0)}</td></tr><tr><td>Cash refunds</td><td class="n">${money(-S.cashRefunds)}</td></tr><tr><td><b>Cash that should be in the drawer</b> (plus your starting bank)</td><td class="n"><b>${money((S.byMethod.Cash || 0) - S.cashRefunds)}</b></td></tr></table></div>
+    <div class="card"><h2 style="margin-top:0">Shop sales and special orders</h2><table>${Object.entries(S.byGroup).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('')}</table><p class="muted" style="margin:6px 0 0;font-size:13px">Special orders are pre-orders (counted on the day they were paid).</p></div>
     <div class="card"><h2 style="margin-top:0">By where it was ordered</h2><table>${Object.entries(S.bySource).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${money(v)}</td></tr>`).join('')}</table>
       <h2>Staff meals</h2>${(() => { const m = {}; for (const o of ORDERS.filter(x => x.status === 'paid' && x.discount && x.discount.staffMember)){ const k = o.discount.staffMember; m[k] = m[k] || {n: 0, v: 0}; m[k].n++; m[k].v += figures(o).disc; } const rows = Object.entries(m); return rows.length ? `<table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.n} meal${v.n > 1 ? 's' : ''}</td><td class="n">${money(v.v)} off</td></tr>`).join('')}</table>` : '<p class="muted">None.</p>'; })()}
       <h2>Breakdown</h2><table><tr><td>Gross sales</td><td class="n">${money(S.sub)}</td></tr><tr><td>Discounts and comps</td><td class="n">${money(-S.disc)}</td></tr><tr><td>Net sales</td><td class="n">${money(S.net)}</td></tr><tr><td>Voided orders</td><td class="n">${S.voids}</td></tr></table></div></div>`;
