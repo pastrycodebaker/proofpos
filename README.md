@@ -183,3 +183,6 @@ For staff, on any signed-in tablet or phone. Four views:
 Item settings (Menu editor → item → Online ordering): packed with, made at the cafe (blue, the only pre-order items that reach the KDS and printers, 30 minutes before pickup), keep refrigerated, always sliced. Pre-orders are tax-free and count as **Special orders** in End of day.
 
 Messages (each switched on by its Netlify keys): order confirmation email (`RESEND_API_KEY`, `MAIL_FROM`) and text (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`), and a pickup text about 15 minutes before pickup (`pickup-reminders`, runs every 5 minutes).
+
+### Hot Plate import (Special orders page → Import Hot Plate)
+Upload Hot Plate's orders export (CSV). Orders for today onward become special orders (`hp_<order number>`, shown as #HP1201 with a Hot Plate badge) for packing and pickup. Item columns are matched to menu items by name for packing category and labels. They carry no prices: they stay out of Proof POS sales, the Proof Box planner endpoint, the KDS, printing and texts. Re-importing updates orders and keeps packed and picked-up checks.

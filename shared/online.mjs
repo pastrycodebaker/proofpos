@@ -115,7 +115,7 @@ export const PACK = {bagels: 'Bagels', pastries: 'Pastries', breads: 'Breads', c
 export function packAs(item){
   if (item.fromCafe) return 'cafe';
   if (PACK[item.packAs]) return item.packAs;
-  if (item.category === 'Bulk Bagels') return 'bagels';
+  if (item.category === 'Bulk Bagels' || /cream cheese|schmear|spread/i.test(item.name || '')) return 'bagels';
   if (/bread|sourdough|loaf|rye|focaccia|baguette|challah|ciabatta|boule|batard/i.test(item.name || '')) return 'breads';
   return 'pastries';
 }

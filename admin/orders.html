@@ -104,7 +104,7 @@ async function firebaseStore(app){
   const db = F.getFirestore(app);
   return {
     async settings(){ const s = await F.getDoc(F.doc(db, 'menu', 'main')); return s.exists() ? s.data() : {}; },
-    async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})); },
+    async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})).filter(o => !o.importedFrom); },  // Hot Plate imports are for pickup only, not sales
     async addRefund(id, r){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r)}); },
     async addPrintJob(job){ await F.addDoc(F.collection(db, 'printJobs'), {...job, status: 'queued', createdAt: Date.now()}); },
     async events(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'events'), F.where('at', '>=', from), F.where('at', '<', to))); return snap.docs.map(d => d.data()); },

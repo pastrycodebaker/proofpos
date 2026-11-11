@@ -76,6 +76,7 @@
 <header>
   <div class="hrow"><h1>Special orders</h1>
     <div class="tabs" id="tabs"><button data-tab="pickup">Pickup</button><button data-tab="pack">Packing</button><button data-tab="prep">Prep</button><button data-tab="counts">Counts</button></div>
+    <label class="btn-like" style="cursor:pointer;font-size:14px;font-weight:700;border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px">Import Hot Plate<input type="file" id="hpFile" accept=".csv,text/csv" style="display:none"></label>
     <a href="../?pick" class="muted" style="font-size:14px">Switch screen</a></div>
   <div class="bar" id="dateBar"></div>
 </header>
@@ -86,6 +87,7 @@
 import { firebaseConfig } from '../firebase-config.js';
 import * as R from '../shared/online.mjs';
 import { createPayments } from '../payments.js';
+import * as HP from '../shared/hotplate.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
@@ -130,6 +132,7 @@ function demoStore(){
     async saveLimits(l){ MENU.limits = l; },
     async log(e){ events.push(e); },
     async notifyOwner(subject, text){ console.log('Owner email:', subject, text); },
+    async importOrders(docs){ let made = 0, updated = 0; for (const d of docs){ const o = orders.find(x => x.id === d.id); if (o){ Object.assign(o, d.doc, {packed: o.packed, pickedUp: o.pickedUp}); updated++; } else { orders.push({id: d.id, ...d.doc, packed: {}, pickedUp: false}); made++; } } this._cb && this._cb(); return {made, updated}; },
   };
 }
 async function firestoreStore(app, auth){
@@ -143,6 +146,10 @@ async function firestoreStore(app, auth){
       return {items: i.docs.map(d => d.data()), settings: m.exists() ? m.data() : {}, limits: l.exists() ? l.data() : {}}; },
     async saveLimits(l){ await F.setDoc(F.doc(db, 'menu', 'preorderLimits'), l); },
     async log(e){ await F.addDoc(F.collection(db, 'events'), {...e, at: Date.now()}); },
+    async importOrders(docs){ let made = 0, updated = 0;
+      for (let i = 0; i < docs.length; i += 25) await Promise.all(docs.slice(i, i + 25).map(async d => { const ref = F.doc(db, 'orders', d.id); const ex = await F.getDoc(ref);
+        if (ex.exists()){ await F.updateDoc(ref, d.doc); updated++; } else { await F.setDoc(ref, {...d.doc, packed: {}, pickedUp: false, createdAtMs: Date.now(), createdAt: Date.now()}); made++; } }));
+      return {made, updated}; },
     async notifyOwner(subject, text){ const t = await auth.currentUser.getIdToken(); await fetch('/.netlify/functions/notify', {method: 'POST', headers: {authorization: 'Bearer ' + t, 'content-type': 'application/json'}, body: JSON.stringify({subject, text})}); },
   };
 }
@@ -210,12 +217,12 @@ function renderPickup(){
     <div class="grid">${os.map(o => { const p = packProgress(o); const ms = missed(o);
       return `<div class="ord ${o.pickedUp ? 'done' : ''} ${o.cancelled ? 'cancelled' : ''} ${ms ? 'missed' : ''}">
         <div class="top"><div><div class="nm">${esc(o.name)}</div><div class="muted">#${esc(o.num)} · ${o.phone ? `<a class="ph" href="tel:${esc(o.phone)}">${esc(fmtPhone(o.phone))}</a>` : 'no phone'}</div></div><div class="tm">${esc(tl(o.pickupTime))}</div></div>
-        <div class="badges">${o.cancelled ? '<span class="b red">Cancelled</span>' : ''}${ms ? '<span class="b red">Not picked up</span>' : ''}${p.all ? '<span class="b green">Packed</span>' : `<span class="b gray">${p.n} of ${p.of} packed</span>`}${orderBadges(o)}</div>
+        <div class="badges">${o.importedFrom ? '<span class="b gray">Hot Plate</span>' : ''}${o.cancelled ? '<span class="b red">Cancelled</span>' : ''}${ms ? '<span class="b red">Not picked up</span>' : ''}${p.all ? '<span class="b green">Packed</span>' : `<span class="b gray">${p.n} of ${p.of} packed</span>`}${orderBadges(o)}</div>
         ${o.allergySeparate && o.allergyNote ? `<div class="muted" style="font-weight:600">Allergy note: ${esc(o.allergyNote)}</div>` : ''}
         ${fridgeAlert(o)}
         <ul class="items">${linesOf(o).map(l => `<li><div><b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div></li>`).join('')}</ul>
         ${o.cancelled ? '' : `<label class="bigchk"><input type="checkbox" data-picked="${esc(o.id)}" ${o.pickedUp ? 'checked' : ''}>${o.pickedUp ? 'Picked up' + (o.pickedUpAt ? ' at ' + new Date(o.pickedUpAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '') : 'Picked up'}</label>
-        <div class="acts"><button data-change="${esc(o.id)}">Remove an item</button><button class="danger" data-cancel="${esc(o.id)}">Cancel and refund</button></div>`}
+        ${o.importedFrom ? '<div class="muted" style="font-size:13px">Changes and refunds for this order happen in Hot Plate.</div>' : `<div class="acts"><button data-change="${esc(o.id)}">Remove an item</button><button class="danger" data-cancel="${esc(o.id)}">Cancel and refund</button></div>`}`}
       </div>`; }).join('') || '<p class="muted">No special orders for this day.</p>'}</div>`;
 }
 const fmtPhone = p => { const d = String(p).replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
@@ -350,6 +357,41 @@ document.addEventListener('change', async e => {
   if (t.id === 'rFrom' || t.id === 'rTo'){ range = {kind: 'custom', from: $('#rFrom').value, to: $('#rTo').value || $('#rFrom').value}; listen(); return; }
 });
 document.addEventListener('input', e => { if (e.target.id === 'q'){ query = e.target.value.trim(); const pos = e.target.selectionStart; $('#main').innerHTML = renderPickup(); } });
+
+// ---------- Hot Plate import ----------
+let hpPending = null;
+function hpSheet(){
+  const {orders, unmatched, skipped} = hpPending; const dates = [...new Set(orders.map(o => o.date))].sort();
+  const items = orders.reduce((n, o) => n + o.lines.length, 0); const noTime = orders.filter(o => !o.time).length;
+  modal(`<h2>Import Hot Plate orders</h2>
+    <p style="margin:0">${orders.length} orders, ${items} items, for pickup ${dates.length ? esc(dl(dates[0])) + (dates.length > 1 ? ' to ' + esc(dl(dates[dates.length - 1])) : '') : ''}.${skipped ? ` <span class="muted">${skipped} older orders left out.</span>` : ''}</p>
+    ${noTime ? `<p class="muted" style="margin:0">${noTime} have no pickup time in the file; they sort last on the Pickup view.</p>` : ''}
+    ${unmatched.length ? `<p class="muted" style="margin:0">Not matched to a menu item, so packed with Pastries unless the name says otherwise: ${esc(unmatched.join(', '))}.</p>` : ''}
+    <p class="muted" style="margin:0;font-size:14px">These are for packing and pickup only. Hot Plate keeps the payments, so they don't count in Proof POS sales, the production planner, the KDS or texts. Importing the same file again updates orders without losing packed or picked-up checks.</p>
+    <div class="bar" style="margin:0"><button data-close="1">Cancel</button><button class="primary" id="hpGo">Import ${orders.length} orders</button></div><div id="mMsg"></div>`);
+}
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'hpFile' || !e.target.files[0]) return;
+  const f = e.target.files[0]; e.target.value = '';
+  try {
+    const r = HP.readOrders(await f.text(), MENU.items);
+    const keep = r.orders.filter(o => o.date && o.date >= today() && o.lines.length);
+    if (!keep.length) throw new Error('No orders in that file are for today or later.');
+    hpPending = {...r, orders: keep, skipped: r.orders.length - keep.length}; hpSheet();
+  } catch (err){ modal(`<h2>Couldn't read that file</h2><p>${esc(err.message)}</p><p class="muted">Use Hot Plate's orders export (CSV).</p><div class="bar" style="margin:0"><button data-close="1">OK</button></div>`); }
+});
+document.addEventListener('click', async e => {
+  if (e.target.id !== 'hpGo' || !hpPending) return;
+  e.target.disabled = true; e.target.textContent = 'Importing…';
+  try {
+    const docs = hpPending.orders.map(o => ({id: 'hp_' + String(o.num).replace(/[^\w-]/g, ''), doc: HP.toOrderDoc(o, R.nyMs)}));
+    const r = await store.importOrders(docs); const first = hpPending.orders.map(o => o.date).sort()[0]; hpPending = null;
+    $('#modal').innerHTML = ''; day = first; tab = 'pickup'; listening = ''; listen();
+    store.log({type: 'hotplate_import', made: r.made, updated: r.updated}).catch(() => {});
+    setTimeout(() => alertBox(`Imported ${r.made} new and updated ${r.updated} Hot Plate orders.`), 50);
+  } catch (err){ $('#mMsg').innerHTML = `<p class="err">${esc(err.message)}</p>`; e.target.disabled = false; e.target.textContent = 'Try again'; }
+});
+function alertBox(msg){ const d = document.createElement('div'); d.textContent = msg; d.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#2B2622;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:30'; document.body.appendChild(d); setTimeout(() => d.remove(), 4000); }
 
 // ---------- Start ----------
 async function boot(){ $('#appBox').classList.remove('hidden'); MENU = await store.menu(); listen(); setInterval(() => { if (tab === 'pickup') render(); }, 60000); }

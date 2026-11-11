@@ -124,7 +124,7 @@ async function production(from, to){
   const snap = await getDocs(query(collection(db, 'orders'), where('pickupDate', '>=', from), where('pickupDate', '<=', to)));
   const sums = {};
   for (const d of snap.docs){
-    const o = d.data(); if (!(o.special || o.pickup?.type === 'date') || o.status === 'void' || o.cancelled) continue;
+    const o = d.data(); if (!(o.special || o.pickup?.type === 'date') || o.importedFrom || o.status === 'void' || o.cancelled) continue;  // Hot Plate imports are already in the planner's own Hot Plate import
     for (const l of Object.values(o.lines || {})){
       if (l.removed) continue;
       const name = [l.version, l.name].filter(Boolean).join(' ');
