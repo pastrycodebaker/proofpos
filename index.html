@@ -37,6 +37,12 @@
   <label><input type="checkbox" id="remember"> Open this tablet's screen automatically next time</label>
 </main>
 <script>
+// Customers who land on the bare address (order.flourandsalt.com) go to the order page.
+// Staff tablets that remembered a screen, and anyone using ?pick, still get the staff start page.
+(() => { try { const p = new URLSearchParams(location.search);
+  if (!location.hostname.endsWith('netlify.app') && location.hostname !== 'localhost' && !p.has('pick') && !localStorage.getItem('proof.home')) location.replace('/order/' + location.hash);
+} catch (e) {} })();
+
 const demo = new URLSearchParams(location.search).has('demo') ? '?demo' : '';
 const q = (u) => u + (demo ? (u.includes('?') ? '&demo' : '?demo') : '');
 const SCREENS = {
