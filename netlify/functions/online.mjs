@@ -44,7 +44,7 @@ async function start(b){
   if (!name) throw new Error('Please add your name.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Please add an email for your receipt.');
   if (b.pickup?.type === 'date' && phone.length !== 10) throw new Error('Please add a phone number so we can reach you about your pre-order.');
-  const allergySeparate = !!c.allergySeparate, allergyNote = String(c.allergyNote || '').trim().slice(0, 200);
+  const allergySeparate = !!c.allergySeparate, allergyNote = String(c.allergyNote || '').trim().slice(0, 200), smsOptIn = !!c.smsOptIn && phone.length === 10;
   // Pickup: ASAP today, or a pre-order day
   let pickup;
   if (b.pickup?.type === 'date'){
@@ -76,7 +76,7 @@ async function start(b){
   if (t.charge < 0.5) throw new Error('Online orders must be at least $0.50.');
   const pi = await stripe('POST', 'payment_intents', {amount: Math.round(t.charge * 100), currency: 'usd', automatic_payment_methods: {enabled: true}, receipt_email: email,
     description: `Online order for ${name}${pickup.type === 'date' ? ' · pick up ' + dayLabel(pickup.date) + ' at ' + timeLabel(pickup.time) : ''}`, metadata: {source: 'online', pickup: pickup.type === 'date' ? pickup.date + ' ' + pickup.time : 'asap'}});
-  await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct, allergySeparate, allergyNote});
+  await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct, allergySeparate, allergyNote, smsOptIn, smsOptInAt: smsOptIn ? now : null});
   return {clientSecret: pi.client_secret, paymentIntent: pi.id, totals: t, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY};
 }
 
@@ -104,10 +104,10 @@ export async function finish(paymentIntent){
     tx.set(orderRef, {num, name: c.name, email: c.email, phone: c.phone || null, source: 'online', status: 'paid', staff: 'Online', rush: false, cleared: false, clearedAt: 0,
       scheduled: pre, createdAtMs: now, fireAtMs, readyAt, pickup: c.pickup, pickupDate: c.pickup.type === 'date' ? c.pickup.date : nyDate(now), pickupTime: c.pickup.time || null,
       lines: Object.fromEntries(c.lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: [pay], totals: c.totals, paidAt: now, taxExempt: false, discount: null,
-      special: pre, allergySeparate: !!c.allergySeparate, allergyNote: c.allergyNote || '', packed: {}, pickedUp: false, reminderSent: false,
+      special: pre, smsOptIn: !!c.smsOptIn, smsOptInAt: c.smsOptInAt || null, allergySeparate: !!c.allergySeparate, allergyNote: c.allergyNote || '', packed: {}, pickedUp: false, reminderSent: false,
       ...(c.phone ? {customerPhone: c.phone, customerName: c.name, pointsEarned: Math.floor(c.totals.total), pointsUsed: 0} : {})});
     tx.update(coRef, {status: 'done', orderId: orderRef.id});
-    return {num, readyAt, pickup: c.pickup, lines: c.lines, phone: c.phone, name: c.name, email: c.email, totals: c.totals, total: c.totals.total, pre, allergySeparate: c.allergySeparate, allergyNote: c.allergyNote};
+    return {num, readyAt, pickup: c.pickup, lines: c.lines, phone: c.phone, name: c.name, email: c.email, totals: c.totals, total: c.totals.total, pre, allergySeparate: c.allergySeparate, allergyNote: c.allergyNote, smsOptIn: !!c.smsOptIn};
   });
   if (!result.already){
     // Same-day orders count down stock; rewards points for customers who gave a phone number.

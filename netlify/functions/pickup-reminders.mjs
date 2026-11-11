@@ -15,7 +15,7 @@ export default async () => {
   let sent = 0;
   for (const d of snap.docs){
     const o = d.data();
-    if (!o.special || o.status !== 'paid' || o.reminderSent || o.pickedUp || !o.phone || !o.readyAt) continue;
+    if (!o.special || o.status !== 'paid' || o.cancelled || !o.smsOptIn || o.reminderSent || o.pickedUp || !o.phone || !o.readyAt) continue;
     const mins = (o.readyAt - now) / 60000;
     if (mins > 20 || mins < 0) continue;  // about 15 minutes before (checked every 5 minutes)
     await updateDoc(doc(db, 'orders', d.id), {reminderSent: true});
