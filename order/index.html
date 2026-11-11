@@ -260,7 +260,7 @@ function renderBar(){
 function openItem(id){
   const it = itemById(id); if (!it || !avail(it).ok) return;
   draft = {itemId: id, versionIdx: (it.versions || []).length > 1 ? null : 0, mods: []};
-  for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (g.default && g.options.some(o => o.name === g.default && !o.hideOnline)) draft.mods.push({g: g.id, o: g.default, q: 1});
+  for (const g of (it.modifierGroupIds || []).map(groupById).filter(Boolean)) if (g.default && g.options.some(o => o.name === g.default && R.optOn(o, chan()))) draft.mods.push({g: g.id, o: g.default, q: 1});
   for (const x of it.included || []) if (!draft.mods.some(m => m.g === x.g && m.o === x.o)) draft.mods.push({g: x.g, o: x.o, q: 1});
   if ((it.versions || []).length <= 1 && !(it.modifierGroupIds || []).length){ addDraft(); return; }
   renderItem();
@@ -276,7 +276,7 @@ function renderItem(){
   for (const g of ids.map(groupById).filter(Boolean)){
     if (!R.groupShown(it, g.id, draft.mods)) continue;
     const min = R.minFor(it, g), n = gCount(g.id); const counted = it.countPricing && it.countPricing.group === g.id;
-    const opts = g.options.filter(o => !o.hideOnline);
+    const opts = g.options.filter(o => R.optOn(o, chan()));
     const head = `<h4>${esc(g.name)} ${min ? `<span class="tag ${n < min ? 'need' : ''}">Required</span>` : '<span class="tag">Optional</span>'}${counted ? ` <span class="tag">${n} picked</span>` : ''}</h4>`;
     const body = counted ? opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? m.q : 0; return `<div class="step ${q ? 'on' : ''}"><span>${esc(o.name)}</span><button data-minus="${esc(g.id)}|${esc(o.name)}" aria-label="One less ${esc(o.name)}" ${q ? '' : 'disabled'}>−</button><b>${q}</b><button data-plus="${esc(g.id)}|${esc(o.name)}" aria-label="One more ${esc(o.name)}">+</button></div>`; }).join('')
       : opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = R.optPrice(o, v.size, v.temp); const inc = (it.included || []).some(x => x.g === g.id && x.o === o.name); return `<button class="${m ? 'on' : ''}" data-opt="${esc(g.id)}|${esc(o.name)}">${esc(inc && !m ? 'No ' + o.name : o.name)}${inc ? (m ? ' <small>Included</small>' : '') : p ? ` <small>${p > 0 ? '+' : '−'}${money(Math.abs(p))}</small>` : ''}</button>`; }).join('');

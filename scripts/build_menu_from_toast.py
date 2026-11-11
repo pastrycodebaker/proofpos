@@ -136,7 +136,7 @@ def add(it):
     seen.add(it['id']); order[it['category'] + '|' + (it.get('section') or '')] += 1; it['sortOrder'] = order[it['category'] + '|' + (it.get('section') or '')]; items.append(it)
 def base_item(name, category, section, price, groups=None, **kw):
     it = {'id': slug(name), 'name': name, 'description': '', 'category': category, 'section': section, 'station': STATION.get(category, 'none'),
-          'visible': {'register': True, 'kiosk': True, 'online': True}, 'alcohol': category == 'Alcohol', 'eightySixed': False,
+          'visible': {'register': True, 'kiosk': category not in ('Sandwiches', 'Alcohol'), 'online': True}, 'alcohol': category == 'Alcohol', 'eightySixed': False,
           'versions': [V('', '', price)], 'modifierGroupIds': groups or [], 'counts': [], 'reroute': 'none', 'taxable': False, 'active': True,
           'review': {'source': SRC, 'note': None}}
     it.update(kw); return it
@@ -184,7 +184,7 @@ settings = {
   'preMods': ['No', 'Light', 'Extra', 'On the side'],
   'discounts': [{'name': 'Staff meal', 'type': 'percent', 'value': 100}, {'name': 'Comp', 'type': 'percent', 'value': 100}, {'name': 'Donation', 'type': 'percent', 'value': 100}, {'name': 'Bagel token', 'type': 'amount', 'value': 1.5}, {'name': 'Pastry token', 'type': 'amount', 'value': 3.0}],
   'noNameCategories': ['Bulk Bagels', 'Pastries + Breads', 'Retail'],
-  'kioskHideCategories': ['Sandwiches', 'Alcohol'],
+  'kioskCatsMoved': True,  # sandwiches and alcohol are kept off the kiosk on each item instead
   'favorites': ['build-your-own-sandwich', 'the-colgate', 'latte', 'the-chipotle-potato', 'maple-new-day', 'drip-coffee', 'cold-brew', 'chai'],
   'categoryColors': {'Sandwiches': '#e8a33d', 'Coffee Bar': '#8b5e3c', 'Pastries + Breads': '#d9774b', 'Bulk Bagels': '#c9a227', 'Retail': '#5b8a72', 'Alcohol': '#7a4f9a'},
 }

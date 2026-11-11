@@ -121,6 +121,10 @@
   .photo{width:120px;height:120px;border-radius:14px;background:#EFE7DA;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
   .photo img{width:100%;height:100%;object-fit:cover}
   label.btn{background:#fff;border:1px solid #E3D9CA;border-radius:10px;padding:8px 14px;font-weight:600}
+  .setnav{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px;position:sticky;top:0;background:var(--bg,#F7F3EC);padding:6px 0;z-index:2}
+  .setnav a{font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;border:1px solid #E3D9CA;color:inherit;text-decoration:none;background:#fff}
+  .setnote{background:#FFF3D6;border:1px solid #E0B44C;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:8px}
+  [id^="set-"]{scroll-margin-top:60px}
 </style>
 </head>
 <body>
@@ -154,7 +158,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onlineWhen, packAs, CHANNELS } from '../shared/online.mjs';
+import { onlineWhen, packAs, CHANNELS, optOn } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 let authRef = null;
@@ -323,9 +327,13 @@ function renderItemEditor(){
     <p class="muted">For bulk bagels: staff tap flavors as the customer lists them, and the price works itself out. 8 bagels = half dozen price + 2 singles. The single price is the item price above.</p>
     <div id="cpBox"></div>
     </details>
-    <details class="more" ${false ? 'open' : ''}><summary><b>Where it shows, days and stock</b> <span class="muted">${[it.visible?.kiosk === false ? 'not on kiosk' : '', it.visible?.register === false ? 'not on register' : '', it.days && it.days.length ? 'some days only' : '', it.active === false ? 'off season' : '', typeof it.stockCount === 'number' ? it.stockCount + ' on hand' : '', it.eightySixed ? "86'd" : ''].filter(Boolean).join(' · ') || 'everywhere, every day'}</span></summary>
+    <details class="more" ${false ? 'open' : ''}><summary><b>Where it shows, days and stock</b> <span class="muted">${[it.visible?.kiosk === false || it.alcohol ? 'not on kiosk' : '', it.visible?.register === false ? 'not on register' : '', it.visible?.online === false || it.alcohol ? 'not online' : ({asap: 'online today only', preorder: 'pre-order only'})[onlineWhen(it)] || '', it.days && it.days.length ? 'some days only' : '', it.active === false ? 'off season' : '', typeof it.stockCount === 'number' ? it.stockCount + ' on hand' : '', it.eightySixed ? "86'd" : ''].filter(Boolean).join(' · ') || 'everywhere, every day'}</span></summary>
     <div class="toggles">
-      ${[['register','Register'],['kiosk','Kiosk']].map(([k,l]) => `<label class="${it.visible?.[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${it.visible?.[k] ? 'checked' : ''}>${l}</label>`).join('')}
+      <span class="muted" style="align-self:center;font-weight:600">Shows on</span>
+      ${(() => { const w = onlineWhen(it), on = it.visible?.online !== false && !it.alcohol; const v = {register: it.visible?.register !== false, kiosk: it.visible?.kiosk !== false && !it.alcohol, asap: on && w !== 'preorder', preorder: on && w !== 'asap'};
+        return Object.entries(CHANNELS).map(([k, l]) => `<label class="${v[k] ? 'on' : ''}"><input type="checkbox" data-vis="${k}" ${v[k] ? 'checked' : ''}>${l}</label>`).join(''); })()}
+    </div>${it.onlineWhen ? '' : `<p class="muted" style="margin:2px 0 0;font-size:13px">Online pages not set yet for this item, so it follows the default for ${esc(it.category || 'its category')}: sandwiches and drinks today only; pastries, breads and bulk bagels both.</p>`}
+    <div class="toggles">
       <label class="${it.alcohol ? 'on' : ''}"><input type="checkbox" id="f_alcohol" ${it.alcohol ? 'checked' : ''}>Alcohol (ID check, never kiosk or online)</label>
       <label class="${it.eightySixed ? 'on' : ''}"><input type="checkbox" id="f_86" ${it.eightySixed ? 'checked' : ''}>86'd</label>
     </div>
@@ -334,21 +342,20 @@ function renderItemEditor(){
     <div class="toggles">${DAYS.filter(([, n]) => openDays().includes(n)).map(([l, n]) => { const on = !it.days || it.days.includes(n); return `<label class="${on ? 'on' : ''}"><input type="checkbox" data-fday="${n}" ${on ? 'checked' : ''}>${l}</label>`; }).join('')}
       <label class="${it.active !== false ? 'on' : ''}" style="margin-left:12px"><input type="checkbox" id="f_active" ${it.active !== false ? 'checked' : ''}>In season (on the menu)</label></div>
     </details>
-    <details class="more" ${(it.dates || []).length ? 'open' : ''}><summary><b>Online ordering</b> <span class="muted">${[it.visible?.online === false ? 'not online' : ({both: 'today and pre-order', asap: 'today only', preorder: 'pre-order only'})[onlineWhen(it)], (it.dates || []).length ? (it.dates.length + ' date' + (it.dates.length > 1 ? 's' : '') + ' only') : '', it.deadline ? 'own deadline' : '', it.dateLimit ? it.dateLimit + ' per day' : ''].filter(Boolean).join(' · ') || 'normal'}</span></summary>
-    <label style="margin-top:10px">Which online page it shows on</label>
-    <select id="f_when">${[['both', 'Both: today (ASAP) and pre-order'], ['asap', 'Today (ASAP) only'], ['preorder', 'Pre-order only'], ['none', 'Neither (not online)']].map(([v, l]) => `<option value="${v}" ${(it.visible?.online === false ? 'none' : onlineWhen(it)) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-    ${it.onlineWhen ? '' : `<p class="muted" style="margin:4px 0 0">Not set yet, so it follows the default for ${esc(it.category || 'its category')}. Sandwiches and drinks default to today only; pastries, breads and bulk bagels to both.</p>`}
-    <div class="row"><div><label>Packed with (special orders)</label><select id="f_packAs">${[['', 'Automatic (' + ({bagels: 'Bagels', pastries: 'Pastries', breads: 'Breads', cafe: 'From the cafe'})[packAs({...it, packAs: ''})] + ')'], ['bagels', 'Bagels'], ['pastries', 'Pastries'], ['breads', 'Breads']].map(([v, l]) => `<option value="${v}" ${(it.packAs || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-    <div class="toggles"><label class="${it.fromCafe ? 'on' : ''}"><input type="checkbox" id="f_fromCafe" ${it.fromCafe ? 'checked' : ''}>Made at the cafe (blue label; shows on the KDS before pickup)</label>
-      <label class="${it.refrigerated ? 'on' : ''}"><input type="checkbox" id="f_fridge" ${it.refrigerated ? 'checked' : ''}>Keep refrigerated (fridge alert at pickup)</label>
-      <label class="${it.sliced ? 'on' : ''}"><input type="checkbox" id="f_sliced" ${it.sliced ? 'checked' : ''}>Always sliced (yellow label)</label></div>
-    <p class="muted" style="margin:0">Items with a "Sliced" choice get the yellow label when that choice is picked. Cream cheese and cold brew get the fridge alert automatically.</p>
+    <details class="more" ${(it.dates || []).length ? 'open' : ''}><summary><b>Online dates and deadline</b> <span class="muted">${[(it.dates || []).length ? (it.dates.length + ' date' + (it.dates.length > 1 ? 's' : '') + ' only') : '', it.deadline ? 'own deadline' : ''].filter(Boolean).join(' · ') || 'every offered day, shop deadline'}</span></summary>
     <label>Only on these pickup dates (one-off specials). Leave blank for every day it's offered.</label>
     <input id="f_dates" placeholder="2026-11-25, 2026-11-26" value="${esc((it.dates || []).join(', '))}">
     <div class="row"><div><label>Order deadline: days before pickup (blank = shop default)</label><input id="f_dlDays" type="number" min="0" step="1" value="${it.deadline ? esc(it.deadline.daysBefore) : ''}"></div>
       <div><label>by this time</label><input id="f_dlTime" type="time" value="${it.deadline ? esc(it.deadline.time) : ''}"></div>
 </div>
     <p class="muted" style="margin:4px 0 0">How many can sell per pickup day is set on the Special orders page, under Counts.</p>
+    </details>
+    <details class="more"><summary><b>Special orders packing</b> <span class="muted">${[({bagels: 'Bagels', pastries: 'Pastries', breads: 'Breads', cafe: 'From the cafe'})[packAs(it)], it.refrigerated ? 'fridge' : '', it.sliced ? 'sliced' : ''].filter(Boolean).join(' · ')}</span></summary>
+    <div class="row" style="margin-top:10px"><div><label>Packed with (special orders)</label><select id="f_packAs">${[['', 'Automatic (' + ({bagels: 'Bagels', pastries: 'Pastries', breads: 'Breads', cafe: 'From the cafe'})[packAs({...it, packAs: ''})] + ')'], ['bagels', 'Bagels'], ['pastries', 'Pastries'], ['breads', 'Breads']].map(([v, l]) => `<option value="${v}" ${(it.packAs || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <div class="toggles"><label class="${it.fromCafe ? 'on' : ''}"><input type="checkbox" id="f_fromCafe" ${it.fromCafe ? 'checked' : ''}>Made at the cafe (blue label; shows on the KDS before pickup)</label>
+      <label class="${it.refrigerated ? 'on' : ''}"><input type="checkbox" id="f_fridge" ${it.refrigerated ? 'checked' : ''}>Keep refrigerated (fridge alert at pickup)</label>
+      <label class="${it.sliced ? 'on' : ''}"><input type="checkbox" id="f_sliced" ${it.sliced ? 'checked' : ''}>Always sliced (yellow label)</label></div>
+    <p class="muted" style="margin:0">Items with a "Sliced" choice get the yellow label when that choice is picked. Cream cheese and cold brew get the fridge alert automatically.</p>
     </details>
     <details class="more" ${false ? 'open' : ''}><summary><b>Kitchen, tax and description</b> <span class="muted">${[STATIONS[it.station] || '', it.taxable ? 'taxed' : 'not taxed', it.reroute && it.reroute !== 'none' ? 'weekend reroute' : ''].filter(Boolean).join(' · ')}</span></summary>
     <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
@@ -440,6 +447,8 @@ function readItemForm(it){
   out.alcohol = $('#f_alcohol').checked; out.eightySixed = $('#f_86').checked;
   const st = $('#f_stock').value; out.stockCount = st === '' ? null : Math.max(0, Math.floor(Number(st)));
   if (out.stockCount === 0) out.eightySixed = true;
+  { const a = !!out.visible.asap, p = !!out.visible.preorder; delete out.visible.asap; delete out.visible.preorder;
+    out.visible.online = a || p; if (a || p) out.onlineWhen = a && p ? 'both' : a ? 'asap' : 'preorder'; out.preorderOnly = !a && p; }
   if (out.alcohol){ out.visible.kiosk = false; out.visible.online = false; }
   const mode = document.querySelector('input[name=pmode]:checked').value;
   if (mode === 'single'){ const p = $('#f_price').value; out.versions = [{temp:'', size:'', price: p === '' ? null : Number(p)}]; }
@@ -452,7 +461,6 @@ function readItemForm(it){
   out.countPricing = cpSel && cpSel.group && out.modifierGroupIds.includes(cpSel.group) ? readTiers() : null;
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
-  { const w = $('#f_when').value; if (w === 'none') out.visible.online = false; else { out.onlineWhen = w; if (!out.alcohol) out.visible.online = true; } out.preorderOnly = w === 'preorder'; }
   out.dates = $('#f_dates').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   { const dd = $('#f_dlDays').value, dt = $('#f_dlTime').value; out.deadline = dd === '' && !dt ? null : {daysBefore: Math.max(0, Math.floor(Number(dd || 0))), time: dt || '17:00'}; }
   out.packAs = $('#f_packAs').value || null; out.fromCafe = $('#f_fromCafe').checked; out.refrigerated = $('#f_fridge').checked; out.sliced = $('#f_sliced').checked;
@@ -502,7 +510,8 @@ function optRow(o, sizes){
     <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
       <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[o.stockAs || groupIdNow + '~' + o.name] ?? '')}"></div></div>
     <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
-      <div style="flex:none;align-self:end"><label style="display:flex;gap:6px;align-items:center;margin:0 0 8px;color:var(--ink);font-size:14px"><input type="checkbox" data-o="hide" ${o.hideOnline ? 'checked' : ''}>Hide on kiosk and online</label></div></div>
+</div>
+    <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;font-size:14px"><span class="muted">Shows on</span>${Object.entries(CHANNELS).map(([k, l]) => `<label style="display:flex;gap:5px;align-items:center;margin:0;color:var(--ink);font-size:14px"><input type="checkbox" data-oc="${k}" ${optOn(o, k) ? 'checked' : ''}>${l}</label>`).join('')}</div>
   </div>`;
 }
 function readGroupForm(g){
@@ -517,7 +526,7 @@ function readGroupForm(g){
     return {name: el.querySelector('[data-o=name]').value.trim(), pricing: el.querySelector('[data-o=pricing]').value, price: Number(el.querySelector('[data-o=price]').value || 0), bySize,
             counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : [],
             subs: el.querySelector('[data-o=subs]').value.split(',').map(x => x.trim()).filter(Boolean),
-            hideOnline: el.querySelector('[data-o=hide]').checked,
+            showOn: Object.fromEntries([...el.querySelectorAll('[data-oc]')].map(i => [i.dataset.oc, i.checked])),
             ...(el.dataset.stockas ? {stockAs: el.dataset.stockas} : {}),
             _stock: el.querySelector('[data-o=stock]').value};
   }).filter(o => o.name);
@@ -533,6 +542,9 @@ async function renderSettings(){
   ownersNow = await store.getOwners().catch(() => ownersNow);
   const s = S.settings; const os = s.online || {};
   $('#editPane').innerHTML = `<h2>Settings</h2>
+    <nav class="setnav"><a href="#set-general">Menu, taxes and payments</a><a href="#set-register-sign-in">Register sign-in</a><a href="#set-owner-sign-ins">Owner sign-ins</a><a href="#set-weekend-reroute">Weekend reroute</a><a href="#set-online-ordering">Online ordering</a><a href="#set-bake-days">Bake days</a><a href="#set-cup-charge">Cup charge</a><a href="#set-starter-menu">Starter menu</a></nav>
+    ${!s.kioskCatsMoved ? `<div class="setnote">The kiosk hides whole categories (${esc((s.kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails']).join(', '))}) on top of each item's Kiosk setting. <button id="moveKioskCats">Move this onto the items</button> unticks Kiosk on every item in those categories, so each item's Shows on row is the one place to manage it.</div>` : ''}
+    <h3 id="set-general">Menu, taxes and payments</h3>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
     <label>Favorites row on the register (up to 8, in order)</label>
     <div class="row" style="flex-wrap:wrap">${Array.from({length: 8}, (_, n) => `<select data-fav="${n}" style="max-width:220px"><option value="">—</option>${S.items.filter(i => !i.archived).sort((a, b) => a.name.localeCompare(b.name)).map(i => `<option value="${esc(i.id)}" ${(s.favorites || [])[n] === i.id ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}</select>`).join('')}</div>
@@ -550,19 +562,19 @@ async function renderSettings(){
     <label>Discounts, one per line, like "Staff meal: 50%" or "Bagel token: $1.50"</label><textarea id="s_disc" rows="5">${esc((s.discounts || [{name:'Comp', type:'percent', value:100}, {name:'Donation', type:'percent', value:100}]).map(d => `${d.name}: ${d.type === 'percent' ? d.value + '%' : '$' + d.value}`).join('\n'))}</textarea>
     <label>Category colors, one per line, like "Sandwiches: #f4b860" (blank uses the default colors)</label><textarea id="s_colors" rows="3">${esc(Object.entries(s.categoryColors || {}).map(([k, v]) => `${k}: ${v}`).join('\n'))}</textarea>
     <div class="bar"><button class="primary" id="saveSettings">Save settings</button><span class="status" id="setStatus"></span></div>
-    <h3>Register sign-in</h3>
+    <h3 id="set-register-sign-in">Register sign-in</h3>
     <p class="muted">Staff sign in on the register with their code. The register locks after the idle time below. Leave the list empty to skip sign-in.</p>
     <label>Staff, one per line, like "Britty O: 1234"</label><textarea id="s_staff" rows="5" placeholder="Britty O: 1234">${esc((staffNow.members || []).map(m => `${m.name}: ${m.pin}`).join('\n'))}</textarea>
     <label>Lock after this many idle minutes</label><input id="s_sleep" type="number" min="1" step="1" value="${esc(staffNow.sleepMinutes || 5)}" style="max-width:140px">
     <div class="bar"><button class="primary" id="saveStaff">Save sign-in</button><span class="status" id="staffStatus"></span></div>
-    <h3>Owner sign-ins</h3>
+    <h3 id="set-owner-sign-ins">Owner sign-ins</h3>
     <p class="muted">Only these sign-ins can change the menu, prices, discounts, staff codes and settings. Every other signed-in tablet can still ring orders, 86 items and change counts. ${(ownersNow.emails || []).length ? '' : '<b>No owners yet, so every signed-in tablet can change everything.</b> Add your own sign-in first.'} You're signed in as <b>${esc(signedInEmail || 'demo')}</b>.</p>
     <label>Owner emails, one per line</label><textarea id="s_owners" rows="3" placeholder="you@example.com">${esc((ownersNow.emails || []).join('\n'))}</textarea>
     <div class="bar"><button class="primary" id="saveOwners">Save owners</button><span class="status" id="ownStatus"></span></div>
-    <h3>Weekend reroute</h3>
+    <h3 id="set-weekend-reroute">Weekend reroute</h3>
     <p class="muted">Drinks that move to the runner screen when "Weekend reroute" is checked on the KDS: ${S.items.filter(i => i.reroute && i.reroute !== 'none').map(i => esc((i.reroute === 'iced' ? 'iced ' : '') + i.name)).join(', ') || 'none yet'}. Change one on its item page.</p>
     <button id="rrDefaults">Set cold brew, Honeybee, kombucha, lemonade, iced tea and iced chai</button> <span class="status" id="rrStatus"></span>
-    <h3>Online ordering</h3>
+    <h3 id="set-online-ordering">Online ordering</h3>
     <p class="muted">Customers order at <b>${esc(location.origin)}/order/</b>. Same-day orders are ASAP during these hours; any open day up to the days-ahead limit can be pre-ordered until its deadline. The weekly deadline (Monday 1pm) closes pre-orders for that Wednesday through Sunday. Pre-order customers pick a pickup time every 15 minutes within these hours. Leave a day's hours blank if you're closed.</p>
     <div class="row" style="flex-wrap:wrap">${DAYS.map(([l, n]) => { const h = (os.hours || {})[n] || {}; return `<div style="min-width:150px"><label>${l}</label><div class="row"><input type="time" data-oh="${n}" data-k="open" value="${esc(h.open || '')}"><input type="time" data-oh="${n}" data-k="close" value="${esc(h.close || '')}"></div></div>`; }).join('')}</div>
     <div class="row"><div><label>Minutes to make an ASAP order</label><input id="o_prep" type="number" min="0" value="${esc(os.prepMinutes ?? 15)}"></div>
@@ -580,13 +592,13 @@ async function renderSettings(){
     <label>Pickup note shown on pre-orders</label><input id="o_note" placeholder="Pick up any time after 8am at the Maple Ave counter." value="${esc(os.pickupNote || '')}">
     <div class="toggles" style="margin-top:8px"><label class="${os.asap === true ? 'on' : ''}"><input type="checkbox" id="o_asap" ${os.asap === true ? 'checked' : ''}>Take same-day ASAP orders (leave off while same-day orders are on Toast)</label></div>
     <div class="bar"><button class="primary" id="saveOnline">Save online ordering</button><span class="status" id="onlStatus"></span></div>
-    <h3>Bake days</h3>
+    <h3 id="set-bake-days">Bake days</h3>
     <p class="muted">Sets House Sourdough to Wed–Sat, Red Wheat Sourdough and Donuts to Fri–Sat, and Brioche rolls to Wed and Fri. Change any item later in Layout.</p>
     <button id="dayDefaults">Set bake days</button> <span class="status" id="dayStatus"></span>
-    <h3>Cup charge</h3>
+    <h3 id="set-cup-charge">Cup charge</h3>
     <p class="muted">Adds a "Cup" group (To go cup +$0.30 pre-selected, Customer cup and For here hidden on kiosk and online) to every drink. Set the customer cup discount on the group afterward.</p>
     <button id="cupDefaults">Add the cup group to drinks</button> <span class="status" id="cupStatus"></span>
-    <h3>Starter menu</h3>
+    <h3 id="set-starter-menu">Starter menu</h3>
     ${S.items.length ? `<p class="muted">Your menu has ${S.items.length} items. Reloading the starter menu replaces items and groups with the same names and undoes edits to them.</p><div class="row" style="max-width:520px"><input id="confirmSeed" placeholder="Type RELOAD to confirm"><button id="seedBtn">Reload starter menu</button></div>`
       : `<p class="muted">Loads the drinks with sizes from your website menu, sandwiches, and every item from the October Toast export. Each item is marked for review with where its price came from.</p><button class="primary" id="seedBtn">Load starter menu</button>`}
     <span class="status" id="seedStatus"></span>`;
@@ -688,6 +700,13 @@ document.addEventListener('click', async e => {
       if (new Set(members.map(m => m.pin)).size !== members.length){ status('#staffStatus', 'Two people have the same code.', 'err'); return; }
       await store.saveStaff({members, sleepMinutes: Math.max(1, Number($('#s_sleep').value || 5))}); status('#staffStatus', 'Saved', 'ok');
     }
+    if (t.id === 'moveKioskCats'){
+      const cats = S.settings.kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails'];
+      const changed = S.items.filter(i => cats.includes(i.category) && i.visible?.kiosk !== false).map(i => ({...i, visible: {...(i.visible || {}), kiosk: false}}));
+      if (changed.length) await store.saveItems(changed);
+      const ns = {...S.settings, kioskCatsMoved: true}; delete ns.kioskHideCategories; await store.saveSettings(ns); await reload();
+      setTimeout(() => status('#setStatus', `Moved: ${changed.length} items now have Kiosk unticked.`, 'ok'), 300); return;
+    }
     if (t.id === 'saveSettings'){
       const rate = Math.min(3, Math.max(0, Number($('#s_rate').value || 0))) / 100;
       const disc = $('#s_disc').value.split('\n').map(l => l.match(/^(.+?):\s*(\$)?([\d.]+)\s*(%)?\s*$/)).filter(Boolean).map(m => ({name: m[1].trim(), type: m[4] ? 'percent' : 'amount', value: Number(m[3])}));
@@ -702,7 +721,7 @@ document.addEventListener('click', async e => {
       for (const [d, h] of Object.entries(hours)) if (!h.open || !h.close || h.open >= h.close){ status('#onlStatus', 'Each open day needs an opening time before its closing time.', 'err'); return; }
       const n = (id, d) => { const v = $(id).value; return v === '' ? d : Math.max(0, Math.floor(Number(v))); }; const os0 = S.settings.online || {};
       const online = {asap: $('#o_asap').checked, hours, prepMinutes: n('#o_prep', 15), lastOrderMinutes: n('#o_last', 15), asapPer15: n('#o_cap', 0), daysAhead: n('#o_ahead', 21),
-        deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireTime: os0.fireTime || '06:00', fireLead: n('#o_lead', 30), slotLimit: n('#o_slot', 0),
+        deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireLead: n('#o_lead', 30), slotLimit: n('#o_slot', 0),
         closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim()};
       await store.saveSettings({...S.settings, online}); await reload(); setTimeout(() => status('#onlStatus', 'Saved', 'ok'), 300);
     }
@@ -838,13 +857,13 @@ function modsTable(){
   const groups = S.groups.map(g => groupNow(g.id));
   const rows = [];
   for (const g of groups) g.options.forEach((o, oi) => { if (!q || o.name.toLowerCase().includes(q) || g.name.toLowerCase().includes(q)) rows.push({g, o, oi}); });
-  return `<table class="sheet"><thead><tr><th>Group</th><th>Option</th><th>Pricing</th><th>Price</th>${sizes.map(sz => `<th>${esc(colLabel(sz))}</th>`).join('')}<th>Hide on kiosk and online</th></tr></thead><tbody>
+  return `<table class="sheet"><thead><tr><th>Group</th><th>Option</th><th>Pricing</th><th>Price</th>${sizes.map(sz => `<th>${esc(colLabel(sz))}</th>`).join('')}<th>Kiosk and online</th></tr></thead><tbody>
   ${rows.map(({g, o, oi}) => `<tr data-g="${esc(g.id)}" data-oi="${oi}" class="${draftGroups.has(g.id) ? 'chg' : ''}"><td class="grp">${esc(g.name)}</td>
     <td><input data-mf="name" value="${esc(o.name)}"></td>
     <td><select data-mf="pricing"><option value="flat" ${o.pricing !== 'bySize' ? 'selected' : ''}>Flat</option><option value="bySize" ${o.pricing === 'bySize' ? 'selected' : ''}>By size and temp</option></select></td>
     <td><input type="number" step="0.01" data-mf="price" value="${Number(o.price || 0).toFixed(2)}"></td>
     ${sizes.map(sz => `<td><input type="number" step="0.01" data-mf="bs" data-s="${esc(sz)}" ${o.pricing === 'bySize' ? '' : 'disabled'} value="${esc(o.bySize?.[sz] ?? '')}"></td>`).join('')}
-    <td style="text-align:center"><input type="checkbox" data-mf="hide" ${o.hideOnline ? 'checked' : ''}></td></tr>`).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No modifiers match.</td></tr>`}</tbody></table>`;
+    <td style="text-align:center"><input type="checkbox" data-mf="hide" ${optOn(o, 'kiosk') || optOn(o, 'asap') || optOn(o, 'preorder') ? 'checked' : ''} title="Shown on the kiosk and online. Untick to hide there; open the group to choose each place."></td></tr>`).join('') || `<tr><td colspan="99" class="muted" style="padding:16px">No modifiers match.</td></tr>`}</tbody></table>`;
 }
 function refreshSaveBtn(){ const n = draftItems.size + draftGroups.size + deletes.size; const b = $('#sheetSave'); if (b){ b.disabled = !n; b.textContent = `Save ${n || ''} change${n === 1 ? '' : 's'}`; } const d = $('#sheetDiscard'); if (d) d.disabled = !n; }
 
@@ -874,7 +893,7 @@ function onSheetEdit(e){
       if (f === 'pricing'){ o.pricing = el.value; row.querySelectorAll('[data-mf=bs]').forEach(x => { x.disabled = el.value !== 'bySize'; }); }
       if (f === 'price') o.price = el.value === '' ? 0 : r2(el.value);
       if (f === 'bs'){ o.bySize = {...(o.bySize || {})}; if (el.value === '') delete o.bySize[el.dataset.s]; else o.bySize[el.dataset.s] = r2(el.value); }
-      if (f === 'hide') o.hideOnline = el.checked;
+      if (f === 'hide'){ delete o.hideOnline; o.showOn = {register: optOn(o, 'register'), kiosk: el.checked, asap: el.checked, preorder: el.checked}; }
       g.review = null;
     });
     el.classList.add('dirty'); row.classList.add('chg'); refreshSaveBtn();

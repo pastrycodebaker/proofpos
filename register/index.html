@@ -172,7 +172,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onChannel } from '../shared/online.mjs';
+import { onChannel, optOn } from '../shared/online.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -425,7 +425,7 @@ function renderMods(){
   }
   for (const g of draftGroups()){
     const st = groupStatus(g);
-    cols.push(`<div class="col"><div class="colh ${st.need ? 'need' : (st.min ? 'ok' : '')}"><span>${esc(g.name)}${it.countPricing && it.countPricing.group === g.id ? ` · <b>${st.n}</b>` : ''}</span><span class="st">${st.need ? '✕ ' + (st.min - st.n) : st.min ? '✓' : ''}</span></div><div class="opts">${g.options.map(o => {
+    cols.push(`<div class="col"><div class="colh ${st.need ? 'need' : (st.min ? 'ok' : '')}"><span>${esc(g.name)}${it.countPricing && it.countPricing.group === g.id ? ` · <b>${st.n}</b>` : ''}</span><span class="st">${st.need ? '✕ ' + (st.min - st.n) : st.min ? '✓' : ''}</span></div><div class="opts">${g.options.filter(o => optOn(o, 'register')).map(o => {
       const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const cnt = MODSTOCK[modKey(g.id, o.name)]; const out = typeof cnt === 'number' && cnt <= 0;
       const p = optPrice(o, size, temp); const incl = (it.included || []).some(x => x.g === g.id && x.o === o.name);
       const label = m ? modText(m) : o.name;
@@ -459,7 +459,7 @@ function cancelDraft(){
 function startDraft(itemId){
   const it = itemById(itemId);
   draft = {itemId, versionIdx: (it.versions || []).length > 1 ? null : 0, mods: [], qty: 1, editIdx: null};
-  for (const g of draftGroups()) if (g.default && g.options.some(o => o.name === g.default)) draft.mods.push({g: g.id, o: g.default, q: 1});
+  for (const g of draftGroups()) if (g.default && g.options.some(o => o.name === g.default && optOn(o, 'register'))) draft.mods.push({g: g.id, o: g.default, q: 1});
   for (const x of it.included || []) if (groupById(x.g) && !draft.mods.some(m => m.g === x.g && m.o === x.o)) draft.mods.push({g: x.g, o: x.o, q: x.q || 1, inc: true});
   if ((it.versions || []).length <= 1 && !draftGroups().length){ commitDraft(); return; }
   check.lines.push({...lineFrom({...draft, lid: null})}); draft.editIdx = check.lines.length - 1; draft.isNew = true;

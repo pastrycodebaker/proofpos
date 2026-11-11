@@ -35,7 +35,6 @@ export function onlineSettings(settings = {}){
     lastOrderMinutes: Number(o.lastOrderMinutes ?? 15), // stop ASAP this long before closing
     daysAhead: Number(o.daysAhead ?? 21),
     deadline: o.deadline || {weekly: true, weekday: 1, time: '13:00'}, // default pre-order deadline: Monday 1pm for that week's pickups (or {daysBefore, time})
-    fireTime: o.fireTime || '06:00',           // older setting, used only for pre-orders without a pickup time
     fireLead: Number(o.fireLead ?? 30),        // pre-orders appear on the KDS this many minutes before their pickup time
     slotLimit: Number(o.slotLimit || 0),
     taxFree: o.taxFree !== false,              // pre-orders are sold tax-free
@@ -109,7 +108,7 @@ export const daysFromToday = (date, now = Date.now()) => Math.round((Date.parse(
 export function limitFor(item, date, limits){
   const d = limits?.dates?.[date]?.[item.id]; if (d !== undefined && d !== null && d !== '') return Number(d);
   const u = limits?.usual?.[item.id]?.[weekday(date)]; if (u !== undefined && u !== null && u !== '') return Number(u);
-  return item.dateLimit ? Number(item.dateLimit) : null;
+  return null;
 }
 // How staff pack and label a pre-order line.
 export const PACK = {bagels: 'Bagels', pastries: 'Pastries', breads: 'Breads', cafe: 'From the cafe'};
@@ -163,6 +162,8 @@ export const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot'
 export function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 // Where a modifier group shows: register, kiosk, asap (online today) and preorder (online for a future day). Unset means everywhere.
 export const CHANNELS = {register: 'Register', kiosk: 'Kiosk', asap: 'Online, today', preorder: 'Online, pre-order'};
+// A single choice can also be limited to some places. Older choices used hideOnline (register only).
+export const optOn = (o, ch) => !ch || !o ? true : o.showOn ? o.showOn[ch] !== false : (o.hideOnline ? ch === 'register' : true);
 export const groupOn = (g, ch) => !ch || !g || !g.showOn || g.showOn[ch] !== false;
 // A copy of an item with only the modifier groups that show on this channel.
 export function onChannel(it, groupById, ch){
@@ -178,7 +179,7 @@ export function buildLine(menu, d, kds = {}, channel = null){
   if (vi === null || vi === undefined || !vers[vi]) throw new Error(`Pick a size for ${it.name}.`);
   const v = vers[vi]; const groups = (it.modifierGroupIds || []).map(id => menu.groups.find(g => g.id === id)).filter(Boolean);
   const mods = (d.mods || []).filter(m => groups.some(g => g.id === m.g && groupShown(it, g.id, d.mods)));
-  for (const m of mods){ const g = groups.find(x => x.id === m.g); const o = g.options.find(x => x.name === m.o); if (!o || o.hideOnline) throw new Error(`${m.o} isn't available for ${it.name}.`); m.q = Math.max(1, Math.min(99, Math.floor(Number(m.q || 1)))); }
+  for (const m of mods){ const g = groups.find(x => x.id === m.g); const o = g.options.find(x => x.name === m.o); if (!o || !optOn(o, channel)) throw new Error(`${m.o} isn't available for ${it.name}.`); m.q = Math.max(1, Math.min(99, Math.floor(Number(m.q || 1)))); }
   for (const g of groups){ if (!groupShown(it, g.id, mods)) continue; const n = mods.filter(m => m.g === g.id).reduce((s, m) => s + m.q, 0); if (n < minFor(it, g)) throw new Error(`Pick ${g.name.toLowerCase()} for ${it.name}.`); const cp = it.countPricing && it.countPricing.group === g.id; if (!cp && g.max && n > g.max) throw new Error(`Too many ${g.name.toLowerCase()} for ${it.name}.`); }
   let price = Number(v.price || 0); const counts = {};
   for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);

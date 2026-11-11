@@ -96,7 +96,7 @@ export async function finish(paymentIntent){
     // Pre-orders get their own running numbers (1001, 1002…) so they never clash with the day's shop numbers.
     const counter = doc(db, 'counters', pre ? 'preorders' : 'orders-' + nyDate(now)); const cs = await tx.get(counter); const num = cs.exists() ? cs.data().next : (pre ? 1001 : 101);
     const at = pre && c.pickup.time ? nyMs(c.pickup.date, c.pickup.time) : null;
-    const fireAtMs = pre ? (at ? at - os.fireLead * 60000 : nyMs(c.pickup.date, os.fireTime)) : now;
+    const fireAtMs = pre ? (at ? at - os.fireLead * 60000 : nyMs(c.pickup.date, '06:00')) : now;
     const readyAt = pre ? at : now + os.prepMinutes * 60000;
     const card = pi.latest_charge?.payment_method_details?.card || {};
     const pay = {method: 'card', label: `${card.brand ? card.brand[0].toUpperCase() + card.brand.slice(1) : 'Card'} ${card.funding || ''} ••${card.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: c.totals.sub, tip: c.totals.tip, surcharge: 0, charged: pi.amount / 100, funding: card.funding || null, paymentIntent: pi.id, at: now, staff: 'Online'};
