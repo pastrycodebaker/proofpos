@@ -44,7 +44,7 @@ export async function orderConfirmation(o){
   const text = `Thanks, ${o.name}! Order #${o.num} is set for pickup ${whenText(o)} at 37 Lebanon Street.\n\n${lines.map(l => '- ' + lineText(l) + ' ' + money(l.price)).join('\n')}\n\nTotal paid ${money(o.totals?.charge)}`;
   await Promise.all([
     sendEmail(o.email, `Your Flour & Salt order #${o.num} · pickup ${whenText(o)}`, html, text),
-    o.smsOptIn ? sendText(o.phone, `Flour & Salt Bakery and Cafe: thanks ${(o.name || '').split(' ')[0]}! Order #${o.num} is set for pickup ${whenText(o)}. We'll text when it's time to pick up. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`) : null]);
+    o.smsOptIn ? sendText(o.phone, `Flour and Salt Bakery LLC: thanks ${(o.name || '').split(' ')[0]}! Order #${o.num} is set for pickup ${whenText(o)}. We'll text when it's time to pick up. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`) : null]);
 }
 export const pickupReminder = o => !o.smsOptIn ? null : sendText(o.phone, `Flour & Salt: your order #${o.num} is ready for pickup at ${timeLabel(o.pickup?.time || '')} today at 37 Lebanon Street. See you soon!`);
 export const ownerNotice = (subject, text) => sendEmail(process.env.OWNER_EMAIL || 'hello@flourandsalt.com', subject, `<pre style="font:15px Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(text)}</pre>`, text);
