@@ -6,7 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor } from '../../shared/online.mjs';
+import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows } from '../../shared/online.mjs';
 import { orderConfirmation } from '../../shared/notify.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
@@ -122,11 +122,14 @@ export async function finish(paymentIntent){
 async function production(from, to){
   await signIn();
   const snap = await getDocs(query(collection(db, 'orders'), where('pickupDate', '>=', from), where('pickupDate', '<=', to)));
-  const sums = {};
+  const sums = {}; const M = await loadMenu();
   for (const d of snap.docs){
     const o = d.data(); if (!(o.special || o.pickup?.type === 'date') || o.importedFrom || o.status === 'void' || o.cancelled) continue;  // Hot Plate imports are already in the planner's own Hot Plate import
     for (const l of Object.values(o.lines || {})){
       if (l.removed) continue;
+      // Boxes go to the planner as what's inside ("3 Plain bagel", "1 Scallion cream cheese"), so flavors count right.
+      const box = packRows(l, M.items.find(i => i.id === l.itemId), M);
+      if (box.length){ for (const c of box){ const k = o.pickupDate + '|' + c.name + '|'; sums[k] = (sums[k] || 0) + c.qty; } continue; }
       const name = [l.version, l.name].filter(Boolean).join(' ');
       const mods = (l.mods || []).filter(m => !m.def && !m.inc).map(m => (m.q || 1) + 'X ' + String(m.o).toUpperCase()).join(' • ');
       const k = o.pickupDate + '|' + name + '|' + mods; sums[k] = (sums[k] || 0) + 1;

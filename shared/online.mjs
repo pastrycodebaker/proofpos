@@ -122,7 +122,7 @@ export function packAs(item){
 const FRIDGE_WORDS = /cream cheese|schmear|cold brew|butter|lox|spread/i;
 export function lineLabels(item, line){
   const picks = [...(line.mods || []).map(m => m.o), ...(line.noMods || []).map(() => '')].join(' ');
-  return {packAs: packAs(item), fromCafe: !!item.fromCafe, fridge: !!item.refrigerated || FRIDGE_WORDS.test(item.name || '') || (line.mods || []).some(m => FRIDGE_WORDS.test(m.o)),
+  return {packAs: packAs(item), fromCafe: !!item.fromCafe, fridge: !!item.refrigerated || FRIDGE_WORDS.test(item.name || '') || (line.mods || []).some(m => FRIDGE_WORDS.test(m.o)) || (item.contents || []).some(c => FRIDGE_WORDS.test(c.name || '')),
     sliced: !!item.sliced || /\bslic/i.test(picks)};
 }
 export function availability(item, pickup, settings, now = Date.now(), soldOnDate = 0, limits = null){
@@ -193,6 +193,7 @@ export function buildLine(menu, d, kds = {}, channel = null){
   return {lid: Math.random().toString(36).slice(2, 10), itemId: it.id, name: it.name, station: rr ? 'none' : (it.station || 'none'), rerouted: !!rr,
     versionIdx: vi, version: vers.length > 1 ? versionLabel(v) : '',
     mods: mods.map(m => { const c = {g: m.g, o: m.o, q: m.q}; if (inc.some(x => x.g === m.g && x.o === m.o)) c.inc = true; const g = groups.find(x => x.id === m.g); if (g.default === m.o && m.q === 1) c.def = true; return c; }),
+    ...(it.contents?.length ? {contents: boxContents(it, menu)} : {}),
     noMods, countNote, counts, price: r2(price), taxable: !!it.taxable, done: false, doneAt: 0, changed: null, changedAt: 0, removed: false};
 }
 export function cartTotals(lines, settings, tipPct = 0){
@@ -248,4 +249,35 @@ export function bagelsIntoBread(groups, items){
     }
   }
   return {groups: outG, items: outI, needed: outG.length + outI.length > 0};
+}
+
+// ---------- Boxes: an item with a set list of what goes inside ----------
+// item.contents = [{ref: 'flavor:Plain' | 'item:<id>' | '', name, qty}]
+export const ASSORTED_DOZEN = [['Plain', 3], ['Everything', 2], ['Rosemary salt', 2], ['Sesame', 2], ['Poppy', 2], ['Cinnamon sugar', 1]];
+export function boxContents(item, menu = {}){
+  return (item?.contents || []).map(c => {
+    const qty = Math.max(0, Number(c.qty) || 0); const ref = String(c.ref || '');
+    if (ref.startsWith('flavor:')){ const f = ref.slice(7); return {name: f + ' bagel', qty, stock: 'bagel-flavors~' + f}; }
+    if (ref.startsWith('item:')){ const it = (menu.items || []).find(i => i.id === ref.slice(5)); return {name: it ? it.name : (c.name || 'Item'), qty, stock: ref.slice(5)}; }
+    return {name: c.name || '', qty, stock: ''};
+  }).filter(c => c.name && c.qty > 0);
+}
+// What to pack for one line: a box's contents plus the choices made on it ("Scallion cream cheese").
+export function packRows(line, item, menu = {}){
+  const box = line.contents || boxContents(item, menu);
+  if (!box.length) return [];
+  return [...box, ...(line.mods || []).filter(m => !m.def && !m.inc).map(m => ({name: m.o, qty: m.q || 1, stock: m.g + '~' + m.o, pick: true}))];
+}
+// Bagel flavor for a stock key, or '' ('bagel-flavors~Plain' -> 'Plain'); options can point at a flavor with stockAs.
+export function bagelFlavorOf(key, groups = []){
+  if (String(key).startsWith('bagel-flavors~')) return key.slice(14);
+  const [g, o] = String(key).split('~'); const opt = ((groups.find(x => x.id === g) || {}).options || []).find(x => x.name === o);
+  return opt && String(opt.stockAs || '').startsWith('bagel-flavors~') ? opt.stockAs.slice(14) : '';
+}
+// Bagels by flavor in one order line, times nothing (each line is one of the item).
+export function lineBagels(line, item, menu = {}){
+  const out = {}; const add = (f, n) => { if (f && n > 0) out[f] = (out[f] || 0) + n; };
+  for (const c of (line.contents || boxContents(item, menu))) add(bagelFlavorOf(c.stock, menu.groups), c.qty);
+  for (const m of line.mods || []) add(bagelFlavorOf(m.g + '~' + m.o, menu.groups), m.q || 1);
+  return out;
 }

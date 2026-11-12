@@ -158,7 +158,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onlineWhen, packAs, CHANNELS, optOn, bagelsIntoBread } from '../shared/online.mjs';
+import { onlineWhen, packAs, CHANNELS, optOn, bagelsIntoBread, ASSORTED_DOZEN } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 let authRef = null;
@@ -323,6 +323,10 @@ function renderItemEditor(){
     <p class="muted">For sandwiches like the BLT: add the groups above, then tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
     <div id="incBox"></div>
     </details>
+    <details class="more" ${(it.contents || []).length ? 'open' : ''}><summary><b>What's in the box</b> <span class="muted">${(it.contents || []).length ? (it.contents.reduce((n, c) => n + (Number(c.qty) || 0), 0) + ' pieces') : 'for the Bagel Breakfast, pastry boxes, cookie boxes'}</span></summary>
+    <p class="muted">For items sold as a set: list what goes inside. Customers just see the box. The Packing page lists each piece under it, Prep counts bagels by flavor, and the Proof Box planner gets the flavors. Choices the customer makes on the box (like the flavored cream cheese) are listed to pack too, so name those choices the way you want them on the packing list, like "Scallion cream cheese".</p>
+    <div id="boxBox"></div>
+    </details>
     <details class="more" ${false ? 'open' : ''}><summary><b>Where it shows, days and stock</b> <span class="muted">${[it.visible?.kiosk === false || it.alcohol ? 'not on kiosk' : '', it.visible?.register === false ? 'not on register' : '', it.visible?.online === false || it.alcohol ? 'not online' : ({asap: 'online today only', preorder: 'pre-order only'})[onlineWhen(it)] || '', it.days && it.days.length ? 'some days only' : '', it.active === false ? 'off season' : '', typeof it.stockCount === 'number' ? it.stockCount + ' on hand' : '', it.eightySixed ? "86'd" : ''].filter(Boolean).join(' · ') || 'everywhere, every day'}</span></summary>
     <div class="toggles">
       <span class="muted" style="align-self:center;font-weight:600">Shows on</span>
@@ -366,10 +370,10 @@ function renderItemEditor(){
     ${it.archived ? '<div class="banner" style="display:block">Archived: hidden from the register, kiosk, online ordering and the item list. Its sales history stays.</div>' : ''}
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
   grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id));
-  incSel = (it.included || []).map(x => ({...x}));
+  incSel = (it.included || []).map(x => ({...x})); boxSel = (it.contents || []).map(x => ({...x})); renderBoxRows();
   reqSel = {...(it.required || {})}; whenSel = structuredClone(it.showWhen || {}); renderGrpOrder();
 }
-let grpOrder = [], incSel = [], reqSel = {}, whenSel = {};
+let boxSel = [], grpOrder = [], incSel = [], reqSel = {}, whenSel = {};
 // Required on this item: falls back to the group's own rule until set here.
 const reqOn = id => reqSel[id] ?? ((S.groups.find(g => g.id === id) || {}).min >= 1);
 const isIncl = (g, o) => incSel.some(x => x.g === g && x.o === o);
@@ -377,6 +381,21 @@ function basePriceNow(){
   const single = document.querySelector('input[name=pmode]:checked')?.value !== 'sizes';
   if (single){ const v = $('#f_price')?.value; return v === '' || v === undefined ? 0 : Number(v); }
   const ps = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => Number(i.value)); return ps.length ? Math.min(...ps) : 0;
+}
+// ---------- What's in the box ----------
+function readBoxRows(){
+  const rows = [...document.querySelectorAll('#boxBox .boxrow')];
+  if (rows.length || $('#boxBox')) boxSel = rows.map(r => ({ref: r.querySelector('[data-bref]').value, name: r.querySelector('[data-bname]').value.trim(), qty: Math.max(0, Math.floor(Number(r.querySelector('[data-bqty]').value) || 0))}));
+  return boxSel;
+}
+function renderBoxRows(){
+  const box = $('#boxBox'); if (!box) return;
+  const fl = ((S.groups.find(g => g.id === 'bagel-flavors') || {}).options || []);
+  const items = S.items.filter(i => !i.archived && i.id !== selId).sort((a, b) => a.name.localeCompare(b.name));
+  const opts = ref => `<option value="" ${!ref ? 'selected' : ''}>Something else (type it)</option>${fl.length ? `<optgroup label="Bagel flavors">${fl.map(o => `<option value="flavor:${esc(o.name)}" ${ref === 'flavor:' + o.name ? 'selected' : ''}>${esc(o.name)} bagel</option>`).join('')}</optgroup>` : ''}<optgroup label="Menu items">${items.map(i => `<option value="item:${esc(i.id)}" ${ref === 'item:' + i.id ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}</optgroup>`;
+  const total = boxSel.reduce((n, c) => n + (Number(c.qty) || 0), 0);
+  box.innerHTML = boxSel.map((c, i) => `<div class="row boxrow" style="max-width:640px;margin-bottom:6px;flex-wrap:wrap"><input type="number" min="0" step="1" data-bqty value="${esc(c.qty)}" style="flex:0 0 72px" aria-label="How many"><select data-bref style="flex:0 1 240px">${opts(c.ref || '')}</select><input data-bname placeholder="Like Plain cream cheese tub" value="${esc(c.name || '')}" style="flex:0 1 220px;${c.ref ? 'display:none' : ''}"><button data-brm="${i}" aria-label="Remove" style="flex:0 0 auto">Remove</button></div>`).join('')
+    + `<div class="row" style="flex-wrap:wrap;margin-top:4px"><button id="boxAdd">Add a piece</button>${fl.length ? '<button id="boxDozen">Add an assorted dozen</button>' : ''}${total ? `<span class="muted" style="align-self:center">${total} pieces in all</span>` : ''}</div>`;
 }
 function renderInc(){
   const box = $('#incBox'); if (!box) return;
@@ -430,6 +449,7 @@ function readItemForm(it){
   else out.versions = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => ({temp:i.dataset.t, size:i.dataset.s, price:Number(i.value)}));
   out.modifierGroupIds = grpOrder.slice();
   out.included = incSel.filter(x => out.modifierGroupIds.includes(x.g));
+  out.contents = readBoxRows().filter(c => c.qty > 0 && (c.ref || c.name)).map(c => c.ref ? {ref: c.ref, qty: c.qty} : {ref: '', name: c.name, qty: c.qty});
   out.required = Object.fromEntries(out.modifierGroupIds.map(id => [id, reqOn(id)]));
   // A group can show only after a choice in an earlier group (Bagel flavors only after Bagel).
   out.showWhen = Object.fromEntries(Object.entries(whenSel).filter(([id, w]) => w && out.modifierGroupIds.includes(id) && out.modifierGroupIds.includes(w.g)));
@@ -589,6 +609,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', async e => {
   { const t = e.target;
+  if (t.dataset && t.dataset.bref !== undefined){ const n = t.closest('.boxrow').querySelector('[data-bname]'); n.style.display = t.value ? 'none' : ''; if (!t.value) n.focus(); return; }
   if (t.id === 'f_photo' && t.files[0]){
     const box = t.closest('.photorow'); $('#photoStatus').textContent = 'Uploading…';
     try { const blob = await shrinkPhoto(t.files[0]); pendingImage = await uploadPhoto(blob); pendingFor = selId; box.innerHTML = photoBox(S.items.find(i => i.id === selId)); $('#photoStatus').textContent = 'Uploaded. Tap Save to keep it.'; }
@@ -691,6 +712,9 @@ document.addEventListener('click', async e => {
       if (r.items.length) await store.saveItems(r.items);
       await reload(); setTimeout(() => status('#setStatus', `Done: ${r.items.length} items updated. Bagel flavors are now in the Bread choices.`, 'ok'), 300); return;
     }
+    if (t.id === 'boxAdd'){ readBoxRows(); boxSel.push({ref: '', name: '', qty: 1}); renderBoxRows(); return; }
+    if (t.id === 'boxDozen'){ readBoxRows(); const have = new Set((((S.groups.find(g => g.id === 'bagel-flavors') || {}).options) || []).map(o => o.name)); for (const [f, n] of ASSORTED_DOZEN) if (have.has(f)){ const r = boxSel.find(x => x.ref === 'flavor:' + f); if (r) r.qty = Number(r.qty || 0) + n; else boxSel.push({ref: 'flavor:' + f, name: '', qty: n}); } renderBoxRows(); return; }
+    if (t.dataset && t.dataset.brm !== undefined){ readBoxRows(); boxSel.splice(Number(t.dataset.brm), 1); renderBoxRows(); return; }
     if (t.id === 'moveKioskCats'){
       const cats = S.settings.kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails'];
       const changed = S.items.filter(i => cats.includes(i.category) && i.visible?.kiosk !== false).map(i => ({...i, visible: {...(i.visible || {}), kiosk: false}}));

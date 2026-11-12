@@ -49,6 +49,8 @@
   .items li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--soft)}
   .items li:first-child{border-top:0}
   .items .mods{font-size:14px;color:var(--quiet)}
+  .items ul.box{margin:4px 0 0;padding-left:18px;font-size:15px;font-weight:600}
+  .items ul.box li{display:list-item;padding:1px 0;border:0}
   .items .lb{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
   .items .lb .b{font-size:11px;padding:2px 7px}
   .chk{width:26px;height:26px;flex:none;accent-color:var(--accent);margin-top:1px}
@@ -108,11 +110,14 @@ const qty = g => g.lines.length > 1 ? `<span style="font-weight:800">${g.lines.l
 const isSpecial = o => o.special || o.pickup?.type === 'date';
 const live = o => isSpecial(o) && o.status !== 'void' && !o.cancelled;
 
-let store, PAY, MENU = {items: [], settings: {}, limits: {}}, ORDERS = [], unsub = null;
+let store, PAY, MENU = {items: [], groups: [], settings: {}, limits: {}}, ORDERS = [], unsub = null;
 let tab = localStorage.getItem('proof.sp.tab') || 'pickup', day = today(), sortBy = 'time', packCat = 'bagels', range = {kind: 'week'}, query = '';
 const itemOf = id => MENU.items.find(i => i.id === id) || {};
 // Labels saved on the line when ordered; fall back to the item's current settings for older orders.
 const labels = l => l.packAs ? l : {...l, ...R.lineLabels(itemOf(l.itemId), l)};
+// Box contents (Bagel Breakfast, pastry box): saved on the line when ordered, else the item's current list.
+const packRowsOf = l => R.packRows(l, itemOf(l.itemId), MENU);
+const bagelsOf = l => R.lineBagels(l, itemOf(l.itemId), MENU);
 
 // ---------- Data ----------
 function demoStore(){
@@ -121,9 +126,9 @@ function demoStore(){
   const mk = (num, name, phone, date, time, lines, extra = {}) => ({id: 'web_' + num, num, name, phone, email: name.toLowerCase().split(' ')[0] + '@example.com', special: true, status: 'paid', pickup: {type: 'date', date, time}, pickupDate: date, pickupTime: time,
     lines: Object.fromEntries(lines.map((l, i) => [l.lid, {...labels(l), pos: i}])), packed: {}, pickedUp: false, totals: {charge: r2(lines.reduce((s, l) => s + l.price, 0))}, payments: [{method: 'card', amount: r2(lines.reduce((s, l) => s + l.price, 0)), paymentIntent: 'pi_demo_' + num}], ...extra});
   let orders = [
-    mk(1001, 'Maya Chen', '3155551234', d0, '08:30', [L('Bagels, dozen', 30, {itemId: 'bulk-dozen', packAs: 'bagels', mods: [{g: 'f', o: 'Everything', q: 6}, {g: 'f', o: 'Plain', q: 6}, {g: 's', o: 'Sliced', q: 1}], sliced: true}), L('Plain Cream Cheese, half pint', 7, {packAs: 'bagels', fridge: true})]),
-    mk(1002, 'Theo Park', '3155559876', d0, '10:15', [L('House Sourdough', 9, {packAs: 'breads'}), L('Croissant', 4.5, {packAs: 'pastries'}), L('Croissant', 4.5, {packAs: 'pastries'})], {allergySeparate: true, allergyNote: 'Nut allergy, keep the almond croissant apart'}),
-    mk(1003, 'Colgate Admissions', '3155550000', d0, '09:00', [L('Cold Brew Box', 38, {packAs: 'cafe', fromCafe: true, fridge: true}), L('Team Bagel Sandwich Pack', 85, {packAs: 'cafe', fromCafe: true}), L('Bagels, half dozen', 16, {packAs: 'bagels', mods: [{g: 'f', o: 'Sesame', q: 6}]})]),
+    mk(1001, 'Maya Chen', '3155551234', d0, '08:30', [L('Bagels, dozen', 30, {itemId: 'bulk-dozen', packAs: 'bagels', mods: [{g: 'bagel-flavors', o: 'Everything', q: 6}, {g: 'bagel-flavors', o: 'Plain', q: 6}, {g: 's', o: 'Sliced', q: 1}], sliced: true}), L('Plain Cream Cheese, half pint', 7, {packAs: 'bagels', fridge: true})]),
+    mk(1002, 'Theo Park', '3155559876', d0, '10:15', [L('House Sourdough', 9, {packAs: 'breads'}), L('Croissant', 4.5, {packAs: 'pastries'}), L('Croissant', 4.5, {packAs: 'pastries'}), L('Bagel Breakfast', 48, {packAs: 'bagels', sliced: true, fridge: true, mods: [{g: 'cc', o: 'Scallion cream cheese', q: 1}], contents: R.boxContents({contents: [...R.ASSORTED_DOZEN.map(([f, n]) => ({ref: 'flavor:' + f, qty: n})), {ref: '', name: 'Plain cream cheese', qty: 1}]})})], {allergySeparate: true, allergyNote: 'Nut allergy, keep the almond croissant apart'}),
+    mk(1003, 'Colgate Admissions', '3155550000', d0, '09:00', [L('Cold Brew Box', 38, {packAs: 'cafe', fromCafe: true, fridge: true}), L('Team Bagel Sandwich Pack', 85, {packAs: 'cafe', fromCafe: true}), L('Bagels, half dozen', 16, {packAs: 'bagels', mods: [{g: 'bagel-flavors', o: 'Sesame', q: 6}]})]),
     mk(1004, 'Rae Lopez', '3155554321', d1, '11:00', [L('Pumpkin Pie', 34, {packAs: 'pastries'}), L('House Sourdough', 9, {packAs: 'breads', mods: [{g: 's', o: 'Sliced', q: 1}], sliced: true})]),
   ];
   const events = [];
@@ -131,7 +136,7 @@ function demoStore(){
     listen(from, to, cb){ cb(orders.filter(o => o.pickupDate >= from && o.pickupDate <= to)); this._cb = () => cb(orders.filter(o => o.pickupDate >= from && o.pickupDate <= to)); return () => {}; },
     async update(id, patch){ const o = orders.find(x => x.id === id); for (const [k, v] of Object.entries(patch)){ const ks = k.split('.'); let t = o; for (const p of ks.slice(0, -1)) t = t[p] = t[p] || {}; t[ks[ks.length - 1]] = v; } this._cb && this._cb(); },
     async addRefund(id, r, patch = {}){ const o = orders.find(x => x.id === id); o.refunds = [...(o.refunds || []), r]; await this.update(id, patch); },
-    async menu(){ const s = await (await fetch('../data/seed-menu.json')).json(); return {items: s.items, settings: {...s.settings, online: {hours: {3:{open:'07:00',close:'14:00'},4:{open:'07:00',close:'14:00'},5:{open:'07:00',close:'14:00'},6:{open:'08:00',close:'14:00'},0:{open:'08:00',close:'14:00'}}}}, limits: {}}; },
+    async menu(){ const s = await (await fetch('../data/seed-menu.json')).json(); return {items: s.items, groups: s.modifierGroups || [], settings: {...s.settings, online: {hours: {3:{open:'07:00',close:'14:00'},4:{open:'07:00',close:'14:00'},5:{open:'07:00',close:'14:00'},6:{open:'08:00',close:'14:00'},0:{open:'08:00',close:'14:00'}}}}, limits: {}}; },
     async saveLimits(l){ MENU.limits = l; },
     async log(e){ events.push(e); },
     async notifyOwner(subject, text){ console.log('Owner email:', subject, text); },
@@ -145,8 +150,8 @@ async function firestoreStore(app, auth){
     listen(from, to, cb){ return F.onSnapshot(F.query(F.collection(db, 'orders'), F.where('pickupDate', '>=', from), F.where('pickupDate', '<=', to)), s => cb(s.docs.map(d => ({id: d.id, ...d.data()})))); },
     async update(id, patch){ await F.updateDoc(F.doc(db, 'orders', id), patch); },
     async addRefund(id, r, patch = {}){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r), ...patch}); },
-    async menu(){ const [i, m, l] = await Promise.all([F.getDocs(F.collection(db, 'menu', 'main', 'items')), F.getDoc(F.doc(db, 'menu', 'main')), F.getDoc(F.doc(db, 'menu', 'preorderLimits'))]);
-      return {items: i.docs.map(d => d.data()), settings: m.exists() ? m.data() : {}, limits: l.exists() ? l.data() : {}}; },
+    async menu(){ const [i, m, l, g] = await Promise.all([F.getDocs(F.collection(db, 'menu', 'main', 'items')), F.getDoc(F.doc(db, 'menu', 'main')), F.getDoc(F.doc(db, 'menu', 'preorderLimits')), F.getDocs(F.collection(db, 'menu', 'main', 'modifierGroups'))]);
+      return {items: i.docs.map(d => d.data()), groups: g.docs.map(d => d.data()), settings: m.exists() ? m.data() : {}, limits: l.exists() ? l.data() : {}}; },
     async saveLimits(l){ await F.setDoc(F.doc(db, 'menu', 'preorderLimits'), l); },
     async log(e){ await F.addDoc(F.collection(db, 'events'), {...e, at: Date.now()}); },
     async importOrders(docs){ let made = 0, updated = 0;
@@ -236,30 +241,33 @@ function renderPack(){
   const cats = Object.keys(PACKN);
   const count = c => { let n = 0, d = 0; for (const o of os) for (const l of linesOf(o)) if (labels(l).packAs === c){ n++; if (o.packed?.[l.lid]) d++; } return {n, d}; };
   const mine = os.map(o => ({o, ls: linesOf(o).filter(l => labels(l).packAs === packCat)})).filter(x => x.ls.length);
-  const tally = {}; for (const {ls} of mine) for (const l of ls){ const t = tally[lineName(l)] = tally[lineName(l)] || {n: 0, m: {}}; t.n++; for (const m of (l.mods || []).filter(m => !m.def && !m.inc)) t.m[m.o] = (t.m[m.o] || 0) + (m.q || 1); }
+  const tally = {}; for (const {ls} of mine) for (const l of ls){ const t = tally[lineName(l)] = tally[lineName(l)] || {n: 0, m: {}}; t.n++; const pr = packRowsOf(l); if (pr.length) for (const c of pr) t.m[c.name] = (t.m[c.name] || 0) + c.qty; else for (const m of (l.mods || []).filter(m => !m.def && !m.inc)) t.m[m.o] = (t.m[m.o] || 0) + (m.q || 1); }
   return `<div class="tabs noprint" style="margin-bottom:12px">${cats.map(c => { const k = count(c); return `<button data-pack="${c}" class="${packCat === c ? 'on' : ''}">${PACKN[c]} <span class="muted" style="${packCat === c ? 'color:#ddd' : ''}">${k.d}/${k.n}</span></button>`; }).join('')}</div>
     <h2 style="margin:0 0 8px">${esc(PACKN[packCat])} for ${esc(longDay(day))}</h2>
     ${Object.keys(tally).length ? `<table style="margin-bottom:14px"><thead><tr><th>Item</th><th class="n">Count</th><th>Choices</th></tr></thead><tbody>${Object.entries(tally).sort((a, b) => b[1].n - a[1].n).map(([k, t]) => `<tr><td><b>${esc(k)}</b></td><td class="n"><b>${t.n}</b></td><td class="muted">${Object.entries(t.m).map(([m, n]) => `${n} ${esc(m)}`).join(' · ')}</td></tr>`).join('')}</tbody></table>` : ''}
     <div class="grid">${mine.map(({o, ls}) => { const all = ls.every(l => o.packed?.[l.lid]);
       return `<div class="ord ${all ? 'done' : ''}"><div class="top"><div><div class="nm">${esc(o.name)}</div><div class="muted">#${esc(o.num)}</div></div><div class="tm">${esc(tl(o.pickupTime))}</div></div>
         <div class="badges">${orderBadges(o)}</div>${o.allergySeparate && o.allergyNote ? `<div style="font-weight:700">Allergy note: ${esc(o.allergyNote)}</div>` : ''}
-        <ul class="items">${groupLines(ls).map(g => { const l = g.l, lb = labels(l); const done = g.lines.every(x => o.packed?.[x.lid]); return `<li><input type="checkbox" class="chk" data-pk="${esc(o.id)}|${esc(g.lines.map(x => x.lid).join(','))}" ${done ? 'checked' : ''} aria-label="Packed ${esc(lineName(l))}"><div>${qty(g)}<b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div><span class="lb">${lb.sliced ? '<span class="b yellow">Sliced</span>' : ''}${lb.fridge ? '<span class="b fridgeb">Fridge</span>' : ''}</span></li>`; }).join('')}</ul></div>`; }).join('') || `<p class="muted">Nothing to pack in ${esc(PACKN[packCat].toLowerCase())} for this day.</p>`}</div>`;
+        <ul class="items">${groupLines(ls).map(g => { const l = g.l, lb = labels(l); const done = g.lines.every(x => o.packed?.[x.lid]); return `<li><input type="checkbox" class="chk" data-pk="${esc(o.id)}|${esc(g.lines.map(x => x.lid).join(','))}" ${done ? 'checked' : ''} aria-label="Packed ${esc(lineName(l))}"><div>${qty(g)}<b>${esc(lineName(l))}</b>${(() => { const pr = packRowsOf(l); return pr.length ? `<ul class="box">${pr.map(c => `<li>${c.qty * g.lines.length} ${esc(c.name)}</li>`).join('')}</ul>` : (modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''); })()}</div><span class="lb">${lb.sliced ? '<span class="b yellow">Sliced</span>' : ''}${lb.fridge ? '<span class="b fridgeb">Fridge</span>' : ''}</span></li>`; }).join('')}</ul></div>`; }).join('') || `<p class="muted">Nothing to pack in ${esc(PACKN[packCat].toLowerCase())} for this day.</p>`}</div>`;
 }
 
 // ---------- Prep ----------
 function renderPrep(){
   const os = ORDERS.filter(live); const dates = [...new Set(os.map(o => o.pickupDate))].sort();
   const showDays = dates.length > 1 && dates.length <= 10;
-  const rows = {};
+  const rows = {}, bag = {};
   for (const o of os) for (const l of linesOf(o)){
     const lb = labels(l); const k = lb.packAs + '|' + lineName(l);
     const r = rows[k] = rows[k] || {cat: lb.packAs, name: lineName(l), n: 0, by: {}, m: {}};
     r.n++; r.by[o.pickupDate] = (r.by[o.pickupDate] || 0) + 1;
-    for (const m of (l.mods || []).filter(m => !m.def && !m.inc)) r.m[m.o] = (r.m[m.o] || 0) + (m.q || 1);
+    const pr = packRowsOf(l); if (pr.length) for (const c of pr) r.m[c.name] = (r.m[c.name] || 0) + c.qty;
+    else for (const m of (l.mods || []).filter(m => !m.def && !m.inc)) r.m[m.o] = (r.m[m.o] || 0) + (m.q || 1);
+    for (const [f, n] of Object.entries(bagelsOf(l))){ const b = bag[f] = bag[f] || {n: 0, by: {}}; b.n += n; b.by[o.pickupDate] = (b.by[o.pickupDate] || 0) + n; }
   }
   const body = Object.keys(PACKN).map(c => { const rs = Object.values(rows).filter(r => r.cat === c).sort((a, b) => b.n - a.n); if (!rs.length) return '';
     return `<tr class="cat"><td colspan="${3 + (showDays ? dates.length : 0)}">${esc(PACKN[c])}</td></tr>` + rs.map(r => `<tr><td><b>${esc(r.name)}</b>${Object.keys(r.m).length ? `<div class="muted" style="font-size:14px">${Object.entries(r.m).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${n} ${esc(m)}`).join(' · ')}</div>` : ''}</td>${showDays ? dates.map(d => `<td class="n">${r.by[d] || ''}</td>`).join('') : ''}<td class="n"><b>${r.n}</b></td></tr>`).join(''); }).join('');
   return `<div class="kpis"><div class="kpi"><b>${os.length}</b>orders</div><div class="kpi"><b>${Object.values(rows).reduce((s, r) => s + r.n, 0)}</b>items</div><div class="kpi"><b>${money(os.reduce((s, o) => s + Number(o.totals?.sub ?? o.totals?.charge ?? 0), 0))}</b>sales</div></div>
+    ${Object.keys(bag).length ? `<h3 style="margin:4px 0 6px">Bagels by flavor</h3><p class="muted" style="margin:0 0 6px">Every special order bagel: by the dozen, in boxes like the Bagel Breakfast, and on sandwiches.</p><table style="margin-bottom:16px"><thead><tr><th>Flavor</th>${showDays ? dates.map(d => `<th class="n">${esc(dl(d))}</th>`).join('') : ''}<th class="n">Total</th></tr></thead><tbody>${Object.entries(bag).sort((a, b) => b[1].n - a[1].n).map(([f, b]) => `<tr><td><b>${esc(f)}</b></td>${showDays ? dates.map(d => `<td class="n">${b.by[d] || ''}</td>`).join('') : ''}<td class="n"><b>${b.n}</b></td></tr>`).join('')}<tr><td><b>All bagels</b></td>${showDays ? dates.map(d => `<td class="n"><b>${Object.values(bag).reduce((s, b) => s + (b.by[d] || 0), 0) || ''}</b></td>`).join('') : ''}<td class="n"><b>${Object.values(bag).reduce((s, b) => s + b.n, 0)}</b></td></tr></tbody></table>` : ''}
     ${body ? `<table><thead><tr><th>Item</th>${showDays ? dates.map(d => `<th class="n">${esc(dl(d))}</th>`).join('') : ''}<th class="n">Total</th></tr></thead><tbody>${body}</tbody></table>` : '<p class="muted">No special orders in these dates.</p>'}`;
 }
 
