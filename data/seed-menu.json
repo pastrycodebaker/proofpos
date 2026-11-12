@@ -90,7 +90,7 @@
    {
     "name": "Pastry token",
     "type": "amount",
-    "value": 3.0
+    "value": 3
    }
   ],
   "noNameCategories": [
@@ -175,13 +175,94 @@
    "max": 1,
    "options": [
     {
-     "name": "Bagel",
+     "name": "Plain bagel",
      "pricing": "flat",
      "price": 0,
      "bySize": {},
      "counts": [],
      "subs": [],
-     "hideOnline": false
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Plain"
+    },
+    {
+     "name": "Everything bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Everything"
+    },
+    {
+     "name": "Rosemary salt bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Rosemary salt"
+    },
+    {
+     "name": "Sesame bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Sesame"
+    },
+    {
+     "name": "Jalapeno cheddar bagel",
+     "pricing": "flat",
+     "price": 0.25,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Jalapeno cheddar"
+    },
+    {
+     "name": "Salt bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Salt"
+    },
+    {
+     "name": "Cinnamon raisin bagel",
+     "pricing": "flat",
+     "price": 0.25,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Cinnamon raisin"
+    },
+    {
+     "name": "Poppy bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Poppy"
+    },
+    {
+     "name": "Cinnamon sugar bagel",
+     "pricing": "flat",
+     "price": 0,
+     "bySize": {},
+     "counts": [],
+     "subs": [],
+     "hideOnline": false,
+     "stockAs": "bagel-flavors~Cinnamon sugar"
     },
     {
      "name": "Sourdough",
@@ -774,7 +855,7 @@
     {
      "name": "Honey",
      "pricing": "flat",
-     "price": 1.0,
+     "price": 1,
      "bySize": {},
      "counts": [],
      "subs": [],
@@ -1709,7 +1790,7 @@
     {
      "name": "Vanilla glazed",
      "pricing": "flat",
-     "price": 3.0,
+     "price": 3,
      "bySize": {},
      "counts": [],
      "subs": [],
@@ -1718,7 +1799,7 @@
     {
      "name": "Chocolate glazed",
      "pricing": "flat",
-     "price": 3.0,
+     "price": 3,
      "bySize": {},
      "counts": [],
      "subs": [],
@@ -1865,7 +1946,7 @@
     {
      "name": "Hard red wheat",
      "pricing": "flat",
-     "price": 1.0,
+     "price": 1,
      "bySize": {},
      "counts": [],
      "subs": [],
@@ -1886,7 +1967,7 @@
     {
      "name": "Baker's Brew",
      "pricing": "flat",
-     "price": 2.0,
+     "price": 2,
      "bySize": {},
      "counts": [],
      "subs": [],
@@ -1942,7 +2023,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -1993,15 +2073,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 1
   },
   {
@@ -2028,7 +2102,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2074,15 +2147,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 2
   },
   {
@@ -2109,7 +2176,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2155,15 +2221,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 3
   },
   {
@@ -2190,7 +2250,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2236,15 +2295,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 4
   },
   {
@@ -2271,7 +2324,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2322,15 +2374,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 5
   },
   {
@@ -2357,7 +2403,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2408,15 +2453,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 6
   },
   {
@@ -2443,7 +2482,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2494,15 +2532,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 7
   },
   {
@@ -2529,7 +2561,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2585,15 +2616,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 8
   },
   {
@@ -2620,7 +2645,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2671,15 +2695,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 9
   },
   {
@@ -2706,7 +2724,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2747,15 +2764,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 10
   },
   {
@@ -2782,7 +2793,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2833,15 +2843,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 11
   },
   {
@@ -2868,7 +2872,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2899,15 +2902,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 12
   },
   {
@@ -2934,7 +2931,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -2980,15 +2976,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 1
   },
   {
@@ -3015,7 +3005,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -3066,15 +3055,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 2
   },
   {
@@ -3101,7 +3084,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -3147,15 +3129,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 3
   },
   {
@@ -3182,7 +3158,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -3228,15 +3203,9 @@
     }
    ],
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   },
+   "showWhen": {},
    "sortOrder": 4
   },
   {
@@ -3263,7 +3232,6 @@
    "modifierGroupIds": [
     "toasting",
     "bread",
-    "bagel-flavors",
     "egg",
     "protein",
     "cheese",
@@ -3283,15 +3251,9 @@
    },
    "sortOrder": 0,
    "required": {
-    "bread": true,
-    "bagel-flavors": true
+    "bread": true
    },
-   "showWhen": {
-    "bagel-flavors": {
-     "g": "bread",
-     "o": "Bagel"
-    }
-   }
+   "showWhen": {}
   },
   {
    "id": "latte",
@@ -3540,7 +3502,7 @@
     {
      "temp": "hot",
      "size": "8 oz",
-     "price": 2.0
+     "price": 2
     },
     {
      "temp": "hot",
@@ -4143,12 +4105,12 @@
     {
      "temp": "hot",
      "size": "12 oz",
-     "price": 6.0
+     "price": 6
     },
     {
      "temp": "iced",
      "size": "16 oz",
-     "price": 6.0
+     "price": 6
     }
    ],
    "modifierGroupIds": [
@@ -4335,7 +4297,7 @@
     {
      "temp": "hot",
      "size": "",
-     "price": 5.0
+     "price": 5
     }
    ],
    "modifierGroupIds": [
@@ -4524,22 +4486,9 @@
    "required": {
     "bagel-flavors": true
    },
-   "countPricing": {
-    "group": "bagel-flavors",
-    "tiers": [
-     {
-      "qty": 6,
-      "name": "Half dozen",
-      "price": 9.0
-     },
-     {
-      "qty": 12,
-      "name": "Dozen",
-      "price": 18.0
-     }
-    ]
-   },
-   "sortOrder": 1
+   "countPricing": null,
+   "sortOrder": 1,
+   "archived": true
   },
   {
    "id": "two-hash-browns",
@@ -4751,7 +4700,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 6.0
+     "price": 6
     }
    ],
    "modifierGroupIds": [],
@@ -4981,7 +4930,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 3.0
+     "price": 3
     }
    ],
    "modifierGroupIds": [],
@@ -5109,7 +5058,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 4.0
+     "price": 4
     }
    ],
    "modifierGroupIds": [],
@@ -5173,7 +5122,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 2.0
+     "price": 2
     }
    ],
    "modifierGroupIds": [],
@@ -5365,7 +5314,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 5.0
+     "price": 5
     }
    ],
    "modifierGroupIds": [],
@@ -5433,7 +5382,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 5.0
+     "price": 5
     }
    ],
    "modifierGroupIds": [
@@ -5467,7 +5416,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 8.0
+     "price": 8
     }
    ],
    "modifierGroupIds": [
@@ -5507,7 +5456,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 9.0
+     "price": 9
     }
    ],
    "modifierGroupIds": [
@@ -5545,7 +5494,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 9.0
+     "price": 9
     }
    ],
    "modifierGroupIds": [
@@ -5558,10 +5507,13 @@
    "active": true,
    "review": {
     "source": "Toast, Oct 2026",
-    "note": "Archived: use the Bagels item instead."
+    "note": null
    },
-   "archived": true,
-   "sortOrder": 2
+   "archived": false,
+   "sortOrder": 2,
+   "required": {
+    "bagel-flavors": true
+   }
   },
   {
    "id": "one-dozen-bagels",
@@ -5581,7 +5533,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 18.0
+     "price": 18
     }
    ],
    "modifierGroupIds": [
@@ -5594,10 +5546,13 @@
    "active": true,
    "review": {
     "source": "Toast, Oct 2026",
-    "note": "Archived: use the Bagels item instead."
+    "note": null
    },
-   "archived": true,
-   "sortOrder": 3
+   "archived": false,
+   "sortOrder": 3,
+   "required": {
+    "bagel-flavors": true
+   }
   },
   {
    "id": "single-bagel",
@@ -5630,10 +5585,13 @@
    "active": true,
    "review": {
     "source": "Toast, Oct 2026",
-    "note": "Archived: use the Bagels item instead."
+    "note": null
    },
-   "archived": true,
-   "sortOrder": 4
+   "archived": false,
+   "sortOrder": 4,
+   "required": {
+    "bagel-flavors": true
+   }
   },
   {
    "id": "day-old-bagel-bag",
@@ -5751,7 +5709,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 5.0
+     "price": 5
     }
    ],
    "modifierGroupIds": [],
@@ -5817,7 +5775,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 4.0
+     "price": 4
     }
    ],
    "modifierGroupIds": [],
@@ -5849,7 +5807,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 6.0
+     "price": 6
     }
    ],
    "modifierGroupIds": [],
@@ -5881,7 +5839,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 4.0
+     "price": 4
     }
    ],
    "modifierGroupIds": [],
@@ -6011,7 +5969,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 2.0
+     "price": 2
     }
    ],
    "modifierGroupIds": [],
@@ -6043,7 +6001,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 2.0
+     "price": 2
     }
    ],
    "modifierGroupIds": [],
@@ -6107,7 +6065,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 2.0
+     "price": 2
     }
    ],
    "modifierGroupIds": [],
@@ -6205,7 +6163,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 5.0
+     "price": 5
     }
    ],
    "modifierGroupIds": [],
@@ -6333,7 +6291,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 3.0
+     "price": 3
     }
    ],
    "modifierGroupIds": [],
@@ -6397,7 +6355,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 16.0
+     "price": 16
     }
    ],
    "modifierGroupIds": [
@@ -6463,7 +6421,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 15.0
+     "price": 15
     }
    ],
    "modifierGroupIds": [],
@@ -6495,7 +6453,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 6.0
+     "price": 6
     }
    ],
    "modifierGroupIds": [],
@@ -6527,7 +6485,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 8.0
+     "price": 8
     }
    ],
    "modifierGroupIds": [],
@@ -6559,7 +6517,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 10.0
+     "price": 10
     }
    ],
    "modifierGroupIds": [],
@@ -6591,7 +6549,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 10.0
+     "price": 10
     }
    ],
    "modifierGroupIds": [],
@@ -6623,7 +6581,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 10.0
+     "price": 10
     }
    ],
    "modifierGroupIds": [],
@@ -6655,7 +6613,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 12.0
+     "price": 12
     }
    ],
    "modifierGroupIds": [],
@@ -6687,7 +6645,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 8.0
+     "price": 8
     }
    ],
    "modifierGroupIds": [],
@@ -6719,7 +6677,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 12.0
+     "price": 12
     }
    ],
    "modifierGroupIds": [],
@@ -6751,7 +6709,7 @@
     {
      "temp": "",
      "size": "",
-     "price": 13.0
+     "price": 13
     }
    ],
    "modifierGroupIds": [],

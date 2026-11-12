@@ -204,3 +204,48 @@ export function cartTotals(lines, settings, tipPct = 0){
   const tip = r2(sub * (Number(tipPct) || 0));
   return {sub, disc: 0, taxable, tax, inTax: tax, tip, tips: tip, surcharge: 0, total: sub, charge: r2(sub + tip)};
 }
+
+// One-time menu change: bagel flavors listed right in the bread choices (no fold-out),
+// and no count pricing. Returns only what changed. Safe to run twice.
+export function bagelsIntoBread(groups, items){
+  const outG = [], outI = [];
+  const bread = groups.find(g => g.id === 'bread'), fl = groups.find(g => g.id === 'bagel-flavors');
+  const bi = bread ? (bread.options || []).findIndex(o => o.name === 'Bagel') : -1;
+  if (bread && fl && bi >= 0){
+    const base = Number(bread.options[bi].price) || 0;
+    const add = (fl.options || []).map(f => ({...structuredClone(bread.options[bi]), name: f.name + ' bagel', price: Math.round((base + (Number(f.price) || 0)) * 100) / 100, stockAs: 'bagel-flavors~' + f.name, showOn: f.showOn || bread.options[bi].showOn}));
+    if (!add.length) add.push(bread.options[bi]);
+    const opts = bread.options.slice(); opts.splice(bi, 1, ...add);
+    outG.push({...bread, options: opts, default: bread.default === 'Bagel' ? add[0].name : bread.default});
+  }
+  const byName = n => items.find(i => i.name === n);
+  for (const it0 of items){
+    let it = it0, ch = false;
+    const ids = it.modifierGroupIds || [];
+    if (ids.includes('bread') && ids.includes('bagel-flavors')){
+      it = structuredClone(it); ch = true;
+      it.modifierGroupIds = ids.filter(x => x !== 'bagel-flavors');
+      if (it.groupOrder) it.groupOrder = it.groupOrder.filter(x => x !== 'bagel-flavors');
+      if (it.required) delete it.required['bagel-flavors'];
+      if (it.showWhen) delete it.showWhen['bagel-flavors'];
+      if (it.included) it.included = it.included.filter(x => x.g !== 'bagel-flavors');
+    }
+    if (it.countPricing){
+      if (!ch){ it = structuredClone(it); ch = true; }
+      it.countPricing = null;
+      // the combined "Bagels" item gives way to Single / Half Dozen / One Dozen
+      const sib = ['Single Bagel', 'Half Dozen Bagels', 'One Dozen Bagels'].map(byName).filter(Boolean);
+      if (it.name === 'Bagels' && sib.length) it.archived = true;
+    }
+    if (ch) outI.push(it);
+  }
+  if (items.some(i => i.name === 'Bagels' && i.countPricing)){
+    for (const n of ['Single Bagel', 'Half Dozen Bagels', 'One Dozen Bagels']){
+      const s = byName(n); if (!s || !s.archived) continue;
+      const u = structuredClone(s); u.archived = false; u.required = {...(u.required || {}), 'bagel-flavors': true};
+      if (u.review && /Bagels item/.test(u.review.note || '')) u.review.note = null;
+      outI.push(u);
+    }
+  }
+  return {groups: outG, items: outI, needed: outG.length + outI.length > 0};
+}

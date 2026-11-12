@@ -13,10 +13,12 @@ def opt(name, price=0, **kw):
 PRICE_COLS = ['hot 8 oz', 'hot 12 oz', 'hot 16 oz', 'iced 16 oz', 'iced 20 oz']
 def sized(name, price):  # priced by temperature and size; every column starts at today's Toast price
     return opt(name, price, pricing='bySize', bySize={c: price for c in PRICE_COLS})
+# Bagel flavors sit right in the bread choices for sandwiches; stockAs shares counts with bulk bagels
+BAGEL_FLAVORS = [('Plain', 0), ('Everything', 0), ('Rosemary salt', 0), ('Sesame', 0), ('Jalapeno cheddar', 0.25), ('Salt', 0), ('Cinnamon raisin', 0.25), ('Poppy', 0), ('Cinnamon sugar', 0)]
 G = [
   {'id': 'toasting', 'name': 'Toasting', 'min': 0, 'max': 1, 'default': 'Toasted', 'options': [opt('Toasted'), opt('Lightly toasted'), opt('Double toasted'), opt('Not toasted')]},
-  {'id': 'bread', 'name': 'Bread', 'min': 1, 'max': 1, 'options': [opt('Bagel'), opt('Sourdough'), opt('Brioche roll'), opt('Croissant', 3.25), opt('GF bagel', 1.75), opt('GF hash brown', 1.25), opt('No bread, in a box', 0.5)]},
-  {'id': 'bagel-flavors', 'name': 'Bagel flavors', 'min': 0, 'max': 99, 'options': [opt('Plain'), opt('Everything'), opt('Rosemary salt'), opt('Sesame'), opt('Jalapeno cheddar', 0.25), opt('Salt'), opt('Cinnamon raisin', 0.25), opt('Poppy'), opt('Cinnamon sugar')]},
+  {'id': 'bread', 'name': 'Bread', 'min': 1, 'max': 1, 'options': [opt(f + ' bagel', p, stockAs='bagel-flavors~' + f) for f, p in BAGEL_FLAVORS] + [opt('Sourdough'), opt('Brioche roll'), opt('Croissant', 3.25), opt('GF bagel', 1.75), opt('GF hash brown', 1.25), opt('No bread, in a box', 0.5)]},
+  {'id': 'bagel-flavors', 'name': 'Bagel flavors', 'min': 0, 'max': 99, 'options': [opt(f, p) for f, p in BAGEL_FLAVORS]},
   {'id': 'egg', 'name': 'Egg', 'min': 0, 'max': 3, 'options': [opt('Egg', 1.35), opt('Scrambled egg', 1.5), opt('Egg white', 1.6), opt('Double egg', 2.5)]},
   {'id': 'protein', 'name': 'Protein', 'min': 0, 'max': 9, 'options': [opt('Bacon', 2.15), opt('Sausage', 2.15), opt('Impossible sausage', 4.5), opt('Turkey', 4.5), opt('Ham', 4.5), opt('Italian meat combo', 7.55), opt('Tofu kan', 4.5)]},
   {'id': 'cheese', 'name': 'Cheese', 'min': 0, 'max': 9, 'options': [opt('Cheddar', 1.1), opt('American', 1.1), opt('Swiss', 1.1), opt('Pepper jack', 1.1), opt('Pimento cheese', 2.75)]},
@@ -57,7 +59,7 @@ def find_opt(name):
         for o in GROUPS[gid]['options']:
             if o['name'].lower() == n: return gid, o['name']
     raise KeyError(name)
-SANDWICH_GROUPS = ['toasting', 'bread', 'bagel-flavors', 'egg', 'protein', 'cheese', 'produce', 'sauce', 'spreads', 'kitchen-requests', 'allergy']
+SANDWICH_GROUPS = ['toasting', 'bread', 'egg', 'protein', 'cheese', 'produce', 'sauce', 'spreads', 'kitchen-requests', 'allergy']
 INCLUDED = {
   'The Colgate': ['egg', 'avocado', 'chipotle mayo', 'bacon', 'american', 'tomato'],
   'The Chipotle Potato': ['chipotle mayo', 'scrambled egg', 'pepper jack', 'hash brown', 'jalapenos'],
@@ -147,25 +149,22 @@ for name, inc in INCLUDED.items():
     included = [dict(zip(('g', 'o'), find_opt(x)), q=1) for x in inc]
     total = BAGEL_BASE + sum(next(o['price'] for o in GROUPS[x['g']]['options'] if o['name'] == x['o']) for x in included)
     add(base_item(name, 'Sandwiches', sec, BAGEL_BASE, SANDWICH_GROUPS, included=included, taxable=True,
-        required={'bread': True, 'bagel-flavors': True}, showWhen={'bagel-flavors': {'g': 'bread', 'o': 'Bagel'}},
+        required={'bread': True},
         review={'source': SRC, 'note': f'Built from its ingredients: rings up at ${total:.2f} on a bagel. Check against your menu board.'}))
 add(base_item('Build Your Own Sandwich', 'Sandwiches', 'Sandwiches', BAGEL_BASE, SANDWICH_GROUPS, taxable=True, sortOrder=0,
-    required={'bread': True, 'bagel-flavors': True}, showWhen={'bagel-flavors': {'g': 'bread', 'o': 'Bagel'}},
+    required={'bread': True},
     review={'source': SRC, 'note': 'Starts at $1.90 (the bagel) plus whatever is added. Check the starting price.'}))
 items[-1]['sortOrder'] = 0
 # Drinks
 for name, sec, vers, groups, rr, note in DRINKS:
     add(base_item(name, 'Coffee Bar', sec, 0, groups, versions=vers, reroute=rr, taxable=True, review={'source': SRC, 'note': note}))
-# Bulk bagels: one item priced by count
-add(base_item('Bagels', 'Bulk Bagels', 'Bagels', 1.50, ['bagel-flavors', 'slicing'], required={'bagel-flavors': True},
-    countPricing={'group': 'bagel-flavors', 'tiers': [{'qty': 6, 'name': 'Half dozen', 'price': 9.00}, {'qty': 12, 'name': 'Dozen', 'price': 18.00}]},
-    review={'source': SRC, 'note': 'Replaces Single, Half Dozen and One Dozen (archived). Toast: single $1.50, half dozen $9.00, dozen $18.00. Change the dozen price if it should be a deal.'}))
+# Bulk bagels: single, half dozen and dozen are separate items (no count pricing)
 for r in pm:
     name, menu, grp = r['Item, open item'], r['Menu'], r['Menu group']
     if menu in SKIP_MENUS or name in SKIP_ITEMS or name in DRINK_NAMES or float(r['Qty sold'] or 0) <= 0: continue
     if name in ('Single Bagel', 'Half Dozen Bagels', 'One Dozen Bagels'):
         p = {'Single Bagel': 1.50, 'Half Dozen Bagels': 9.00, 'One Dozen Bagels': 18.00}[name]
-        add(base_item(name, 'Bulk Bagels', 'Bagels', p, ['bagel-flavors', 'slicing'], archived=True, review={'source': SRC, 'note': 'Archived: use the Bagels item instead.'})); continue
+        add(base_item(name, 'Bulk Bagels', 'Bagels', p, ['bagel-flavors', 'slicing'], required={'bagel-flavors': True}, review={'source': SRC, 'note': None})); continue
     cat = CAT[menu]; groups, over, note = EXTRA.get(name, ([], None, None))
     gross = float(r['Gross item amt'] or 0); tax = float(r['Tax amt'] or 0)
     taxable = cat in ('Sandwiches', 'Alcohol') or (gross > 0 and tax / gross > 0.04)

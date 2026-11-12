@@ -158,7 +158,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onlineWhen, packAs, CHANNELS, optOn } from '../shared/online.mjs';
+import { onlineWhen, packAs, CHANNELS, optOn, bagelsIntoBread } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 let authRef = null;
@@ -323,10 +323,6 @@ function renderItemEditor(){
     <p class="muted">For sandwiches like the BLT: add the groups above, then tap the ingredients that come on it. They start selected on the register, count toward the price, and tickets only show changes ("No tomato"). Set the item price above to 0 if the bread and ingredients make up the whole price.</p>
     <div id="incBox"></div>
     </details>
-    <details class="more" ${it.countPricing ? 'open' : ''}><summary><b>Price by count</b> <span class="muted">${it.countPricing ? 'on' : 'for bulk bagels'}</span></summary>
-    <p class="muted">For bulk bagels: staff tap flavors as the customer lists them, and the price works itself out. 8 bagels = half dozen price + 2 singles. The single price is the item price above.</p>
-    <div id="cpBox"></div>
-    </details>
     <details class="more" ${false ? 'open' : ''}><summary><b>Where it shows, days and stock</b> <span class="muted">${[it.visible?.kiosk === false || it.alcohol ? 'not on kiosk' : '', it.visible?.register === false ? 'not on register' : '', it.visible?.online === false || it.alcohol ? 'not online' : ({asap: 'online today only', preorder: 'pre-order only'})[onlineWhen(it)] || '', it.days && it.days.length ? 'some days only' : '', it.active === false ? 'off season' : '', typeof it.stockCount === 'number' ? it.stockCount + ' on hand' : '', it.eightySixed ? "86'd" : ''].filter(Boolean).join(' · ') || 'everywhere, every day'}</span></summary>
     <div class="toggles">
       <span class="muted" style="align-self:center;font-weight:600">Shows on</span>
@@ -371,9 +367,9 @@ function renderItemEditor(){
     <p class="muted" style="margin-top:8px">October sales (Toast): ${it.octQtySold ?? 0}</p>`;
   grpOrder = (it.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id));
   incSel = (it.included || []).map(x => ({...x}));
-  reqSel = {...(it.required || {})}; whenSel = structuredClone(it.showWhen || {}); cpSel = it.countPricing ? structuredClone(it.countPricing) : null; renderGrpOrder();
+  reqSel = {...(it.required || {})}; whenSel = structuredClone(it.showWhen || {}); renderGrpOrder();
 }
-let grpOrder = [], incSel = [], reqSel = {}, cpSel = null, whenSel = {};
+let grpOrder = [], incSel = [], reqSel = {}, whenSel = {};
 // Required on this item: falls back to the group's own rule until set here.
 const reqOn = id => reqSel[id] ?? ((S.groups.find(g => g.id === id) || {}).min >= 1);
 const isIncl = (g, o) => incSel.some(x => x.g === g && x.o === o);
@@ -381,26 +377,6 @@ function basePriceNow(){
   const single = document.querySelector('input[name=pmode]:checked')?.value !== 'sizes';
   if (single){ const v = $('#f_price')?.value; return v === '' || v === undefined ? 0 : Number(v); }
   const ps = [...document.querySelectorAll('#sizesBox input[data-s]')].filter(i => i.value !== '').map(i => Number(i.value)); return ps.length ? Math.min(...ps) : 0;
-}
-function readTiers(keepBlank){
-  const rows = [...document.querySelectorAll('#cpBox .tier')].map(r => ({name: r.querySelector('[data-tn]').value.trim(), qty: Math.floor(Number(r.querySelector('[data-tq]').value || 0)), price: r.querySelector('[data-tp]').value === '' ? null : Number(r.querySelector('[data-tp]').value)})).filter(t => keepBlank || (t.qty > 0 && t.price !== null));
-  return {group: $('#cp_group') ? $('#cp_group').value : cpSel.group, tiers: rows};
-}
-function renderCount(){
-  const box = $('#cpBox'); if (!box) return;
-  if (cpSel && box.querySelector('.tier')) cpSel = readTiers(true); // keep what was typed
-  const on = !!cpSel;
-  const groups = grpOrder.map(id => S.groups.find(g => g.id === id)).filter(Boolean);
-  box.innerHTML = `<div class="toggles"><label class="${on ? 'on' : ''}"><input type="checkbox" id="cp_on" ${on ? 'checked' : ''}>Price this item by count</label></div>` + (!on ? '' : !groups.length ? '<p class="muted">Add the flavor group above first (set it to "Pick any number").</p>' :
-    `<label>Count the picks in this group</label><select id="cp_group" style="max-width:320px">${groups.map(g => `<option value="${esc(g.id)}" ${g.id === cpSel.group ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
-    <label>Bundle prices (cash/debit)</label>${cpSel.tiers.map(t => `<div class="row tier" style="max-width:480px;margin-bottom:6px"><input data-tn placeholder="Name, like Dozen" value="${esc(t.name || '')}"><input data-tq type="number" min="1" step="1" placeholder="Count" value="${esc(t.qty)}" style="max-width:90px"><input data-tp type="number" min="0" step="0.01" placeholder="Price" value="${t.price ?? ''}" style="max-width:110px"></div>`).join('')}
-    <button id="cp_addTier">Add a bundle size</button><div class="muted" id="cpEx" style="margin-top:6px"></div>`);
-  cpExample();
-}
-function cpExample(){
-  const ex = $('#cpEx'); if (!ex || !cpSel) return; const t = readTiers().tiers.sort((a, b) => b.qty - a.qty); const unit = basePriceNow();
-  const ex8 = n => { let left = n, p = 0; for (const x of t){ const k = Math.floor(left / x.qty); p += k * x.price; left -= k * x.qty; } return p + left * unit; };
-  ex.textContent = t.length && unit ? `Examples: 4 = ${money(ex8(4))} · 8 = ${money(ex8(8))} · 13 = ${money(ex8(13))}` : 'Set the single price above and the bundle prices to see examples.';
 }
 function renderInc(){
   const box = $('#incBox'); if (!box) return;
@@ -427,7 +403,6 @@ function renderGrpOrder(){
     <select id="copyGrpSel"><option value="">Copy groups from another item…</option>${S.items.filter(i => !i.archived && i.id !== selId && (i.modifierGroupIds || []).length).map(i => `<option value="${esc(i.id)}">${esc(i.name)}</option>`).join('')}</select></div>`;
   if (!grpOrder.length){ $('#grpOrder').innerHTML = '<span class="muted">No modifier groups on this item yet.</span>' + add; return; }
   $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:760px;margin-bottom:4px;flex-wrap:wrap"><span>${i + 1}. ${esc(g ? g.name : id)}</span><label class="req ${reqOn(id) ? 'on' : ''}"><input type="checkbox" data-req="${esc(id)}" ${reqOn(id) ? 'checked' : ''}>Required</label>${i > 0 ? `<select data-when="${esc(id)}" style="max-width:190px" aria-label="Show only after"><option value="">Always show</option>${grpOrder.slice(0, i).map(pid => S.groups.find(x => x.id === pid)).filter(Boolean).map(pg => pg.options.map(o => { const v = pg.id + '|' + o.name; return `<option value="${esc(v)}" ${whenSel[id] && whenSel[id].g === pg.id && whenSel[id].o === o.name ? 'selected' : ''}>Only after ${esc(o.name)}</option>`; }).join('')).join('')}</select>` : ''}<button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
-  renderCount();
 }
 function countRow(c, sizes){
   return `<div class="countrow"><input placeholder="Eggs, shots..." data-c="name" value="${esc(c.name)}"><input type="number" step="1" min="0" data-c="qty" value="${esc(c.qty)}"><select data-c="size"><option value="">All sizes</option>${sizes.map(s => `<option ${c.size === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select><button data-c="del" aria-label="Remove count">✕</button></div>`;
@@ -458,7 +433,7 @@ function readItemForm(it){
   out.required = Object.fromEntries(out.modifierGroupIds.map(id => [id, reqOn(id)]));
   // A group can show only after a choice in an earlier group (Bagel flavors only after Bagel).
   out.showWhen = Object.fromEntries(Object.entries(whenSel).filter(([id, w]) => w && out.modifierGroupIds.includes(id) && out.modifierGroupIds.includes(w.g)));
-  out.countPricing = cpSel && cpSel.group && out.modifierGroupIds.includes(cpSel.group) ? readTiers() : null;
+  out.countPricing = null; // no count pricing: bulk bagels are separate items
   out.reroute = $('#f_reroute').value;
   out.counts = [...document.querySelectorAll('#counts .countrow')].map(r => ({name:r.querySelector('[data-c=name]').value.trim(), qty:Number(r.querySelector('[data-c=qty]').value || 0), size:r.querySelector('[data-c=size]').value})).filter(c => c.name);
   out.dates = $('#f_dates').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
@@ -543,6 +518,7 @@ async function renderSettings(){
   const s = S.settings; const os = s.online || {};
   $('#editPane').innerHTML = `<h2>Settings</h2>
     <nav class="setnav"><a href="#set-general">Menu, taxes and payments</a><a href="#set-register-sign-in">Register sign-in</a><a href="#set-owner-sign-ins">Owner sign-ins</a><a href="#set-weekend-reroute">Weekend reroute</a><a href="#set-online-ordering">Online ordering</a><a href="#set-bake-days">Bake days</a><a href="#set-cup-charge">Cup charge</a><a href="#set-starter-menu">Starter menu</a></nav>
+    ${bagelsIntoBread(S.groups, S.items).needed ? `<div class="setnote">Bagel flavors still fold out from "Bagel" on sandwiches, and bulk bagels use count pricing. <button id="bagelsToBread">List flavors with the bread choices</button> puts each flavor in the Bread group ("Everything bagel" and so on, sharing stock counts with bulk bagels), takes the flavor fold-out off sandwiches, and switches bulk bagels to the Single, Half Dozen and One Dozen items with no count pricing.</div>` : ''}
     ${!s.kioskCatsMoved ? `<div class="setnote">The kiosk hides whole categories (${esc((s.kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails']).join(', '))}) on top of each item's Kiosk setting. <button id="moveKioskCats">Move this onto the items</button> unticks Kiosk on every item in those categories, so each item's Shows on row is the one place to manage it.</div>` : ''}
     <h3 id="set-general">Menu, taxes and payments</h3>
     <label>Sizes, in order, separated by commas</label><input id="s_sizes" value="${esc((s.sizes || []).join(', '))}">
@@ -608,7 +584,6 @@ async function renderSettings(){
 document.addEventListener('input', e => {
   if (e.target.id === 'search'){ search = e.target.value; renderItemList(); const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
   if (e.target.id === 'f_price' || e.target.closest?.('#sizesBox')) renderInc();
-  if (e.target.closest?.('#cpBox') || e.target.id === 'f_price') cpExample();
   if (e.target.id === 'f_price'){ const v = e.target.value; $('#singleCC').textContent = v !== '' ? 'Credit card ' + money(credit(Number(v))) : ''; }
   if (e.target.dataset?.s !== undefined && e.target.closest('#sizesBox')){ e.target.nextElementSibling.textContent = e.target.value !== '' ? money(credit(Number(e.target.value))) : ''; }
 });
@@ -631,8 +606,6 @@ document.addEventListener('change', async e => {
     $('#opts').insertAdjacentHTML('beforeend', optRow({...structuredClone(src), stockAs: gid + '~' + name}, priceColsNow())); t.value = ''; }
   if (t.dataset?.when !== undefined){ const v = t.value; if (v){ const [g, o] = v.split('|'); whenSel[t.dataset.when] = {g, o}; } else delete whenSel[t.dataset.when]; }
   if (t.dataset?.req){ reqSel[t.dataset.req] = t.checked; renderGrpOrder(); }
-  if (t.id === 'cp_on'){ cpSel = t.checked ? {group: grpOrder[0] || '', tiers: [{qty:6, name:'Half dozen', price:null}, {qty:12, name:'Dozen', price:null}]} : null; renderCount(); }
-  if (t.id === 'cp_group' && cpSel){ cpSel.group = t.value; }
   if (t.id === 'copyGrpSel' && t.value){ const src = S.items.find(i => i.id === t.value); grpOrder = (src.modifierGroupIds || []).filter(id => S.groups.some(g => g.id === id)); reqSel = {...(src.required || {})}; whenSel = structuredClone(src.showWhen || {}); renderGrpOrder(); }
   if (t.id === 'addGrpSel' && t.value){ grpOrder.push(t.value); renderGrpOrder(); }
   if (t.dataset?.grp){ grpOrder = grpOrder.filter(x => x !== t.dataset.grp); if (t.checked) grpOrder.push(t.dataset.grp); renderGrpOrder(); }
@@ -652,7 +625,6 @@ document.addEventListener('click', async e => {
     }
     if (t.id === 'addCount'){ $('#counts').insertAdjacentHTML('beforeend', countRow({name:'', qty:1, size:''}, S.settings.sizes || [])); }
     if (t.dataset?.c === 'del'){ t.closest('.countrow').remove(); }
-    if (t.id === 'cp_addTier'){ cpSel = readTiers(true); cpSel.tiers.push({qty:'', name:'', price:null}); renderCount(); }
     if (t.dataset?.rmgrp){ grpOrder = grpOrder.filter(x => x !== t.dataset.rmgrp); renderGrpOrder(); }
     if (t.dataset?.up !== undefined || t.dataset?.down !== undefined){ const i = Number(t.dataset.up ?? t.dataset.down), j = t.dataset.up !== undefined ? i - 1 : i + 1; [grpOrder[i], grpOrder[j]] = [grpOrder[j], grpOrder[i]]; renderGrpOrder(); }
     if (t.id === 'saveItem'){
@@ -712,6 +684,12 @@ document.addEventListener('click', async e => {
       if (members.length !== lines.length){ status('#staffStatus', 'Each line needs a name, a colon, and a 3 to 6 digit code.', 'err'); return; }
       if (new Set(members.map(m => m.pin)).size !== members.length){ status('#staffStatus', 'Two people have the same code.', 'err'); return; }
       await store.saveStaff({members, sleepMinutes: Math.max(1, Number($('#s_sleep').value || 5))}); status('#staffStatus', 'Saved', 'ok');
+    }
+    if (t.id === 'bagelsToBread'){
+      const r = bagelsIntoBread(S.groups, S.items);
+      if (r.groups.length) await store.saveGroups(r.groups);
+      if (r.items.length) await store.saveItems(r.items);
+      await reload(); setTimeout(() => status('#setStatus', `Done: ${r.items.length} items updated. Bagel flavors are now in the Bread choices.`, 'ok'), 300); return;
     }
     if (t.id === 'moveKioskCats'){
       const cats = S.settings.kioskHideCategories || ['Sandwiches', 'Beer, wine and cocktails'];
