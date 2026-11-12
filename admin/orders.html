@@ -43,12 +43,13 @@
   h2{font-size:17px;margin:18px 0 8px}
   .hidden{display:none !important}
   #login{max-width:360px;margin:60px auto}
+  tr.click{cursor:pointer} tr.click:hover td{background:#FBF8F3}
 </style>
 </head>
 <body>
 <header>
   <h1>Orders and reports</h1>
-  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button><button data-tab="times">Ticket times</button><button data-tab="activity">Activity</button></div>
+  <div id="tabs"><button data-tab="orders" class="on">Orders</button><button data-tab="eod">End of day</button><button data-tab="tax">Sales tax</button><button data-tab="times">Ticket times</button><button data-tab="activity">Activity</button><button data-tab="rewards">Rewards</button></div>
   <span class="sp"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a>
 </header>
 <div id="login" class="card hidden">
@@ -97,6 +98,9 @@ function demoStore(){
     async addPrintJob(){},
     async events(from, to){ return [{type:'void', staff:'Demo Staff', num:106, amount:6.75, items:['Latte'], at: t0 + 100 * 60000}, {type:'discount', staff:'Demo Staff', num:104, name:'Comp', at: t0 + 72 * 60000}, {type:'no_sale', staff:'Demo Staff', at: t0 + 30 * 60000}].filter(e => e.at >= from && e.at < to); },
     async logEvent(){},
+    async customers(){ return [{phone: '3155551234', name: 'Maya', points: 212, visits: 14, lastVisit: Date.now() - 86400000}, {phone: '3155559876', name: 'Theo', points: 40, visits: 3, lastVisit: Date.now() - 6 * 86400000}, {phone: '3155554321', name: '', points: 155, visits: 9, lastVisit: Date.now() - 2 * 86400000}]; },
+    async customerOrders(phone){ return phone === '3155551234' ? [{id: 'd1', num: 104, createdAtMs: Date.now() - 86400000, status: 'paid', totals: {total: 12.4}, pointsEarned: 12, lines: {}}] : []; },
+    async adjustPoints(){},
   };
 }
 async function firebaseStore(app){
@@ -109,6 +113,10 @@ async function firebaseStore(app){
     async addPrintJob(job){ await F.addDoc(F.collection(db, 'printJobs'), {...job, status: 'queued', createdAt: Date.now()}); },
     async events(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'events'), F.where('at', '>=', from), F.where('at', '<', to))); return snap.docs.map(d => d.data()); },
     async logEvent(e){ await F.addDoc(F.collection(db, 'events'), {...e, at: Date.now()}); },
+    async customers(){ const s = await F.getDocs(F.collection(db, 'customers')); return s.docs.map(d => ({phone: d.id, ...d.data()})); },
+    async customerOrders(phone){ const [a, b] = await Promise.all([F.getDocs(F.query(F.collection(db, 'orders'), F.where('customerPhone', '==', phone))), F.getDocs(F.query(F.collection(db, 'orders'), F.where('phone', '==', phone)))]);
+      const m = new Map(); for (const d of [...a.docs, ...b.docs]) m.set(d.id, {id: d.id, ...d.data()}); return [...m.values()].filter(o => !o.importedFrom); },
+    async adjustPoints(phone, delta){ await F.setDoc(F.doc(db, 'customers', phone), {phone, points: F.increment(delta)}, {merge: true}); },
   };
 }
 
@@ -278,7 +286,7 @@ async function renderTimes(){
     ${hours.length ? `<div class="card"><h2 style="margin-top:0">By hour (typical time)</h2><table><thead><tr><th>Hour</th>${stations.map(k => `<th class="n">${STN[k]}</th>`).join('')}</tr></thead><tbody>${hours.map(h => `<tr><td>${hl(h)}</td>${stations.map(k => { const a = (byHour[h] || {})[k] || []; return `<td class="n">${a.length ? mins(median(a)) + ` <span class="muted">(${a.length})</span>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>` : ''}`;
 }
 // ---------- Activity (audit log) ----------
-const EVT = {void: 'Voided order', discount: 'Discount', discount_removed: 'Removed discount', staff_meal: 'Staff meal', tax_exempt: 'Tax exempt', tax_exempt_off: 'Tax exempt removed', no_sale: 'No sale (drawer opened)', open_item: 'Open item', refund: 'Refund', reward_used: 'Used reward points', reward_removed: 'Stopped using points'};
+const EVT = {points_adjust: 'Points adjusted', void: 'Voided order', discount: 'Discount', discount_removed: 'Removed discount', staff_meal: 'Staff meal', tax_exempt: 'Tax exempt', tax_exempt_off: 'Tax exempt removed', no_sale: 'No sale (drawer opened)', open_item: 'Open item', refund: 'Refund', reward_used: 'Used reward points', reward_removed: 'Stopped using points'};
 async function renderActivity(){
   const from = dayStart(day); const ev = (await store.events(from, from + 86400000)).sort((a, b) => b.at - a.at);
   const who = {}; for (const e of ev){ const k = e.staff || 'Unknown'; who[k] = who[k] || {}; who[k][e.type] = (who[k][e.type] || 0) + 1; }
@@ -288,8 +296,54 @@ async function renderActivity(){
     ${ev.map(e => `<tr><td>${time(e.at)}</td><td>${esc(e.staff || '')}</td><td>${esc(EVT[e.type] || e.type)}</td><td>${e.num ? '#' + esc(e.num) : ''}</td><td class="muted">${esc([e.name, e.staffMember, e.amount !== undefined ? money(e.amount) : '', (e.items || []).join(', '), e.reason, e.method].filter(Boolean).join(' · '))}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Nothing logged that day.</td></tr>'}</tbody></table></div>`;
 }
 
+// ---------- Rewards (accounts by phone number) ----------
+let rq = '', rsort = 'recent', rsel = null, CUST = [];
+const fmtPhone = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
+async function renderRewards(){
+  CUST = await store.customers();
+  const q = rq.toLowerCase(), qd = rq.replace(/\D/g, '');
+  const list = CUST.filter(c => !q || (c.name || '').toLowerCase().includes(q) || (qd && c.phone.includes(qd)))
+    .sort(rsort === 'points' ? (a, b) => (b.points || 0) - (a.points || 0) : rsort === 'visits' ? (a, b) => (b.visits || 0) - (a.visits || 0) : (a, b) => (b.lastVisit || 0) - (a.lastVisit || 0));
+  const total = CUST.reduce((s, c) => s + Math.max(0, c.points || 0), 0), ready = CUST.filter(c => (c.points || 0) >= 150).length;
+  $('#app').innerHTML = `<div class="bar"><input id="rq" placeholder="Search name or phone" value="${esc(rq)}" style="max-width:260px">
+      <select id="rsort"><option value="recent" ${rsort === 'recent' ? 'selected' : ''}>Most recent</option><option value="points" ${rsort === 'points' ? 'selected' : ''}>Most points</option><option value="visits" ${rsort === 'visits' ? 'selected' : ''}>Most visits</option></select>
+      <span class="sp"></span><button id="rcsv">Download CSV</button></div>
+    <div class="kpis">${kpi('Accounts', CUST.length, 'by phone number')}${kpi('Points out there', total.toLocaleString(), money(Math.floor(total / 150) * 3) + ' if all used')}${kpi('Can use $3 off', ready, '150+ points')}</div>
+    <div class="card" style="padding:0"><table><thead><tr><th>Name</th><th>Phone</th><th class="n">Points</th><th class="n">Visits</th><th>Last visit</th></tr></thead><tbody>
+    ${list.map(c => `<tr class="click" data-cust="${esc(c.phone)}"><td><b>${esc(c.name || '—')}</b></td><td>${esc(fmtPhone(c.phone))}</td><td class="n">${c.points || 0}</td><td class="n">${c.visits || 0}</td><td class="muted">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No rewards accounts yet.</td></tr>'}</tbody></table></div><div id="custBox"></div>`;
+  if (rsel) showCustomer(rsel);
+}
+async function showCustomer(phone){
+  rsel = phone; const c = CUST.find(x => x.phone === phone) || {phone}; const os = (await store.customerOrders(phone)).sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+  const spent = os.filter(o => o.status === 'paid').reduce((s, o) => s + Number(o.totals?.total || 0), 0);
+  $('#custBox').innerHTML = `<div class="card"><div class="bar" style="margin:0 0 8px"><h2 style="margin:0">${esc(c.name || fmtPhone(phone))}</h2><span class="muted">${esc(fmtPhone(phone))} · ${c.points || 0} points · ${os.length} orders · ${money(spent)} spent</span><span class="sp"></span><button id="rclose">Close</button></div>
+    <div class="bar" style="margin:0 0 10px"><input id="radj" type="number" step="1" placeholder="+25 or -10" style="max-width:120px"><input id="rreason" placeholder="Reason (required)" style="max-width:280px"><button id="rsave">Adjust points</button><span id="rmsg"></span></div>
+    <table><thead><tr><th>Date</th><th>Order</th><th class="n">Total</th><th class="n">Earned</th><th class="n">Used</th></tr></thead><tbody>
+    ${os.map(o => `<tr><td>${new Date(o.createdAtMs || o.paidAt || 0).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</td><td>#${esc(o.num ?? '')}${o.status !== 'paid' ? ` <span class="muted">(${esc(o.status)})</span>` : ''}</td><td class="n">${money(o.totals?.total || 0)}</td><td class="n">${o.pointsEarned || ''}</td><td class="n">${o.pointsUsed || ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No orders found for this number.</td></tr>'}</tbody></table></div>`;
+  $('#custBox').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+function rewardsCsv(){
+  const rows = [['Name', 'Phone', 'Points', 'Visits', 'Last visit'], ...CUST.map(c => [c.name || '', c.phone, c.points || 0, c.visits || 0, c.lastVisit ? new Date(c.lastVisit).toISOString().slice(0, 10) : ''])];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `rewards-${ymd(new Date())}.csv`; a.click();
+}
+document.addEventListener('click', async e => {
+  const row = e.target.closest('[data-cust]'); if (row){ showCustomer(row.dataset.cust); return; }
+  if (e.target.id === 'rclose'){ rsel = null; $('#custBox').innerHTML = ''; return; }
+  if (e.target.id === 'rcsv'){ rewardsCsv(); return; }
+  if (e.target.id === 'rsave'){
+    const n = Math.round(Number($('#radj').value)), why = $('#rreason').value.trim();
+    if (!n){ $('#rmsg').innerHTML = '<span class="err">Enter points to add, or a minus number to take away.</span>'; return; }
+    if (!why){ $('#rmsg').innerHTML = '<span class="err">Add a reason.</span>'; return; }
+    try { await store.adjustPoints(rsel, n); await store.logEvent({type: 'points_adjust', phone: rsel, points: n, reason: why, staff: 'Orders and reports'}); const c = CUST.find(x => x.phone === rsel); if (c) c.points = (c.points || 0) + n; await renderRewards(); }
+    catch (err){ $('#rmsg').innerHTML = `<span class="err">${/permission/i.test(err.message) ? 'You do not have permission to change points.' : esc(err.message)}</span>`; }
+  }
+});
+document.addEventListener('input', e => { if (e.target.id === 'rq'){ rq = e.target.value; clearTimeout(window._rqT); window._rqT = setTimeout(async () => { await renderRewards(); const el = $('#rq'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }, 250); } });
+document.addEventListener('change', e => { if (e.target.id === 'rsort'){ rsort = e.target.value; renderRewards(); } });
+
 // ---------- Events ----------
-async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else if (tab === 'times') await renderTimes(); else if (tab === 'activity') await renderActivity(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
+async function render(){ try { if (tab === 'orders') await renderOrders(); else if (tab === 'eod') await renderEod(); else if (tab === 'times') await renderTimes(); else if (tab === 'activity') await renderActivity(); else if (tab === 'rewards') await renderRewards(); else await renderTax(); } catch (e){ console.error(e); $('#app').innerHTML = `<div class="card err">Could not load orders: ${esc(e.message)}</div>`; } }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b)); render(); });
 $('#app').addEventListener('change', e => {
   const t = e.target;
