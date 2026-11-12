@@ -158,6 +158,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
+import { GRIDDLE_ROLES, groupRole, optionRole, itemRole } from '../shared/griddle.mjs';
 import { onlineWhen, packAs, CHANNELS, optOn, bagelsIntoBread, ASSORTED_DOZEN } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
@@ -360,6 +361,7 @@ function renderItemEditor(){
     <details class="more" ${false ? 'open' : ''}><summary><b>Kitchen, tax and description</b> <span class="muted">${[STATIONS[it.station] || '', it.taxable ? 'taxed' : 'not taxed', it.reroute && it.reroute !== 'none' ? 'weekend reroute' : ''].filter(Boolean).join(' · ')}</span></summary>
     <div class="toggles" style="margin-top:10px"><label class="${it.taxable ? 'on' : ''}"><input type="checkbox" id="f_tax" ${it.taxable ? 'checked' : ''}>Charge sales tax</label></div>
     <div class="row"><div><label>Station</label><select id="f_station">${Object.entries(STATIONS).map(([k,v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div><label>Griddle screen</label><select id="f_griddle"><option value="__" ${it.griddle == null ? 'selected' : ''}>Automatic: ${GRIDDLE_ROLES[itemRole({name: it.name})]}</option>${Object.entries(GRIDDLE_ROLES).map(([k, l]) => `<option value="${k}" ${it.griddle === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div><label>Weekend reroute to runner</label><select id="f_reroute">${[['none','Off'],['all','All versions'],['iced','Iced only']].map(([k,l]) => `<option value="${k}" ${(it.reroute || 'none') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
 <label>Production counts</label>
     <p class="muted">What one of this item adds to the live counts on the KDS, like 2 shots or 1 egg. Add-ons can add their own counts in Modifier groups.</p>
@@ -437,6 +439,7 @@ function readItemForm(it){
   out.active = $('#f_active').checked;
   out.taxable = $('#f_tax').checked;
   out.station = $('#f_station').value;
+  { const gv = $('#f_griddle')?.value; if (gv === '__' || gv === undefined) delete out.griddle; else out.griddle = gv; }
   out.visible = {}; document.querySelectorAll('[data-vis]').forEach(c => out.visible[c.dataset.vis] = c.checked);
   out.alcohol = $('#f_alcohol').checked; out.eightySixed = $('#f_86').checked;
   const st = $('#f_stock').value; out.stockCount = st === '' ? null : Math.max(0, Math.floor(Number(st)));
@@ -482,6 +485,8 @@ async function renderGroupEditor(){
     <label>Pre-selected option (optional, must match an option name)</label><input id="g_default" value="${esc(g.default || '')}" style="max-width:320px">
     <label>Shows on</label><div class="toggles">${Object.entries(CHANNELS).map(([k, l]) => `<label class="${g.showOn?.[k] !== false ? 'on' : ''}"><input type="checkbox" data-show="${k}" ${g.showOn?.[k] !== false ? 'checked' : ''}>${l}</label>`).join('')}</div>
     <p class="muted" style="margin:2px 0 0;font-size:13px">Untick a place to leave this whole group off there. For example, a Slicing group set to Online, pre-order only.</p>
+    <label>Griddle screen</label><select id="g_griddle" style="max-width:320px">${Object.entries(GRIDDLE_ROLES).map(([k, l]) => `<option value="${k}" ${groupRole(g) === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <p class="muted" style="margin:2px 0 0;font-size:13px">What the griddle tablet shows from this group. Cook it: counted in the griddle totals (eggs, meats). Bread, toasting, slicing: shown as the bread line. Griddle note: shown in orange ("Crispy meat"). One choice can differ from the group, set on the choice below.</p>
     <h3>Options</h3>
     <p class="muted">"By size" lets an add-on cost more in a bigger drink. Blank sizes use the flat price.</p>
     <div id="opts">${g.options.map(o => optRow(o, sizes)).join('')}</div>
@@ -494,6 +499,9 @@ let modStockNow = {}, groupIdNow = '';
 const stockKeyOf = (gid, o) => o.stockAs || gid + '~' + o.name;
 const stockLabel = key => { const [g, n] = key.split('~'); const grp = S.groups.find(x => x.id === g); return `${n} in ${grp ? grp.name : g}`; };
 function optRow(o, sizes){
+  const gNow = S.groups.find(x => x.id === groupIdNow) || {id: groupIdNow};
+  const auto = optionRole(gNow, {name: o.name});
+  const gsel = `<label style="display:flex;gap:5px;align-items:center;margin:0 0 0 8px;color:var(--ink);font-size:14px">Griddle <select data-o="griddle" style="width:auto;padding:4px 6px;font-size:14px"><option value="__" ${o.griddle == null ? 'selected' : ''}>Automatic: ${GRIDDLE_ROLES[auto]}</option>${Object.entries(GRIDDLE_ROLES).map(([k, l]) => `<option value="${k}" ${o.griddle === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const c = (o.counts || [])[0] || {name:'', qty:''};
   const linked = !!o.stockAs;
   return `<div class="opt" data-stockas="${esc(o.stockAs || '')}">${linked ? `<div class="muted" style="font-size:13px;margin-bottom:4px">Shares stock with <b>${esc(stockLabel(o.stockAs))}</b>. Counts and 86 apply everywhere it's used.</div>` : ''}
@@ -506,7 +514,7 @@ function optRow(o, sizes){
       <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[o.stockAs || groupIdNow + '~' + o.name] ?? '')}"></div></div>
     <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
 </div>
-    <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;font-size:14px"><span class="muted">Shows on</span>${Object.entries(CHANNELS).map(([k, l]) => `<label style="display:flex;gap:5px;align-items:center;margin:0;color:var(--ink);font-size:14px"><input type="checkbox" data-oc="${k}" ${optOn(o, k) ? 'checked' : ''}>${l}</label>`).join('')}</div>
+    <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;font-size:14px"><span class="muted">Shows on</span>${Object.entries(CHANNELS).map(([k, l]) => `<label style="display:flex;gap:5px;align-items:center;margin:0;color:var(--ink);font-size:14px"><input type="checkbox" data-oc="${k}" ${optOn(o, k) ? 'checked' : ''}>${l}</label>`).join('')}${gsel}</div>
   </div>`;
 }
 function readGroupForm(g){
@@ -515,6 +523,7 @@ function readGroupForm(g){
   const [mn, mx] = $('#g_rule').value.split(',').map(Number); out.min = mn; out.max = mx;
   out.default = $('#g_default').value.trim();
   out.showOn = Object.fromEntries([...document.querySelectorAll('[data-show]')].map(i => [i.dataset.show, i.checked]));
+  if ($('#g_griddle')) out.griddle = $('#g_griddle').value;
   out.options = [...document.querySelectorAll('#opts .opt')].map(el => {
     const bySize = {}; el.querySelectorAll('[data-bs]').forEach(i => { if (i.value !== '') bySize[i.dataset.bs] = Number(i.value); });
     const cname = el.querySelector('[data-o=cname]').value.trim();
@@ -522,6 +531,7 @@ function readGroupForm(g){
             counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : [],
             subs: el.querySelector('[data-o=subs]').value.split(',').map(x => x.trim()).filter(Boolean),
             showOn: Object.fromEntries([...el.querySelectorAll('[data-oc]')].map(i => [i.dataset.oc, i.checked])),
+            ...(el.querySelector('[data-o=griddle]') && el.querySelector('[data-o=griddle]').value !== '__' ? {griddle: el.querySelector('[data-o=griddle]').value} : {}),
             ...(el.dataset.stockas ? {stockAs: el.dataset.stockas} : {}),
             _stock: el.querySelector('[data-o=stock]').value};
   }).filter(o => o.name);
