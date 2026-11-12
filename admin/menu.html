@@ -128,6 +128,7 @@
 </style>
 </head>
 <body>
+<datalist id="countNames"></datalist>
 <div id="loginView" class="login card hidden">
   <h2>Proof POS</h2>
   <p class="muted">Sign in to edit the menu.</p>
@@ -238,7 +239,14 @@ const colLabel = c => String(c).replace(/^(hot|iced) /, m => m[0].toUpperCase() 
 const surchargeOn = (s, k) => s.surchargeChannels ? !!s.surchargeChannels[k] : k === 'register';
 const credit = p => Math.round(p * (1 + (S.settings.surchargeRate || 0)) * 100) / 100;
 
-async function reload(){ S = await store.loadAll(); S.items.sort((a,b) => a.name.localeCompare(b.name)); S.groups.sort((a,b) => a.name.localeCompare(b.name)); render(); }
+// Production count names already in use, plus every griddle cook choice, so the same thing is always spelled the same way.
+function fillCountNames(){
+  const n = new Set();
+  for (const g of S.groups) for (const o of g.options || []){ for (const c of o.counts || []) if (c.name) n.add(c.name); if (optionRole(g, o) === 'cook' && !(o.counts || []).some(c => c.name)) n.add(o.name); }
+  for (const i of S.items) for (const c of i.counts || []) if (c.name) n.add(c.name);
+  const dl = document.getElementById('countNames'); if (dl) dl.innerHTML = [...n].sort((a, b) => a.localeCompare(b)).map(x => `<option value="${esc(x)}">`).join('');
+}
+async function reload(){ S = await store.loadAll(); S.items.sort((a,b) => a.name.localeCompare(b.name)); S.groups.sort((a,b) => a.name.localeCompare(b.name)); fillCountNames(); render(); }
 
 // ---------- Rendering ----------
 function render(){
@@ -426,7 +434,7 @@ function renderGrpOrder(){
   $('#grpOrder').innerHTML = grpOrder.map((id, i) => { const g = S.groups.find(x => x.id === id); return `<div class="row" style="max-width:760px;margin-bottom:4px;flex-wrap:wrap"><span>${i + 1}. ${esc(g ? g.name : id)}</span><label class="req ${reqOn(id) ? 'on' : ''}"><input type="checkbox" data-req="${esc(id)}" ${reqOn(id) ? 'checked' : ''}>Required</label>${i > 0 ? `<select data-when="${esc(id)}" style="max-width:190px" aria-label="Show only after"><option value="">Always show</option>${grpOrder.slice(0, i).map(pid => S.groups.find(x => x.id === pid)).filter(Boolean).map(pg => pg.options.map(o => { const v = pg.id + '|' + o.name; return `<option value="${esc(v)}" ${whenSel[id] && whenSel[id].g === pg.id && whenSel[id].o === o.name ? 'selected' : ''}>Only after ${esc(o.name)}</option>`; }).join('')).join('')}</select>` : ''}<button style="flex:none" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button style="flex:none" data-down="${i}" ${i === grpOrder.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button style="flex:none" class="danger" data-rmgrp="${esc(id)}" aria-label="Remove group">✕</button></div>`; }).join('') + add;
 }
 function countRow(c, sizes){
-  return `<div class="countrow"><input placeholder="Eggs, shots..." data-c="name" value="${esc(c.name)}"><input type="number" step="1" min="0" data-c="qty" value="${esc(c.qty)}"><select data-c="size"><option value="">All sizes</option>${sizes.map(s => `<option ${c.size === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select><button data-c="del" aria-label="Remove count">✕</button></div>`;
+  return `<div class="countrow"><input placeholder="Pick or type, like Egg" list="countNames" data-c="name" value="${esc(c.name)}"><input type="number" step="1" min="0" data-c="qty" value="${esc(c.qty)}"><select data-c="size"><option value="">All sizes</option>${sizes.map(s => `<option ${c.size === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select><button data-c="del" aria-label="Remove count">✕</button></div>`;
 }
 function readItemForm(it){
   const out = structuredClone(it);
@@ -510,7 +518,7 @@ function optRow(o, sizes){
       <div><label>Price (negative for a discount)</label><input type="number" step="0.01" data-o="price" value="${esc(o.price ?? 0)}"></div>
       <div style="flex:none;align-self:end"><button data-o="del" aria-label="Remove option">✕</button></div></div>
     <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(colLabel(s))}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
-    <div class="row"><div><label>Adds to production count</label><input data-o="cname" placeholder="Eggs, shots..." value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
+    <div class="row"><div><label>Adds to production count</label><input data-o="cname" list="countNames" placeholder="Pick or type, like Egg" value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
       <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[o.stockAs || groupIdNow + '~' + o.name] ?? '')}"></div></div>
     <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
 </div>
