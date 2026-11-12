@@ -384,9 +384,9 @@ function sortedMods(l){
   const gi = g => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
   const oi = m => { const g = groupById(m.g); const i = g ? g.options.findIndex(o => o.name === m.o) : -1; return i < 0 ? 999 : i; };
   // Built-from items: hide kept included ingredients, show "No X" for removed ones.
-  // Defaults (Toasted, To go cup) don't need saying on a ticket; only changes show.
+  // Every ingredient shows; only the usual extras (Toasted, To go cup) stay unsaid.
   const isDef = m => m.def || (!m.pre && (m.q || 1) === 1 && !m.sub && (groupById(m.g) || {}).default === m.o);
-  const shown = [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !isDef(m) && (!m.inc || m.pre || (m.q || 1) > 1 || m.sub))];
+  const shown = [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => m.inc || !isDef(m))]; // every ingredient on the sandwich shows, named or build-your-own; only the usual extras like Toasted stay unsaid
   return shown.sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
 }
 // Pre-orders (special orders) only bring their cafe-made items (coffee boxes, sandwich packs) to the KDS; the rest are packed from the special orders page.
