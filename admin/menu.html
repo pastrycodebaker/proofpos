@@ -682,10 +682,23 @@ document.addEventListener('click', async e => {
       status('#groupStatus', 'Saving…'); await store.saveGroup(out); await reload(); status('#groupStatus', 'Saved', 'ok');
     }
     if (t.id === 'delGroup'){
-      const used = S.items.filter(i => (i.modifierGroupIds || []).includes(selId)).length;
-      if (used){ status('#groupStatus', `Used by ${used} items. Remove it from those items first.`, 'err'); return; }
-      if (t.dataset.armed){ await store.deleteGroup(selId); selId = null; await reload(); }
-      else { t.dataset.armed = '1'; t.textContent = 'Tap again to delete'; }
+      const usedBy = S.items.filter(i => (i.modifierGroupIds || []).includes(selId));
+      if (!t.dataset.armed){
+        t.dataset.armed = '1'; t.textContent = usedBy.length ? `Remove from ${usedBy.length} item${usedBy.length > 1 ? 's' : ''} and delete` : 'Tap again to delete';
+        if (usedBy.length) status('#groupStatus', `Used by ${usedBy.slice(0, 6).map(i => i.name).join(', ')}${usedBy.length > 6 ? ` and ${usedBy.length - 6} more` : ''}. Deleting takes it off those items too.`, 'err');
+        return;
+      }
+      // Take the group (and anything pointing at it) off every item, then delete it.
+      const gid = selId;
+      const changed = usedBy.map(i => { const c = structuredClone(i); c.modifierGroupIds = (c.modifierGroupIds || []).filter(x => x !== gid);
+        c.included = (c.included || []).filter(x => x.g !== gid);
+        if (c.required) delete c.required[gid];
+        if (c.showWhen){ delete c.showWhen[gid]; for (const k of Object.keys(c.showWhen)) if (c.showWhen[k]?.g === gid) delete c.showWhen[k]; }
+        if (c.countPricing && c.countPricing.group === gid) c.countPricing = null;
+        if (c.builtFrom) c.builtFrom = (Array.isArray(c.builtFrom) ? c.builtFrom.filter(x => x !== gid && x?.g !== gid) : c.builtFrom);
+        return c; });
+      if (changed.length) await store.saveItems(changed);
+      await store.deleteGroup(gid); selId = null; await reload();
     }
     if (t.id === 'saveOwners'){
       const emails = [...new Set($('#s_owners').value.split(/[\s,]+/).map(x => x.trim().toLowerCase()).filter(x => x.includes('@')))];

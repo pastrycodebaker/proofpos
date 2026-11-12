@@ -123,6 +123,17 @@
   .hidden{display:none !important}
   .err{color:#ffb3a8}
   .btnlink{display:inline-flex;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid currentColor;color:inherit;text-decoration:none;opacity:.85}
+
+  /* Light mode (toggle in the top bar; remembered on this screen) */
+  body.light{--bg:#f4f1ea;--panel:#ffffff;--card:#faf7f1;--line:#ddd4c4;--ink:#1f1b15;--quiet:#6b6255;--accent:#a8650f;--good:#2f8a4d;--warn:#a67c00;--crit:#c0392b;--rush:#d9431f;--new:#1f6fd1}
+  body.light .net{background:#e3f1e7} body.light .net.off{background:#fbe1dc;color:#9b2a1e}
+  body.light .t-ok .thead{background:#e3f1e7} body.light .t-warn .thead{background:#fbf0cc} body.light .t-crit .thead{background:#fbe1dc}
+  body.light .t-ok .timer,body.light li.item.done .box,body.light .tfoot button.clear.ready{color:#fff}
+  body.light .b-src{background:#f3e7d3} body.light .banner{background:#fbf0cc} body.light .banner.off{background:#fbe1dc;color:#9b2a1e}
+  body.light .b-sched{background:#e2eafb;color:#1f3f7a} body.light .eightysix.out b,body.light .menu button.out small,body.light .err{color:#b0301f}
+  body.light button.primary{color:#fff}
+  .allergy{margin-top:4px;background:var(--crit);color:#fff;font-weight:800;font-size:15px;letter-spacing:.02em;padding:4px 8px;border-radius:6px;display:inline-block}
+  .ticket.hasallergy{border:3px solid var(--crit)}
 </style>
 </head>
 <body>
@@ -151,7 +162,7 @@
     <button id="btnRecall">Recall</button>
     <button id="btnTiming">Timing</button>
     <button id="btnFull">Full screen</button>
-    <a class="btnlink" id="btnSwitch" href="../?pick">Switch screen</a>
+    <button id="btnTheme" title="Switch between dark and light">Light mode</button><a class="btnlink" id="btnSwitch" href="../?pick">Switch screen</a>
   </div>
 </header>
 <div class="banner off hidden" id="onlineBanner">Online ordering is OFF. Tap "Online ordering" to turn it back on.</div>
@@ -213,6 +224,11 @@
 </div>
 
 <script type="module">
+// Dark or light, remembered per screen.
+const applyTheme = t => { document.body.classList.toggle('light', t === 'light'); const b = document.getElementById('btnTheme'); if (b) b.textContent = t === 'light' ? 'Dark mode' : 'Light mode'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'light' ? '#f4f1ea' : '#15130f'); };
+try { applyTheme(localStorage.getItem('proof.kds.theme') || 'dark'); } catch (e) {}
+document.addEventListener('click', e => { if (e.target.id !== 'btnTheme') return; const t = document.body.classList.contains('light') ? 'dark' : 'light'; try { localStorage.setItem('proof.kds.theme', t); } catch (e2) {} applyTheme(t); });
+
 import { firebaseConfig } from '../firebase-config.js';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
@@ -368,7 +384,7 @@ function ticketHtml(o, v, past){
     const cls = ['item', l.done ? 'done' : '', l.removed ? 'removed' : '', fresh && !l.removed ? 'changed' : ''].join(' ');
     const tag = l.removed ? '<span class="tag rem">REMOVED</span>' : fresh ? `<span class="tag new">${l.changed === 'added' ? 'NEW' : 'CHANGED'}</span>` : '';
     const where = v.shows === 'all' ? `<div class="where">${l.rerouted ? 'rerouted to runner' : l.station === 'none' ? 'grab' : esc(l.station)}</div>` : '';
-    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${sortedMods(l).length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc([m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''))}</div>`).join('')}</div>` : ''}${where}</div></li>`;
+    return `<li class="${cls}" data-o="${o.id}" data-l="${l.lid}"><span class="box">${l.done ? '✓' : ''}</span><div><div class="iname">${l.version ? `<span class="ver">${esc(l.version)}</span> ` : ''}${esc(l.name)}${tag}</div>${sortedMods(l).length ? `<div class="mods">${sortedMods(l).map(m => `<div>${esc([m.pre, (m.q || 1) > 1 ? m.q + '×' : '', m.o].filter(Boolean).join(' ') + (m.sub ? ` (${m.sub})` : ''))}</div>`).join('')}</div>` : ''}${l.allergy ? `<div class="allergy">ALLERGY: ${esc([...(l.allergy.tags || []), l.allergy.note].filter(Boolean).join(', '))}</div>` : ''}${where}</div></li>`;
   }).join('');
   const edited = o.lines.some(l => live(l) && l.changed && now - l.changedAt < 90000);
   const badges = [o.staffMeal ? `<span class="badge b-staff">Staff meal · ${esc(o.staffMeal)}</span>` : '', o.rush ? '<span class="badge b-rush">Rush</span>' : '', o.pickupTime && o.readyAt ? `<span class="badge b-sched">Pickup ${new Date(o.readyAt).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : o.scheduled ? `<span class="badge b-sched">Scheduled ${new Date(fireAt(o)).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>` : '', v.id === 'runner' ? `<span class="badge b-src">${SOURCES[o.source] || esc(o.source)}</span>` : '', edited ? '<span class="badge b-edit">Edited</span>' : ''].join('');
@@ -376,7 +392,7 @@ function ticketHtml(o, v, past){
   const foot = past ? `<div class="tfoot"><button data-act="bringback" data-o="${o.id}">Bring back</button></div>` : v.id === 'runner'
     ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
     : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
-  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''} ${o.staffMeal ? 'staffmeal' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - fireAt(o))}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
+  return `<div class="ticket ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''} ${o.staffMeal ? 'staffmeal' : ''} ${o.lines.some(l => l.allergy && !l.removed) ? 'hasallergy' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div></div><span class="timer">${fmt(now - fireAt(o))}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
 }
 let lastFull = 0, pressing = false;
 document.addEventListener('pointerdown', () => { pressing = true; });

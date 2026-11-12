@@ -32,7 +32,8 @@ const whenText = o => o.pickup?.type === 'date' ? `${dayLabel(o.pickup.date)} at
 // Customer confirmation: email with every item, plus a short text.
 export async function orderConfirmation(o){
   const lines = Object.values(o.lines || {}).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
-  const rows = lines.map(l => `<tr><td style="padding:6px 0">${esc(lineText(l))}</td><td style="padding:6px 0;text-align:right">${money(l.price)}</td></tr>`).join('');
+  const grouped = []; for (const l of lines){ const g = grouped.find(x => lineText(x.l) === lineText(l) && x.l.price === l.price); if (g) g.n++; else grouped.push({l, n: 1}); }
+  const rows = grouped.map(({l, n}) => `<tr><td style="padding:6px 0">${n > 1 ? n + '× ' : ''}${esc(lineText(l))}</td><td style="padding:6px 0;text-align:right">${money(l.price * n)}</td></tr>`).join('');
   const html = `<div style="font-family:Helvetica,Arial,sans-serif;max-width:520px;margin:auto;color:#2B2622">
     <h1 style="font-size:26px;margin:0 0 4px">Thanks, ${esc((o.name || '').split(' ')[0])}!</h1>
     <p style="font-size:17px;margin:0 0 16px">Your order <b>#${esc(o.num)}</b> is set for pickup <b>${esc(whenText(o))}</b> at 37 Lebanon Street, Hamilton.</p>
@@ -41,7 +42,7 @@ export async function orderConfirmation(o){
     <tr><td style="padding:8px 0;border-top:1px solid #ddd"><b>Total paid</b></td><td style="text-align:right;border-top:1px solid #ddd"><b>${money(o.totals?.charge)}</b></td></tr></table>
     ${o.allergySeparate ? `<p style="font-size:14px">We'll pack your items separately${o.allergyNote ? ': ' + esc(o.allergyNote) : ''}.</p>` : ''}
     <p style="font-size:14px;color:#6B6157">Give your name at the counter. Questions? Reply to this email.</p></div>`;
-  const text = `Thanks, ${o.name}! Order #${o.num} is set for pickup ${whenText(o)} at 37 Lebanon Street.\n\n${lines.map(l => '- ' + lineText(l) + ' ' + money(l.price)).join('\n')}\n\nTotal paid ${money(o.totals?.charge)}`;
+  const text = `Thanks, ${o.name}! Order #${o.num} is set for pickup ${whenText(o)} at 37 Lebanon Street.\n\n${grouped.map(({l, n}) => '- ' + (n > 1 ? n + '× ' : '') + lineText(l) + ' ' + money(l.price * n)).join('\n')}\n\nTotal paid ${money(o.totals?.charge)}`;
   await Promise.all([
     sendEmail(o.email, `Your Flour & Salt order #${o.num} · pickup ${whenText(o)}`, html, text),
     o.smsOptIn ? sendText(o.phone, `Flour and Salt Bakery LLC: thanks ${(o.name || '').split(' ')[0]}! Order #${o.num} is set for pickup ${whenText(o)}. We'll text when it's time to pick up. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`) : null]);

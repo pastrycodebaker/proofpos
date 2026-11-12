@@ -85,6 +85,13 @@
   .pickupban a{font-weight:700;color:var(--accent);flex:none}
   .confirm{display:flex;gap:10px;align-items:flex-start;background:#FFF3D6;border:2px solid #E0B44C;border-radius:12px;padding:12px;font-weight:600}
   .confirm input{width:22px;height:22px;flex:none;margin-top:2px}
+  .ln .qty{grid-column:1/-1;display:flex;gap:6px;align-items:center;margin-top:4px}
+  .ln .qty button{background:var(--soft);padding:4px 12px;font-weight:800;border-radius:10px;color:var(--ink);grid-column:auto}
+  .ln .qty button.rmall{background:transparent;color:var(--crit);font-weight:600;font-size:14px;margin-left:6px}
+  .ln .qty b{min-width:20px;text-align:center}
+  .missing input:not([type=checkbox]){border-color:var(--crit);background:#FFF5F3}
+  .missing.confirm,.missing.tips{outline:3px solid var(--crit);outline-offset:3px;border-radius:12px}
+  .fielderr{color:var(--crit);font-weight:700;font-size:14px;margin-top:4px;grid-column:1/-1;width:100%}
   .done{text-align:center;padding:40px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
   .done h1{font-size:40px}
   .done .num{font-size:22px;font-weight:700;background:#fff;padding:10px 22px;border-radius:999px}
@@ -291,39 +298,46 @@ const lineLabel = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...l.mods.fil
 
 // ---------- Cart and checkout ----------
 function cartIssues(){ return cart.map(x => { const it = itemById(x.itemId); const a = it ? avail(it) : {ok: false, reason: 'No longer on the menu'}; if (!a.ok) return a.reason; try { BL(structuredClone(x), M.kds); return null; } catch (e){ return e.message; } }); }
-function renderCart(err = ''){
+// Identical items in the cart are shown once with a count.
+const cartKey1 = x => JSON.stringify([x.itemId, x.versionIdx, [...(x.mods || [])].map(m => [m.g, m.o, m.q || 1]).sort()]);
+const cartGroups = () => { const m = new Map(); cart.forEach((x, i) => { const k = cartKey1(x); if (!m.has(k)) m.set(k, {idx: []}); m.get(k).idx.push(i); }); return [...m.values()]; };
+function renderCart(err = '', field = ''){
   const issues = cartIssues(); const lines = cart.map((x, i) => issues[i] ? null : BL(structuredClone(x), M.kds));
   const t = R.cartTotals(lines.filter(Boolean), S(), tipPct || 0);
   const os = R.onlineSettings(S());
   const tips = [['0', 'No tip'], ...os.tips.map(p => [String(p), Math.round(p * 100) + '%'])];
   const when = pickup.type === 'asap' ? 'Today, ready in about ' + os.prepMinutes + ' min' : 'Pre-order for ' + longDay(pickup.date) + (pickup.time ? ' at ' + R.timeLabel(pickup.time) : '');
   $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="Your order"><div class="hd"><div><h2>Your order</h2><div class="muted">${esc(when)}</div></div><button class="x" data-close="1" aria-label="Close">✕</button></div><div class="bd">
-    <div>${cart.map((x, i) => `<div class="ln"><b>${esc([x.version, x.name].filter(Boolean).join(' '))}</b><span>${money(lines[i] ? lines[i].price : x.price)}</span>${x.label ? `<span class="m">${esc(x.label)}</span>` : ''}${issues[i] ? `<span class="bad">${esc(issues[i])}. Please remove it.</span>` : ''}<button data-rm="${i}">Remove</button></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}</div>
+    <div>${cartGroups().map(g => { const i = g.idx[0], bad = g.idx.map(j => issues[j]).find(Boolean), x = cart[i], each = lines[i] ? lines[i].price : x.price;
+      return `<div class="ln"><b>${g.idx.length > 1 ? g.idx.length + '× ' : ''}${esc([x.version, x.name].filter(Boolean).join(' '))}</b><span>${money(each * g.idx.length)}</span>${x.label ? `<span class="m">${esc(x.label)}</span>` : ''}${bad ? `<span class="bad">${esc(bad)}. Please remove it.</span>` : ''}
+        <span class="qty"><button data-minus1="${i}" aria-label="One fewer">−</button><b>${g.idx.length}</b><button data-plus1="${i}" aria-label="One more" ${bad ? 'disabled' : ''}>+</button><button data-rmall="${g.idx.join(',')}" class="rmall">Remove</button></span></div>`; }).join('') || '<p class="muted">Nothing here yet.</p>'}</div>
     <div class="fields"><div><label for="fName">Name for the order</label><input id="fName" autocomplete="given-name" value="${esc(me.name)}"></div>
       <div><label for="fEmail">Email for your receipt</label><input id="fEmail" type="email" autocomplete="email" value="${esc(me.email)}"></div>
       <div><label for="fPhone">${pickup.type === 'date' ? 'Phone, in case we need to reach you' : 'Phone, to earn rewards (optional)'}</label><input id="fPhone" type="tel" autocomplete="tel" value="${esc(me.phone)}"></div>
       <label class="confirm" style="background:#fff;border-color:var(--line);font-weight:500;font-size:14px"><input type="checkbox" id="fSms" ${smsOk ? 'checked' : ''}><span><b>Text me about this order</b> (a confirmation and a pickup reminder) from Flour and Salt Bakery LLC. Optional. Msg &amp; data rates may apply. Msg frequency varies, about 2 per order. Reply HELP for help, STOP to opt out. See our <a href="https://www.flourandsalt.com/privacy-policy" target="_blank" rel="noopener" style="color:var(--accent)">Privacy Policy</a> and <a href="https://www.flourandsalt.com/terms" target="_blank" rel="noopener" style="color:var(--accent)">Terms &amp; Conditions</a>.</span></label>
       ${pickup.type === 'date' ? `<label class="confirm" style="background:#FCE8EF;border-color:#E9A3BA"><input type="checkbox" id="fAllergy" ${allergy.separate ? 'checked' : ''}><span>Please pack my items separately for allergies</span></label>
       <div id="allergyBox" class="${allergy.separate ? '' : 'hidden'}"><label for="fAllergyNote">What should we keep apart?</label><input id="fAllergyNote" value="${esc(allergy.note)}" placeholder="e.g. nut allergy, keep the almond croissant separate"></div>` : ''}</div>
-    <div><label>Add a tip for the team?</label><div class="tips">${tips.map(([p, l]) => `<button class="${tipPct !== null && String(tipPct) === p ? 'on' : ''}" data-tip="${p}">${l}${p !== '0' ? `<small>${money(t.sub * Number(p))}</small>` : ''}</button>`).join('')}</div></div>
+    <div><label>Add a tip for the team?</label><div class="tips" id="tipsRow">${tips.map(([p, l]) => `<button class="${tipPct !== null && String(tipPct) === p ? 'on' : ''}" data-tip="${p}">${l}${p !== '0' ? `<small>${money(t.sub * Number(p))}</small>` : ''}</button>`).join('')}</div></div>
     <div class="tot"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:18px"><span>Total</span><span>${money(t.charge)}</span></div><div class="muted" style="font-size:13px"><span>Prices include sales tax</span><span>${money(t.tax)}</span></div></div>
     ${pickup.type === 'date' ? `<label class="confirm"><input type="checkbox" id="fConfirm" ${confirmed ? 'checked' : ''}><span>I'm picking this up on <b>${esc(longDay(pickup.date))}</b> at <b>${esc(R.timeLabel(pickup.time))}</b>, ${esc(howFar(pickup.date))}.</span></label>` : ''}
     <div id="payBox"></div><div class="err" id="cErr">${esc(err)}</div></div>
     <div class="ft"><span class="sp"></span><button class="primary" id="checkout" ${cart.length && !issues.some(Boolean) ? '' : 'disabled'} style="font-size:18px;padding:14px 22px">Continue to payment</button></div></div></div>`;
   ['fName', 'fEmail', 'fPhone'].forEach(id => $('#' + id).addEventListener('input', () => { me = {name: $('#fName').value, email: $('#fEmail').value, phone: $('#fPhone').value}; save('fs.me', me); }));
+  // Point at exactly what's missing: red outline, a note under it, and scroll there.
+  if (field){ const el = $('#' + field); if (el){ const box = el.closest('label.confirm') || el.closest('.tips') || el.parentElement; box.classList.add('missing'); box.insertAdjacentHTML('beforeend', `<div class="fielderr">${esc(err)}</div>`); box.scrollIntoView({block: 'center', behavior: 'smooth'}); if (el.tagName === 'INPUT' && el.type !== 'checkbox') setTimeout(() => el.focus({preventScroll: true}), 300); } }
 }
 let confirmed = false, allergy = {separate: false, note: ''}, smsOk = false;
 let stripeJs = null, elements = null, current = null;
 async function checkout(){
   me = {name: $('#fName').value.trim(), email: $('#fEmail').value.trim(), phone: $('#fPhone').value.trim()}; save('fs.me', me);
-  if (!me.name) return renderCart('Please add a name for the order.');
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(me.email)) return renderCart('Please add an email for your receipt.');
+  if (!me.name) return renderCart('Please add a name for the order.', 'fName');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(me.email)) return renderCart(me.email ? 'That email doesn\'t look complete.' : 'Please add an email for your receipt.', 'fEmail');
   if ($('#fAllergyNote')) allergy.note = $('#fAllergyNote').value.trim();
   if (pickup.type === 'date' && !pickup.time) return renderCart('Please pick a pickup time.');
-  if (pickup.type === 'date' && me.phone.replace(/\D/g, '').length < 10) return renderCart('Please add a phone number in case we need to reach you about your pre-order.');
-  if (allergy.separate && !allergy.note) return renderCart('Please tell us what to keep separate for allergies.');
-  if (pickup.type === 'date' && !$('#fConfirm').checked) return renderCart('Please confirm your pickup day and time.');
-  if (tipPct === null) return renderCart('Please pick a tip option (No tip is fine).');
+  if (pickup.type === 'date' && me.phone.replace(/\D/g, '').length < 10) return renderCart('Please add a phone number in case we need to reach you about your pre-order.', 'fPhone');
+  if (allergy.separate && !allergy.note) return renderCart('Please tell us what to keep separate for allergies.', 'fAllergyNote');
+  if (pickup.type === 'date' && !$('#fConfirm').checked) return renderCart('Please confirm your pickup day and time.', 'fConfirm');
+  if (tipPct === null) return renderCart('Please pick a tip option (No tip is fine).', 'tipsRow');
   const btn = $('#checkout'); btn.disabled = true; btn.textContent = 'One moment…';
   try {
     current = await api('start', {cart: cart.map(({itemId, versionIdx, mods}) => ({itemId, versionIdx, mods})), pickup, tipPct, customer: {...me, allergySeparate: allergy.separate, allergyNote: allergy.note, smsOptIn: smsOk}});
@@ -375,6 +389,9 @@ document.addEventListener('click', e => {
   if (t.id === 'fConfirm'){ confirmed = t.checked; return; }
   if (t.id === 'fSms'){ smsOk = t.checked; return; }
   if (t.id === 'fAllergy'){ allergy.separate = t.checked; $('#allergyBox').classList.toggle('hidden', !t.checked); return; }
+  if (t.dataset.minus1 !== undefined){ cart.splice(Number(t.dataset.minus1), 1); save(cartKey(), cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
+  if (t.dataset.plus1 !== undefined){ cart.push(structuredClone(cart[Number(t.dataset.plus1)])); save(cartKey(), cart); renderBar(); renderCart(); return; }
+  if (t.dataset.rmall !== undefined){ const drop = new Set(t.dataset.rmall.split(',').map(Number)); cart = cart.filter((x, i) => !drop.has(i)); save(cartKey(), cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
   if (t.dataset.rm !== undefined){ cart.splice(Number(t.dataset.rm), 1); save(cartKey(), cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
   if (t.dataset.tip !== undefined){ confirmed = $('#fConfirm') ? $('#fConfirm').checked : confirmed; tipPct = Number(t.dataset.tip); const err = $('#cErr') ? $('#cErr').textContent : ''; renderCart(err.includes('tip') ? '' : err); return; }
   if (t.id === 'checkout'){ checkout(); return; }

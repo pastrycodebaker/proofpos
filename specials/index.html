@@ -102,6 +102,9 @@ const PACKN = R.PACK;
 const linesOf = o => Object.values(o.lines || {}).filter(l => !l.removed).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
 const modText = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...(l.mods || []).filter(m => !m.def && !m.inc).map(m => (m.q > 1 ? m.q + '× ' : '') + m.o)].join(', ');
 const lineName = l => [l.version, l.name].filter(Boolean).join(' ');
+// Identical lines (same item and choices) shown once with a count: 4× Croissant.
+const groupLines = ls => { const m = new Map(); for (const l of ls){ const k = lineName(l) + '|' + modText(l) + '|' + (l.allergy ? JSON.stringify(l.allergy) : ''); const g = m.get(k); if (g) g.lines.push(l); else m.set(k, {l, lines: [l]}); } return [...m.values()]; };
+const qty = g => g.lines.length > 1 ? `<span style="font-weight:800">${g.lines.length}×</span> ` : '';
 const isSpecial = o => o.special || o.pickup?.type === 'date';
 const live = o => isSpecial(o) && o.status !== 'void' && !o.cancelled;
 
@@ -220,7 +223,7 @@ function renderPickup(){
         <div class="badges">${o.importedFrom ? '<span class="b gray">Hot Plate</span>' : ''}${o.cancelled ? '<span class="b red">Cancelled</span>' : ''}${ms ? '<span class="b red">Not picked up</span>' : ''}${p.all ? '<span class="b green">Packed</span>' : `<span class="b gray">${p.n} of ${p.of} packed</span>`}${orderBadges(o)}</div>
         ${o.allergySeparate && o.allergyNote ? `<div class="muted" style="font-weight:600">Allergy note: ${esc(o.allergyNote)}</div>` : ''}
         ${fridgeAlert(o)}
-        <ul class="items">${linesOf(o).map(l => `<li><div><b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div></li>`).join('')}</ul>
+        <ul class="items">${groupLines(linesOf(o)).map(g => `<li><div>${qty(g)}<b>${esc(lineName(g.l))}</b>${modText(g.l) ? `<div class="mods">${esc(modText(g.l))}</div>` : ''}</div></li>`).join('')}</ul>
         ${o.cancelled ? '' : `<label class="bigchk"><input type="checkbox" data-picked="${esc(o.id)}" ${o.pickedUp ? 'checked' : ''}>${o.pickedUp ? 'Picked up' + (o.pickedUpAt ? ' at ' + new Date(o.pickedUpAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '') : 'Picked up'}</label>
         ${o.importedFrom ? '<div class="muted" style="font-size:13px">Changes and refunds for this order happen in Hot Plate.</div>' : `<div class="acts"><button data-change="${esc(o.id)}">Remove an item</button><button class="danger" data-cancel="${esc(o.id)}">Cancel and refund</button></div>`}`}
       </div>`; }).join('') || '<p class="muted">No special orders for this day.</p>'}</div>`;
@@ -240,7 +243,7 @@ function renderPack(){
     <div class="grid">${mine.map(({o, ls}) => { const all = ls.every(l => o.packed?.[l.lid]);
       return `<div class="ord ${all ? 'done' : ''}"><div class="top"><div><div class="nm">${esc(o.name)}</div><div class="muted">#${esc(o.num)}</div></div><div class="tm">${esc(tl(o.pickupTime))}</div></div>
         <div class="badges">${orderBadges(o)}</div>${o.allergySeparate && o.allergyNote ? `<div style="font-weight:700">Allergy note: ${esc(o.allergyNote)}</div>` : ''}
-        <ul class="items">${ls.map(l => { const lb = labels(l); return `<li><input type="checkbox" class="chk" data-pk="${esc(o.id)}|${esc(l.lid)}" ${o.packed?.[l.lid] ? 'checked' : ''} aria-label="Packed ${esc(lineName(l))}"><div><b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div><span class="lb">${lb.sliced ? '<span class="b yellow">Sliced</span>' : ''}${lb.fridge ? '<span class="b fridgeb">Fridge</span>' : ''}</span></li>`; }).join('')}</ul></div>`; }).join('') || `<p class="muted">Nothing to pack in ${esc(PACKN[packCat].toLowerCase())} for this day.</p>`}</div>`;
+        <ul class="items">${groupLines(ls).map(g => { const l = g.l, lb = labels(l); const done = g.lines.every(x => o.packed?.[x.lid]); return `<li><input type="checkbox" class="chk" data-pk="${esc(o.id)}|${esc(g.lines.map(x => x.lid).join(','))}" ${done ? 'checked' : ''} aria-label="Packed ${esc(lineName(l))}"><div>${qty(g)}<b>${esc(lineName(l))}</b>${modText(l) ? `<div class="mods">${esc(modText(l))}</div>` : ''}</div><span class="lb">${lb.sliced ? '<span class="b yellow">Sliced</span>' : ''}${lb.fridge ? '<span class="b fridgeb">Fridge</span>' : ''}</span></li>`; }).join('')}</ul></div>`; }).join('') || `<p class="muted">Nothing to pack in ${esc(PACKN[packCat].toLowerCase())} for this day.</p>`}</div>`;
 }
 
 // ---------- Prep ----------
@@ -352,7 +355,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', async e => {
   const t = e.target;
   if (t.dataset.picked){ const id = t.dataset.picked; await store.update(id, t.checked ? {pickedUp: true, pickedUpAt: Date.now()} : {pickedUp: false, pickedUpAt: null}); return; }
-  if (t.dataset.pk){ const [id, lid] = t.dataset.pk.split('|'); await store.update(id, {[`packed.${lid}`]: t.checked}); return; }
+  if (t.dataset.pk){ const [id, lids] = t.dataset.pk.split('|'); await store.update(id, Object.fromEntries(lids.split(',').map(lid => [`packed.${lid}`, t.checked]))); return; }
   if (t.id === 'pickDay' && t.value){ day = t.value; listen(); return; }
   if (t.id === 'rFrom' || t.id === 'rTo'){ range = {kind: 'custom', from: $('#rFrom').value, to: $('#rTo').value || $('#rFrom').value}; listen(); return; }
 });

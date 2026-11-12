@@ -7,6 +7,7 @@ export class Doc {
   raw(...b){ this.parts.push(Buffer.from(b)); return this; }
   align(a){ return this.raw(ESC, 0x61, a === 'center' ? 1 : a === 'right' ? 2 : 0); }
   bold(on){ return this.raw(ESC, 0x45, on ? 1 : 0); }
+  invert(on){ return this.raw(0x1D, 0x42, on ? 1 : 0); }  // white text on black, for allergies
   size(w = 1, h = 1){ return this.raw(GS, 0x21, ((w - 1) << 4) | (h - 1)); }
   text(s){ this.parts.push(Buffer.from(clean(s) + '\n', 'latin1')); return this; }
   // Long text wraps at the paper width (halved for double-width text).
@@ -29,8 +30,9 @@ const shownMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods ||
 // Receipts list what was charged, so a priced default (the to-go cup) stays on.
 const receiptMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods || []).filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub).map(modLine)];
 const sourceName = s => ({register: 'Register', kiosk: 'Kiosk', online: 'Online', hotplate: 'Hotplate', phone: 'Phone'})[s] || 'Register';
-function groupLines(lines){ const out = []; for (const l of lines){ const k = JSON.stringify([l.name, l.version, l.mods, l.noMods, l.price]); const g = out.find(x => x.k === k); if (g) g.n++; else out.push({k, l, n: 1}); } return out; }
+function groupLines(lines){ const out = []; for (const l of lines){ const k = JSON.stringify([l.name, l.version, l.mods, l.noMods, l.price, l.allergy || null]); const g = out.find(x => x.k === k); if (g) g.n++; else out.push({k, l, n: 1}); } return out; }
 
+const allergyText = a => [...(a.tags || []), a.note].filter(Boolean).join(', ').toUpperCase();
 export function ticket(order, lines, printer){
   const d = new Doc(printer.cols || 48);
   d.align('center').size(2, 2).bold(true).text(`#${order.num ?? ''} ${order.name || ''}`.trim()).bold(false).size();
@@ -42,6 +44,7 @@ export function ticket(order, lines, printer){
     d.size(1, 2).bold(true).wrap(`${n > 1 ? n + 'x ' : ''}${[l.version, l.name].filter(Boolean).join(' ')}`).bold(false).size();
     if (l.countNote) d.wrap(l.countNote, 3);
     for (const m of shownMods(l)) d.wrap('- ' + m, 3);
+    if (l.allergy) d.invert(true).bold(true).wrap(' ALLERGY: ' + allergyText(l.allergy) + ' ', 3).bold(false).invert(false);
   }
   return d.rule().align('center').text(printer.name || '').cut().bytes();
 }
@@ -52,6 +55,7 @@ export function stickers(order, lines, printer){
     d.align('left').size(2, 2).bold(true).wrap(order.name || '#' + (order.num ?? ''), 0, 2).bold(false).size();
     d.size(1, 2).bold(true).wrap([l.version, l.name].filter(Boolean).join(' ')).bold(false).size();
     for (const m of shownMods(l)) d.wrap('- ' + m, 2);
+    if (l.allergy) d.invert(true).bold(true).wrap(' ALLERGY: ' + allergyText(l.allergy) + ' ', 2).bold(false).invert(false);
     d.text(`#${order.num ?? ''}  ${i + 1} of ${all}  ${time(order.createdAtMs)}`).cut();
   });
   return d.bytes();

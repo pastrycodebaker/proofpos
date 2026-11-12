@@ -136,6 +136,13 @@
   .sheet .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
   .sheet .pad button{font-size:22px;font-weight:700;padding:14px;min-height:56px}
   .sheet .err{color:var(--crit,#b42318)}
+  .allergybar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line,#E3D9CA)}
+  .allergybar button{border:2px solid #C0392B;color:#C0392B;background:#fff;font-weight:700;border-radius:999px;padding:6px 12px;min-height:0}
+  .allergybar.on{background:#FDECEA}
+  .allergybar.on button.on{background:#C0392B;color:#fff}
+  .allergybar input{flex:1;min-width:200px;border:2px solid #C0392B;border-radius:10px;padding:8px 10px;font:inherit}
+  .allergybar #alClear{border-color:#999;color:#666}
+  .cl .m.allergy{color:#fff;background:#C0392B;font-weight:800;border-radius:6px;padding:2px 6px;display:inline-block}
 </style>
 </head>
 <body>
@@ -308,7 +315,7 @@ function lineFrom(d){
   const rr = KDS.reroute && it.station === 'espresso' && (it.reroute === 'all' || (it.reroute === 'iced' && v.temp === 'iced'));
   return {lid: d.lid || uid(), itemId: it.id, name: d.openName || it.name, station: d.openStation || (rr ? 'none' : (it.station || 'none')), rerouted: !!rr,
     versionIdx: d.versionIdx ?? 0, version: (it.versions || []).length > 1 ? versionLabel(v) : '', mods: d.mods.map(m => { const c = {...m}; if (isInc(m)) c.inc = true; else delete c.inc; const g = groupById(m.g); if (g && g.default === m.o && !m.pre && (m.q || 1) === 1 && !m.sub) c.def = true; else delete c.def; return c; }), noMods, countNote, countHint, counts, price: r2(price),
-    taxable: !!it.taxable, done:false, doneAt:0, changed:null, changedAt:0, removed:false};
+    taxable: !!it.taxable, done:false, doneAt:0, changed:null, changedAt:0, removed:false, ...(d.allergy && (d.allergy.tags.length || d.allergy.note) ? {allergy: d.allergy} : {})};
 }
 // What a ticket or check shows: changes only. Kept included ingredients stay hidden unless changed (light, 2×, style).
 const shownMods = l => [...(l.noMods || []).map(x => ({...x, pre:'No'})), ...l.mods.filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub)];
@@ -344,14 +351,14 @@ function renderCheck(){
   $('#cTags').innerHTML = tags.join(''); $('#cTags').classList.toggle('hidden', !tags.length);
   const lines = check.lines.filter(l => !l.removed);
   // Identical lines show as one row with a count (2× House Sourdough). Each is still its own line for the kitchen.
-  const sig = l => JSON.stringify([l.itemId, l.versionIdx, l.mods, l.noMods || [], l.price, !!l.sent, l.openName || '', l.openPrice ?? '']);
+  const sig = l => JSON.stringify([l.itemId, l.versionIdx, l.mods, l.noMods || [], l.price, !!l.sent, l.openName || '', l.openPrice ?? '', l.allergy || null]);
   const groups = []; const byKey = new Map();
   for (const l of lines){ const idx = check.lines.indexOf(l); const editing = draft && draft.editIdx === idx; const k = editing || l.incomplete ? 'e' + idx : sig(l);
     if (byKey.has(k)) byKey.get(k).idxs.push(idx); else { const g = {l, idxs: [idx]}; byKey.set(k, g); groups.push(g); } }
   $('#cLines').innerHTML = lines.length ? groups.map(({l, idxs}) => {
     const idx = idxs[0], n = idxs.length, last = idxs[idxs.length - 1];
     const editing = draft && draft.editIdx === idx;
-    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.allergy ? `<span class="m allergy">ALLERGY: ${esc(allergyText(l.allergy))}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
   $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc - t.reward > 0.004 ? `<div><span>${esc(check.discount.name)}</span><span>${money(-(t.disc - t.reward))}</span></div>` : ''}${t.reward ? `<div><span>Reward (${check.reward.points} pts)</span><span>${money(-t.reward)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
@@ -369,7 +376,7 @@ $('#cLines').addEventListener('click', e => {
   const row = e.target.closest('.cl'); if (!row || row.classList.contains('sent') || view === 'pay') return;
   const i = Number(row.dataset.idx); const l = check.lines[i]; if (l.itemId === '_open' || !itemById(l.itemId)) return;
   if (draft && !finishDraft()){ renderMods(); return; }
-  draft = {itemId:l.itemId, versionIdx:l.versionIdx, mods:l.mods.map(m => ({...m})), qty:1, editIdx:i, lid:l.lid, orig: structuredClone(l), openName: l.openName, openPrice: l.openPrice, openStation: l.openStation};
+  draft = {itemId:l.itemId, versionIdx:l.versionIdx, mods:l.mods.map(m => ({...m})), allergy: l.allergy ? structuredClone(l.allergy) : null, qty:1, editIdx:i, lid:l.lid, orig: structuredClone(l), openName: l.openName, openPrice: l.openPrice, openStation: l.openStation};
   view = 'mods'; render();
 });
 
@@ -415,6 +422,15 @@ function pruneHidden(){ const it = itemById(draft.itemId); const ids = it.modifi
 function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 function groupStatus(g){ const n = draft.mods.filter(m => m.g === g.id).reduce((s, m) => s + (m.q || 1), 0); const min = minFor(itemById(draft.itemId), g); return {n, min, need: n < min}; }
 function draftReady(){ const it = itemById(draft.itemId); if ((it.versions || []).length > 1 && draft.versionIdx === null) return false; return draftGroups().every(g => !groupStatus(g).need); }
+// Allergies: a red note on the line that the KDS and kitchen ticket show loudly, instead of a modifier group.
+const ALLERGENS = ['Tree nuts', 'Peanuts', 'Gluten', 'Dairy', 'Egg', 'Sesame', 'Soy', 'Fish', 'Shellfish'];
+const allergyText = a => a ? [...(a.tags || []), a.note].filter(Boolean).join(', ') : '';
+function allergyPanel(){
+  const a = draft.allergy; const open = !!a;
+  if (!open) return `<div class="allergybar"><button id="alOpen">Allergy</button></div>`;
+  return `<div class="allergybar on"><b>Allergy</b>${ALLERGENS.map(x => `<button data-al="${esc(x)}" class="${a.tags.includes(x) ? 'on' : ''}">${esc(x)}</button>`).join('')}
+    <input id="alNote" placeholder="Other or details (e.g. severe, use clean board)" value="${esc(a.note || '')}"><button id="alClear">Remove allergy</button></div>`;
+}
 function renderMods(){
   if (draft) pruneHidden();
   const it = itemById(draft.itemId); const vers = it.versions || []; const size = (vers[draft.versionIdx ?? 0] || {}).size, temp = (vers[draft.versionIdx ?? 0] || {}).temp;
@@ -435,7 +451,7 @@ function renderMods(){
   }
   const ready = draftReady();
   $('#main').innerHTML = `<div class="modbar"><span class="title">${esc(draft.openName || it.name)}</span>${draft.isNew ? `<span class="qty"><button id="qMinus" ${draft.qty <= 1 ? 'disabled' : ''}>−</button><b>${draft.qty}</b><button id="qPlus">+</button></span>` : ''}<span class="sp"></span>${ready ? '' : `<span class="needmsg">Pick ${esc(missingText())} to finish</span>`}<button id="mCancel">${draft.isNew ? 'Remove' : 'Undo changes'}</button><button class="primary" id="mDone" ${ready ? '' : 'disabled'}>Done</button></div>
-    <div class="cols">${cols.join('') || '<p class="muted">No choices for this item.</p>'}</div>`;
+    ${allergyPanel()}<div class="cols">${cols.join('') || '<p class="muted">No choices for this item.</p>'}</div>`;
   syncDraft();
 }
 // The line goes on the check as soon as the item is tapped and updates with every mod tap.
@@ -470,6 +486,8 @@ function commitDraft(){
   else for (let i = 0; i < draft.qty; i++) check.lines.push({...lineFrom({...draft, lid: null}), openName: draft.openName, openPrice: draft.openPrice, openStation: draft.openStation});
   draft = null; view = 'menu'; search = ''; render();
 }
+
+document.addEventListener('input', e => { if (e.target.id === 'alNote' && draft && draft.allergy){ draft.allergy.note = e.target.value; syncDraft(); } });
 
 // ---------- Pay view ----------
 function quickCash(due){ const a = Math.ceil(due); const b = Math.ceil(due / 5) * 5; const c = Math.ceil(due / 10) * 10; const d = Math.ceil(due / 20) * 20; return [...new Set([a, b, c, d].filter(x => x >= due))].slice(0, 3); }
@@ -662,6 +680,9 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.more){ openMore(...t.dataset.more.split('|')); return; }
   if (t.id === 'qMinus'){ draft.qty = Math.max(1, draft.qty - 1); renderMods(); return; }
   if (t.id === 'qPlus'){ draft.qty += 1; renderMods(); return; }
+  if (t.id === 'alOpen'){ draft.allergy = {tags: [], note: ''}; renderMods(); setTimeout(() => document.getElementById('alNote')?.focus(), 50); return; }
+  if (t.id === 'alClear'){ draft.allergy = null; syncDraft(); renderMods(); return; }
+  if (t.dataset && t.dataset.al){ const a = draft.allergy; a.tags = a.tags.includes(t.dataset.al) ? a.tags.filter(x => x !== t.dataset.al) : [...a.tags, t.dataset.al]; syncDraft(); renderMods(); return; }
   if (t.id === 'mCancel'){ cancelDraft(); render(); return; }
   if (t.id === 'mDone'){ if (finishDraft()) render(); return; }
   if (t.dataset.k !== undefined){ const k = t.dataset.k; if (k === 'C') tender = ''; else if (k === 'B') tender = tender.slice(0, -1); else tender = (tender + k).replace(/^0+/, '').slice(0, 7); renderPay(); return; }
