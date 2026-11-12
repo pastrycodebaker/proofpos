@@ -28,7 +28,7 @@ const money = n => (n < 0 ? '-$' : '$') + Math.abs(Number(n) || 0).toFixed(2);
 const time = ms => new Date(ms).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'});
 const modLine = m => [m.pre && m.pre !== 'No' ? m.pre : '', (m.q || 1) > 1 ? m.q + 'x' : '', m.o, m.sub ? '(' + m.sub + ')' : ''].filter(Boolean).join(' ');
 // What the kitchen needs to see: changes only (No tomato, extras), plus the bread pick.
-const shownMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods || []).filter(m => m.inc || !m.def).map(modLine)]; // kitchen tickets list every ingredient
+const shownMods = l => (l.mods || []).filter(m => m.pre !== 'No' && (m.inc || !m.def)).map(modLine); // kitchen tickets list every ingredient
 // Receipts list what was charged, so a priced default (the to-go cup) stays on.
 const receiptMods = l => [...(l.noMods || []).map(x => 'NO ' + x.o), ...(l.mods || []).filter(m => !m.inc || m.pre || (m.q || 1) > 1 || m.sub).map(modLine)];
 const sourceName = s => ({register: 'Register', kiosk: 'Kiosk', online: 'Online', hotplate: 'Hotplate', phone: 'Phone'})[s] || 'Register';
