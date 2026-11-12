@@ -377,9 +377,9 @@ async function pay(){
   let result;
   try { result = await cardOnReader(r2(t.sub + t.tip)); }
   catch (e){ paying = false; if (e.message !== 'Canceled') renderPay(e.message); else renderPay(); return; }
-  const payment = {method:'card', label: `${result.brand ? result.brand[0].toUpperCase() + result.brand.slice(1) : 'Card'} ${result.funding || ''} ••${result.last4 || ''}`, amount: r2(t.sub + t.tip), tip: t.tip, surcharge: result.surcharge, charged: result.amount, funding: result.funding, paymentIntent: result.paymentIntent, at: now, staff: 'Kiosk'};
+  const payment = {method:'card', label: `${result.brand ? result.brand[0].toUpperCase() + result.brand.slice(1) : 'Card'} ${result.funding || ''} ••${result.last4 || ''}`, amount: r2(t.sub + t.tip), tip: t.tip, surcharge: result.surcharge, charged: result.amount, funding: result.funding, paymentIntent: result.paymentIntent, held: !!result.held, at: now, staff: 'Kiosk'};
   try {
-    const r = await store.createOrder({name: custName, staff: 'Kiosk', source: 'kiosk', rush: false, scheduled: false, cleared: false, clearedAt: 0, status: 'paid', createdAtMs: now, fireAtMs: now, lines: cart, payments: [payment], totals: {sub: t.sub, taxable: t.taxable, tax: t.tax, inTax: t.tax, tips: t.tip, tip: t.tip, surcharge: result.surcharge, total: result.amount, due: 0}, paidAt: now, taxExempt: false, discount: null});
+    const r = await store.createOrder({name: custName, staff: 'Kiosk', source: 'kiosk', rush: false, scheduled: false, cleared: false, clearedAt: 0, status: 'paid', createdAtMs: now, fireAtMs: now, lines: cart, payments: [payment], cardHold: !!result.held, totals: {sub: t.sub, taxable: t.taxable, tax: t.tax, inTax: t.tax, tips: t.tip, tip: t.tip, surcharge: result.surcharge, total: result.amount, due: 0}, paidAt: now, taxExempt: false, discount: null});
     adjustStock(cart);
     $('#sheetRoot').innerHTML = ''; $('#thanksName').textContent = `Thank you, ${custName}!`; $('#thanksNum').textContent = 'Order #' + r.num; show('thanks');
     thanksTimer = setTimeout(reset, 12000);

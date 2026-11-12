@@ -253,6 +253,8 @@ document.addEventListener('click', e => { if (e.target.id !== 'btnTheme') return
 
 import { firebaseConfig } from '../firebase-config.js';
 import { griddleParts } from '../shared/griddle.mjs';
+import { readyToCapture, captureHolds } from '../shared/holds.mjs';
+import { createPayments } from '../payments.js';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -297,6 +299,7 @@ function demoStore(){
     subscribe(cb){ subs.push(cb); cb(structuredClone(orders)); },
     async createOrder(o){ orders.push({...o, id:uid(), num:next++}); emit(); },
     async mutate(id, fn){ const o = orders.find(x => x.id === id); if (o){ fn(o); emit(); } },
+    async setFields(id, f){ const o = orders.find(x => x.id === id); if (o){ Object.assign(o, f); emit(); } },
     async printTicket(){ alert('Demo: this would print the ticket at the kitchen printer.'); },
     async getSettings(){ return structuredClone(settings); },
     async saveSettings(s){ settings = structuredClone(s); setSubs.forEach(cb => cb(structuredClone(settings))); },
@@ -353,6 +356,7 @@ async function firebaseStore(app){
       if (Object.keys(upd).length) await F.updateDoc(F.doc(orders, id), upd);
     },
     printTicket: id => F.addDoc(F.collection(db, 'printJobs'), {kind: 'ticket', orderId: id, status: 'queued', createdAt: Date.now(), staff: 'KDS Pass'}),
+    setFields: (id, f) => F.updateDoc(F.doc(orders, id), f),
     async getSettings(){ const s = await F.getDoc(F.doc(db,'settings','kds')); return s.exists() ? s.data() : {thresholds: DEFAULT_T}; },
     saveSettings: s => F.setDoc(F.doc(db,'settings','kds'), s),
   };
@@ -500,7 +504,16 @@ function tick(){
   });
 }
 let pendingRender = false;
-function onOrders(list){ ORDERS = list; if (pressing){ if (!pendingRender){ pendingRender = true; setTimeout(() => { pendingRender = false; render(); }, 200); } } else render(); }
+// Bumped or cleared orders: take the money on their held card payments (the server double-checks; a sweep catches misses).
+let PAY = null; const capturing = new Set();
+function captureReady(){
+  if (!PAY || !navigator.onLine) return;
+  for (const o of ORDERS) if (!capturing.has(o.id) && readyToCapture(o)){
+    capturing.add(o.id);
+    captureHolds(o, PAY, f => store.setFields(o.id, f)).catch(err => { console.error(err); setTimeout(() => capturing.delete(o.id), 60000); });
+  }
+}
+function onOrders(list){ ORDERS = list; captureReady(); if (pressing){ if (!pendingRender){ pendingRender = true; setTimeout(() => { pendingRender = false; render(); }, 200); } } else render(); }
 
 // ---------- Board actions ----------
 $('#stations').addEventListener('click', e => { const b = e.target.closest('button[data-view]'); if (!b) return; viewId = b.dataset.view; try { localStorage.setItem('kds-view', viewId); } catch(err){} render(); });
@@ -672,6 +685,9 @@ $('#dSend').addEventListener('click', () => {
     act(store.createOrder({name, source: $('#source').value, rush, scheduled, cleared:false, clearedAt:0, createdAtMs: Date.now(), fireAtMs: fire, lines}));
     applyStock(itemCounts([]), itemCounts(lines));
   } else {
+    // Kitchen fixes only on a paid order (bread, notes, a swap at the same price). Anything that changes the price is done at the register, so the payment changes too.
+    const sum = ls => Math.round(ls.reduce((t, l) => t + Number(l.price || 0), 0) * 100);
+    if ((editing.payments || []).length && sum(editing.lines.filter(live)) !== sum(cart)){ $('#drawerMsg').textContent = 'This changes the price of a paid order. Make this change at the register (Orders) so the payment is adjusted too.'; return; }
     applyStock(itemCounts(editing.lines), itemCounts(cart));
     const draft = cart.map(l => structuredClone(l)); const now = Date.now();
     act(store.mutate(editing.id, o => {
@@ -753,12 +769,12 @@ async function boot(){
 }
 if (DEMO){
   $('#modeLabel').textContent = 'Demo mode · nothing is saved';
-  store = demoStore(); boot();
+  store = demoStore(); PAY = createPayments({demo: true}); boot();
 } else {
   const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const app = initializeApp(firebaseConfig); const auth = A.getAuth(app);
-  store = await firebaseStore(app); let booted = false;
+  store = await firebaseStore(app); PAY = createPayments({getToken: () => auth.currentUser.getIdToken()}); let booted = false;
   A.onAuthStateChanged(auth, user => {
     if (user && !booted){ booted = true; boot().catch(err => alertBar('Could not load: ' + err.message)); }
     if (!user){ $('#loginView').classList.remove('hidden'); $('#appView').classList.add('hidden'); }

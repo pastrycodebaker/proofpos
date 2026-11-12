@@ -50,7 +50,9 @@ async function handle(action, b){
       if (!(amount >= 50)) throw new Error('Card payments must be at least $0.50.');
       const pi = b.paymentIntent
         ? await stripe('POST', `payment_intents/${b.paymentIntent}`, {amount})
-        : await stripe('POST', 'payment_intents', {amount, currency: 'usd', allowed_payment_method_types: ['card_present'], capture_method: 'automatic', description: b.description || 'Proof POS', metadata: {source: b.source || 'register', order: b.orderRef || '', base_amount: amount, surcharge_on: b.surcharge ? '1' : '0'}});
+        // Held (authorized) at the tap and captured when the order is bumped, so edits can raise or lower it first.
+        : await stripe('POST', 'payment_intents', {amount, currency: 'usd', allowed_payment_method_types: ['card_present'], capture_method: b.hold === false ? 'automatic' : 'manual',
+            payment_method_options: b.hold === false ? undefined : {card_present: {request_incremental_authorization_support: 'true'}}, description: b.description || 'Proof POS', metadata: {source: b.source || 'register', order: b.orderRef || '', base_amount: amount, surcharge_on: b.surcharge ? '1' : '0'}});
       await stripe('POST', `terminal/readers/${b.reader}/collect_payment_method`, {payment_intent: pi.id, collect_config: {skip_tipping: b.tipOnReader ? 'false' : 'true', tipping: b.tipOnReader ? {amount_eligible: amount} : undefined}});
       return {paymentIntent: pi.id};
     }
@@ -73,7 +75,7 @@ async function handle(action, b){
       if (surcharge) await stripe('POST', `payment_intents/${pi.id}`, {amount: base + surcharge, metadata: {surcharge, tip, funding: card.funding || ''}});
       else await stripe('POST', `payment_intents/${pi.id}`, {metadata: {surcharge: 0, tip, funding: card.funding || ''}});
       await stripe('POST', `terminal/readers/${b.reader}/confirm_payment_intent`, {payment_intent: pi.id});
-      return {amount: base + surcharge, base: base - tip, tip, surcharge, funding: card.funding || null, brand: card.brand || null, last4: card.last4 || null};
+      return {amount: base + surcharge, base: base - tip, tip, surcharge, funding: card.funding || null, brand: card.brand || null, last4: card.last4 || null, held: pi.capture_method === 'manual'};
     }
     case 'simulate': {
       // Test mode only: pretend a customer tapped a credit or debit card (and maybe tipped).
@@ -93,7 +95,50 @@ async function handle(action, b){
       await stripe('POST', `charges/${pi.latest_charge}`, {receipt_email: b.email});
       return {ok: true, testMode: !pi.livemode};
     }
+    case 'capture': {
+      // Take the money on a held payment. Captures the adjusted amount if edits changed it. Safe to call twice.
+      const pi = await stripe('GET', `payment_intents/${b.paymentIntent}`);
+      if (pi.status === 'succeeded') return {status: 'succeeded', amount: pi.amount_received / 100};
+      if (pi.status !== 'requires_capture') return {status: pi.status, amount: 0};
+      const target = pi.metadata?.capture_amount ? Number(pi.metadata.capture_amount) : pi.amount_capturable;
+      if (target <= 0){ await stripe('POST', `payment_intents/${pi.id}/cancel`); return {status: 'canceled', amount: 0}; }
+      const c = await stripe('POST', `payment_intents/${pi.id}/capture`, {amount_to_capture: Math.min(target, pi.amount_capturable)});
+      return {status: c.status, amount: c.amount_received / 100};
+    }
+    case 'adjust': {
+      // An edited order: the items on this card are now worth `base` cents. Keeps the tip, works the credit surcharge out again.
+      // Held: raise the hold (if the bank allows) or lower what will be captured. Already captured: refund the difference.
+      const pi = await stripe('GET', `payment_intents/${b.paymentIntent}?expand[]=latest_charge`);
+      const base = Math.max(0, Math.round(Number(b.base)));
+      const tip = Number(pi.metadata?.tip || 0), funding = pi.metadata?.funding || '';
+      const surcharge = pi.metadata?.surcharge_on === '1' ? surchargeFor(base + tip, funding) : 0;
+      const target = base + tip + surcharge;
+      if (pi.status === 'requires_capture'){
+        if (target > pi.amount){
+          try { await stripe('POST', `payment_intents/${pi.id}/increment_authorization`, {amount: target}); }
+          catch (e){ return {ok: false, held: true, reason: e.message}; }
+        }
+        await stripe('POST', `payment_intents/${pi.id}`, {metadata: {capture_amount: target, surcharge}});
+        return {ok: true, held: true, amount: target / 100, surcharge: surcharge / 100};
+      }
+      if (pi.status === 'succeeded'){
+        const net = pi.amount_received - (pi.latest_charge?.amount_refunded || 0);
+        if (target > net) return {ok: false, held: false, reason: 'already charged'};
+        if (target < net) await stripe('POST', 'refunds', {payment_intent: pi.id, amount: net - target, metadata: {staff: b.staff || '', reason: 'order edited'}});
+        return {ok: true, held: false, amount: target / 100, surcharge: surcharge / 100, refunded: (net - target) / 100};
+      }
+      throw new Error('This card payment can no longer be changed.');
+    }
     case 'refund': {
+      const held = await stripe('GET', `payment_intents/${b.paymentIntent}`);
+      if (held.status === 'requires_capture'){
+        // Not taken yet: lower (or cancel) the hold instead of refunding.
+        const cur = held.metadata?.capture_amount ? Number(held.metadata.capture_amount) : held.amount;
+        const amt = b.amount ? Math.min(cur, Math.round(b.amount)) : cur;
+        if (cur - amt <= 0) await stripe('POST', `payment_intents/${held.id}/cancel`);
+        else await stripe('POST', `payment_intents/${held.id}`, {metadata: {capture_amount: cur - amt}});
+        return {id: 'hold_' + held.id, amount: amt, status: 'released'};
+      }
       const r = await stripe('POST', 'refunds', {payment_intent: b.paymentIntent, amount: b.amount ? Math.round(b.amount) : undefined, metadata: {staff: b.staff || ''}});
       return {id: r.id, amount: r.amount, status: r.status};
     }

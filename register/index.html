@@ -27,6 +27,10 @@
   .chead .num{font-weight:700;font-size:17px}
   .chead .nm{flex:1;padding:6px 10px;border-radius:8px;background:var(--bg);color:var(--quiet);text-align:left}
   .chead .nm.set{color:var(--ink);font-weight:600}
+  #cOrders{padding:6px 12px;border-radius:8px;font-weight:600}
+  .olist{max-height:60vh;overflow:auto;margin-top:8px}
+  .olist button{display:flex;width:100%;justify-content:space-between;gap:10px;text-align:left;padding:12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px;background:var(--card, #fff)}
+  .olist small{color:var(--quiet);display:block}
   .ctags{display:flex;gap:6px;padding:6px 12px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
   .ctags span{font-size:12px;border-radius:999px;padding:3px 9px;background:var(--accent-bg);color:var(--accent);font-weight:600}
   .ctags span.warn{background:#fff3e0;color:var(--warn)}
@@ -167,7 +171,7 @@
 
 <div class="app hidden" id="app">
   <section class="check">
-    <div class="chead"><span class="num" id="cNum">New</span><button class="nm" id="cName">Add name</button><button id="cMore" aria-label="More actions">⋮</button></div>
+    <div class="chead"><span class="num" id="cNum">New</span><button class="nm" id="cName">Add name</button><button id="cOrders">Orders</button><button id="cMore" aria-label="More actions">⋮</button></div>
     <div class="ctags hidden" id="cTags"></div>
     <div class="clines" id="cLines"></div>
     <div class="ctot" id="cTot"></div>
@@ -206,7 +210,7 @@ function demoStore(){
     watchOrders(cb){ subs.orders.push(cb); cb(structuredClone(orders)); },
     async createOrder(o){ const id = uid(); orders.push({...o, id, num: next++}); emit('orders', orders); return id; },
     async addPrintJob(){},
-    async updateOrder(id, fields, newLines){ const o = orders.find(x => x.id === id); Object.assign(o, fields); if (newLines) o.lines.push(...newLines); emit('orders', orders); },
+    async updateOrder(id, fields, newLines){ const o = orders.find(x => x.id === id); for (const [k, v] of Object.entries(fields)){ if (k.startsWith('lines.')){ const i = o.lines.findIndex(l => l.lid === k.slice(6)); if (i >= 0) o.lines[i] = v; } else o[k] = v; } if (newLines) o.lines.push(...newLines); emit('orders', orders); },
     async adjustItem(id, d){ const it = menu.items.find(i => i.id === id); if (it && typeof it.stockCount === 'number'){ it.stockCount += d; if (it.stockCount <= 0 && d < 0) it.eightySixed = true; emit('menu', menu); } },
     async adjustMod(key, d){ if (typeof modStock[key] === 'number'){ modStock[key] += d; emit('stock', modStock); } },
     async setStatus(x){ status = {...status, ...x}; emit('status', status); },
@@ -348,6 +352,7 @@ function renderCheck(){
   if (check.discount) tags.push(`<span>${esc(check.discount.name)}${check.discount.staffMember ? ' · ' + esc(check.discount.staffMember) : ''}</span>`);
   if (check.customer) tags.push(`<span>Rewards ${esc(check.customer.name || '••' + check.customer.phone.slice(-4))} · ${check.customer.points} pts${check.reward ? ' · using ' + check.reward.points : ''}</span>`);
   if (check.fireAtMs) tags.push(`<span class="warn">Scheduled ${new Date(check.fireAtMs).toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'})}</span>`);
+  if (check.editing) tags.unshift(`<span class="warn">Editing paid order <button id="cancelEdit" style="margin-left:6px;padding:2px 8px">Cancel</button></span>`);
   $('#cTags').innerHTML = tags.join(''); $('#cTags').classList.toggle('hidden', !tags.length);
   const lines = check.lines.filter(l => !l.removed);
   // Identical lines show as one row with a count (2× House Sourdough). Each is still its own line for the kitchen.
@@ -358,22 +363,24 @@ function renderCheck(){
   $('#cLines').innerHTML = lines.length ? groups.map(({l, idxs}) => {
     const idx = idxs[0], n = idxs.length, last = idxs[idxs.length - 1];
     const editing = draft && draft.editIdx === idx;
-    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.allergy ? `<span class="m allergy">ALLERGY: ${esc(allergyText(l.allergy))}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.allergy ? `<span class="m allergy">ALLERGY: ${esc(allergyText(l.allergy))}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent && !check.editing ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
   $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc - t.reward > 0.004 ? `<div><span>${esc(check.discount.name)}</span><span>${money(-(t.disc - t.reward))}</span></div>` : ''}${t.reward ? `<div><span>Reward (${check.reward.points} pts)</span><span>${money(-t.reward)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
   const unsent = check.lines.some(l => !l.sent && !l.removed);
   const blocked = draft && !draftReady();
-  $('#btnStay').disabled = !unsent || !!blocked;
+  $('#btnStay').disabled = !unsent || !!blocked || !!check.editing;
   $('#btnPay').disabled = !lines.length || !!blocked || view === 'pay';
+  if (check.editing && view === 'done'){ $('#btnPay').disabled = true; $('#btnPay').textContent = 'Saved'; return; }
+  if (check.editing && view !== 'pay'){ const d = r2(t.total - check.editing.startTotal); $('#btnPay').disabled = !!blocked; $('#btnPay').textContent = `Save changes · ${d > 0.004 ? 'collect ' + money(d) : d < -0.004 ? money(-d) + ' back' : 'same price'}`; return; }
   $('#btnPay').textContent = lines.length ? `${lines.length} item${lines.length > 1 ? 's' : ''} · Pay ${money(t.paid ? t.due : t.total)}` : 'Pay';
 }
 $('#cLines').addEventListener('click', e => {
   const dup = e.target.closest('button[data-dup]');
   if (dup){ e.stopPropagation(); if (draft && !finishDraft()){ renderMods(); return; } const i = Number(dup.dataset.dup); const c = structuredClone(check.lines[i]); c.lid = uid(); c.sent = false; check.lines.splice(i + 1, 0, c); render(); return; }
   const del = e.target.closest('button[data-del]');
-  if (del){ e.stopPropagation(); const i = Number(del.dataset.del); check.lines.splice(i, 1); if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } else if (draft && i < draft.editIdx) draft.editIdx--; render(); return; }
-  const row = e.target.closest('.cl'); if (!row || row.classList.contains('sent') || view === 'pay') return;
+  if (del){ e.stopPropagation(); const i = Number(del.dataset.del); if (check.lines[i].sent){ check.lines[i].removed = true; if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } render(); return; } check.lines.splice(i, 1); if (draft && draft.editIdx === i){ draft = null; view = 'menu'; } else if (draft && i < draft.editIdx) draft.editIdx--; render(); return; }
+  const row = e.target.closest('.cl'); if (!row || (row.classList.contains('sent') && !check.editing) || view === 'pay') return;
   const i = Number(row.dataset.idx); const l = check.lines[i]; if (l.itemId === '_open' || !itemById(l.itemId)) return;
   if (draft && !finishDraft()){ renderMods(); return; }
   draft = {itemId:l.itemId, versionIdx:l.versionIdx, mods:l.mods.map(m => ({...m})), allergy: l.allergy ? structuredClone(l.allergy) : null, qty:1, editIdx:i, lid:l.lid, orig: structuredClone(l), openName: l.openName, openPrice: l.openPrice, openStation: l.openStation};
@@ -458,7 +465,7 @@ function renderMods(){
 function missingText(){ const it = itemById(draft.itemId); const out = []; if ((it.versions || []).length > 1 && draft.versionIdx === null) out.push('a size'); for (const g of draftGroups()) if (groupStatus(g).need) out.push(g.name.toLowerCase()); return out.join(', '); }
 function syncDraft(){
   const old = check.lines[draft.editIdx]; if (!old) return;
-  check.lines[draft.editIdx] = {...lineFrom(draft), lid: old.lid, openName: draft.openName, openPrice: draft.openPrice, openStation: draft.openStation, qtyPending: draft.isNew && draft.qty > 1 ? draft.qty : undefined, incomplete: !draftReady()};
+  check.lines[draft.editIdx] = {...lineFrom(draft), lid: old.lid, ...(old.sent ? {sent: true, edited: true, pos: old.pos} : {}), openName: draft.openName, openPrice: draft.openPrice, openStation: draft.openStation, qtyPending: draft.isNew && draft.qty > 1 ? draft.qty : undefined, incomplete: !draftReady()};
   renderCheck();
 }
 function finishDraft(){
@@ -482,7 +489,7 @@ function startDraft(itemId){
   view = 'mods'; render();
 }
 function commitDraft(){
-  if (draft.editIdx !== null && draft.editIdx !== undefined){ const old = check.lines[draft.editIdx]; check.lines[draft.editIdx] = {...lineFrom(draft), lid: old.lid}; }
+  if (draft.editIdx !== null && draft.editIdx !== undefined){ const old = check.lines[draft.editIdx]; check.lines[draft.editIdx] = {...lineFrom(draft), lid: old.lid, ...(old.sent ? {sent: true, edited: true, pos: old.pos} : {})}; }
   else for (let i = 0; i < draft.qty; i++) check.lines.push({...lineFrom({...draft, lid: null}), openName: draft.openName, openPrice: draft.openPrice, openStation: draft.openStation});
   draft = null; view = 'menu'; search = ''; render();
 }
@@ -505,7 +512,7 @@ function renderPay(){
 }
 function renderDone(change){
   const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
-  $('#main').innerHTML = renderTop() + `<div class="done">${change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button id="printReceipt" style="min-width:260px;min-height:50px;font-size:17px">Print receipt</button>${check.payments.some(p => p.paymentIntent) ? `<div class="row" style="min-width:260px"><input id="rcptEmail" type="email" placeholder="Email for receipt" style="flex:1"><button id="emailReceipt">Email</button></div><div id="rcptMsg" class="muted"></div>` : ''}<button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
+  $('#main').innerHTML = renderTop() + `<div class="done">${editMsg ? `<div class="big" style="font-size:30px">Changes saved</div><div style="font-size:19px;max-width:520px;text-align:center">${esc(editMsg)}</div>` : change > 0 ? `<div class="muted">Change due</div><div class="big">${money(change)}</div>` : '<div class="big">Paid</div>'}<div class="muted">${o && o.num ? 'Order #' + o.num + ' · ' : ''}${esc(check.name)} · sent to the kitchen</div><button id="printReceipt" style="min-width:260px;min-height:50px;font-size:17px">Print receipt</button>${check.payments.some(p => p.paymentIntent) ? `<div class="row" style="min-width:260px"><input id="rcptEmail" type="email" placeholder="Email for receipt" style="flex:1"><button id="emailReceipt">Email</button></div><div id="rcptMsg" class="muted"></div>` : ''}<button class="primary" id="newOrder" style="min-width:260px;min-height:60px;font-size:18px">New order</button></div>`;
 }
 
 // ---------- Render ----------
@@ -516,7 +523,83 @@ function render(){
   if (view === 'pay') renderPay();
   if (view === 'done') renderDone(lastChange);
 }
-let lastChange = 0;
+let lastChange = 0, editMsg = '';
+
+// ---------- Past orders: open, then edit or keep ringing ----------
+$('#cOrders').addEventListener('click', () => ordersSheet());
+document.addEventListener('click', e => { if (e.target.id === 'cancelEdit'){ e.stopPropagation(); check = newCheck(); draft = null; editMsg = ''; view = 'menu'; render(); } }, true);
+function ordersSheet(q = ''){
+  const list = ORDERS.filter(o => o.status !== 'void' && !o.importedFrom && !(o.special && o.source === 'online'))
+    .filter(o => !q || String(o.num).includes(q) || (o.name || '').toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0)).slice(0, 60);
+  const tot = o => o.totals ? o.totals.total : o.lines.filter(l => !l.removed).reduce((s, l) => s + l.price, 0);
+  sheet(`<h3 style="margin:0 0 8px">Today's orders</h3><input id="oSearch" placeholder="Search by name or number" value="${esc(q)}" autocomplete="off">
+    <div class="olist">${list.map(o => `<button data-open="${esc(o.id)}"><span><b>#${esc(o.num)} ${esc(o.name || 'Guest')}</b><small>${new Date(o.createdAtMs || Date.now()).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} · ${o.lines.filter(l => !l.removed).map(l => esc(l.name)).slice(0, 4).join(', ')}</small></span><span style="text-align:right"><b>${money(tot(o))}</b><small>${o.status === 'paid' ? (o.cardHold ? 'Paid · card on hold' : 'Paid') : 'Not paid'}</small></span></button>`).join('') || '<p class="muted">No orders yet today.</p>'}</div>
+    <div class="row"><button data-close>Close</button></div>`);
+  const inp = $('#oSearch'); inp.focus(); inp.setSelectionRange(q.length, q.length);
+  inp.addEventListener('input', () => ordersSheet(inp.value));
+  onSheet(e => { const b = e.target.closest('button[data-open]'); if (!b) return; const o = ORDERS.find(x => x.id === b.dataset.open); closeSheet(); if (o) loadOrder(o); });
+}
+function loadOrder(o){
+  if (check.lines.some(l => !l.sent && !l.removed) && !confirm('The current order has items not sent yet. Leave it?')) return;
+  // Kiosk card payments count the tip in the amount; the register keeps the tip apart.
+  const pays = structuredClone(o.payments || []).map(p => o.source === 'kiosk' && p.method === 'card' && p.tip && !p.tipApart ? {...p, amount: r2(p.amount - p.tip), tipApart: true} : p);
+  check = {...newCheck(), orderId: o.id, name: o.name || '', lines: o.lines.filter(l => !l.removed).map(l => ({...structuredClone(l), sent: true})), taxExempt: !!o.taxExempt, discount: o.discount || null, payments: pays,
+    reward: o.pointsUsed ? {points: o.pointsUsed, amount: (o.totals && o.totals.reward) || 0} : null};
+  if (o.status === 'paid') check.editing = {num: o.num, orig: structuredClone(o.lines), startTotal: totals().total};
+  draft = null; editMsg = ''; view = 'menu'; render();
+}
+async function saveEdit(){
+  if (draft && !finishDraft()){ renderMods(); return; }
+  const btn = $('#btnPay'); btn.disabled = true; btn.textContent = 'Saving…';
+  const now = Date.now(), id = check.orderId, who = user ? user.name : '';
+  const t = totals(), diff = r2(t.total - check.editing.startTotal);
+  try {
+    // 1. The kitchen: changed and removed items show as CHANGED / REMOVED on the KDS; new items as NEW.
+    const strip = l => { const {sent, edited, openName, openPrice, openStation, qtyPending, incomplete, ...rest} = l; return rest; };
+    const upd = {}, back = [], out = [];
+    for (const l of check.lines) if (l.sent && (l.edited || l.removed)){
+      upd['lines.' + l.lid] = {...strip(l), done: false, doneAt: 0, changed: l.removed ? 'removed' : 'modified', changedAt: now};
+      const was = check.editing.orig.find(x => x.lid === l.lid); if (was) back.push(was); if (!l.removed) out.push(l);
+      l.edited = false;
+    }
+    if (Object.keys(upd).length) await store.updateOrder(id, {...upd, cleared: false});
+    adjustStock(back, 1); adjustStock(out, -1);
+    await sendUnsent();
+    // 2. The money.
+    const parts = [];
+    if (diff > 0.004){
+      const held = check.payments.find(p => p.method === 'card' && p.held && p.paymentIntent);
+      let ok = false;
+      if (held){ const r = await PAY.adjust(held.paymentIntent, r2(held.amount + diff), who); if (r.ok){ held.amount = r2(held.amount + diff); held.surcharge = r.surcharge; held.charged = r.amount; ok = true; parts.push(`${money(diff)} added to their card. Nothing to collect.`); } }
+      if (!ok){
+        await store.updateOrder(id, {payments: check.payments, totals: totals(), editedAt: now, editedBy: who});
+        audit('edit_paid', {diff, collect: diff});
+        check.editing.startTotal = t.total; // what's left is a normal balance due
+        tender = ''; view = 'pay'; render();
+        alertSheet(held ? `The bank didn't let us add ${money(diff)} to their card. Collect ${money(diff)} now.` : `Collect ${money(diff)} now: the card was already charged.`);
+        return;
+      }
+    } else if (diff < -0.004){
+      let left = r2(-diff), cash = 0;
+      for (const p of [...check.payments].reverse()){
+        if (left <= 0.004) break; const x = r2(Math.min(left, p.amount)); if (x <= 0) continue;
+        if (p.method === 'card' && p.paymentIntent){
+          const r = await PAY.adjust(p.paymentIntent, r2(p.amount - x), who); if (!r.ok) continue;
+          p.amount = r2(p.amount - x); p.surcharge = r.surcharge; p.charged = r.amount; p.held = !!r.held;
+          parts.push(r.held ? `${money(x)} taken off their card before it's charged.` : `${money(x)} refunded to their card.`);
+        } else { p.amount = r2(p.amount - x); p.returned = r2((p.returned || 0) + x); if (p.method === 'cash') cash = r2(cash + x); else parts.push(`Give back ${money(x)} (${p.label}).`); }
+        left = r2(left - x);
+      }
+      if (cash){ parts.unshift(`Give back ${money(cash)} cash.`); openDrawer('order edit'); }
+      if (left > 0.004) parts.push(`${money(left)} still to give back: refund it from Orders and reports.`);
+    } else parts.push('Same price. The kitchen has the changes.');
+    await store.updateOrder(id, {payments: check.payments, totals: totals(), cardHold: check.payments.some(p => p.held), editedAt: now, editedBy: who});
+    audit('edit_paid', {diff, items: check.lines.filter(l => !l.removed).map(l => l.name)});
+    check.editing = {...check.editing, startTotal: totals().total, orig: structuredClone(check.lines.map(({sent, edited, ...l}) => l))};
+    editMsg = parts.join(' '); view = 'done'; lastChange = 0; render();
+  } catch (e){ alertSheet('Could not save the changes: ' + e.message); render(); }
+}
 
 // ---------- Sending to the KDS ----------
 async function sendUnsent(){
@@ -532,7 +615,8 @@ async function sendUnsent(){
   } else {
     const o = ORDERS.find(x => x.id === check.orderId); const startPos = o ? o.lines.length : check.lines.length;
     const sm = check.discount && check.discount.staffMember;
-    await store.updateOrder(check.orderId, {...base, ...(sm ? {rush: true, staffMeal: sm} : {})}, unsent.map(clean), startPos);
+    const now = Date.now();
+    await store.updateOrder(check.orderId, {...base, ...(sm ? {rush: true, staffMeal: sm} : {})}, unsent.map(l => check.editing ? {...clean(l), changed: 'added', changedAt: now} : clean(l)), startPos);
   }
   unsent.forEach(l => { l.sent = true; });
   adjustStock(unsent, -1);
@@ -559,6 +643,7 @@ function needName(then, force){
 $('#btnStay').addEventListener('click', () => { if (!finishDraft()) return; render(); } , true);
 $('#btnStay').addEventListener('click', () => needName(async () => { try { await sendUnsent(); } catch (e){ alertSheet('Could not send: ' + e.message); } render(); }));
 $('#btnPay').addEventListener('click', () => { if (!finishDraft()) return; render(); }, true);
+$('#btnPay').addEventListener('click', e => { if (check.editing && view !== 'pay'){ e.stopImmediatePropagation(); saveEdit(); } }, true);
 $('#btnPay').addEventListener('click', () => needName(() => { tender = ''; view = 'pay'; render(); }));
 $('#cName').addEventListener('click', () => needName(() => { if (check.orderId) store.updateOrder(check.orderId, {name: check.name}).catch(console.error); }, true));
 
@@ -583,7 +668,7 @@ async function takeCard(amt){
       msg = 'Sending to the card reader…'; draw();
       ctl = PAY.cardPayment({amount: amt, tipOnReader: true, surcharge: surchargeHere(), source: 'register', description: 'Register ' + (check.name || ''), onUpdate: u => { msg = u.message; sim = u.simulated; draw(); }});
       ctl.done.then(r => {
-        finish({method: 'card', label: `${r.brand ? r.brand[0].toUpperCase() + r.brand.slice(1) : 'Card'} ${r.funding || ''} ••${r.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: r2(amt), tip: r.tip, surcharge: r.surcharge, charged: r.amount, funding: r.funding, paymentIntent: r.paymentIntent, at: Date.now(), staff: user ? user.name : ''});
+        finish({method: 'card', label: `${r.brand ? r.brand[0].toUpperCase() + r.brand.slice(1) : 'Card'} ${r.funding || ''} ••${r.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: r2(amt), tip: r.tip, surcharge: r.surcharge, charged: r.amount, funding: r.funding, held: !!r.held, paymentIntent: r.paymentIntent, at: Date.now(), staff: user ? user.name : ''});
       }).catch(x => { if (x.message === 'Canceled') return; err = x.message; draw(); });
     };
     run();
@@ -610,9 +695,12 @@ async function takePayment(method){
       await sendUnsent();
       const earned = check.customer ? Math.floor(after.total) : 0, used = check.reward ? check.reward.points : 0;
       const sm = check.discount && check.discount.staffMember;
-      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now(), ...(sm ? {rush: true, staffMeal: sm} : {}),
+      await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, cardHold: check.payments.some(p => p.held), totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now(), ...(sm ? {rush: true, staffMeal: sm} : {}),
         ...(check.customer ? {customerPhone: check.customer.phone, customerName: check.customer.name || '', pointsEarned: earned, pointsUsed: used} : {})});
-      if (check.customer) store.addPoints(check.customer.phone, earned - used, check.customer.name).catch(console.error);
+      if (check.customer && !check.editing) store.addPoints(check.customer.phone, earned - used, check.customer.name).catch(console.error);
+      // Nothing for the kitchen or bar (a pastry, a bag of bagels): take the money now. Otherwise the KDS does it when the order is bumped.
+      const oid = check.orderId, ord = {payments: check.payments, lines: check.lines};
+      if (HOLDS.readyToCapture(ord)) HOLDS.captureHolds(ord, PAY, f => store.updateOrder(oid, f)).catch(console.error);
     } catch (e){ alertSheet('Saved locally, will sync: ' + e.message); }
     lastChange = change; view = 'done';
   }
@@ -694,7 +782,7 @@ $('#main').addEventListener('click', e => {
   if (t.id === 'emailReceipt'){ const p = check.payments.find(x => x.paymentIntent); const em = $('#rcptEmail').value.trim(); t.disabled = true;
     PAY.emailReceipt(p.paymentIntent, em).then(r => { $('#rcptMsg').textContent = r.testMode ? 'Saved. Test mode: Stripe does not send emails, it shows the receipt in the Dashboard.' : 'Receipt emailed.'; }).catch(err => { t.disabled = false; $('#rcptMsg').textContent = err.message; }); return; }
   if (t.id === 'printReceipt'){ t.disabled = true; t.textContent = 'Sending…'; store.addPrintJob({kind: 'receipt', orderId: check.orderId}).then(() => { t.textContent = 'Receipt sent to the printer'; }).catch(err => { console.error(err); t.disabled = false; t.textContent = 'Could not send. Try again'; }); return; }
-  if (t.id === 'newOrder'){ check = newCheck(); view = 'menu'; render(); return; }
+  if (t.id === 'newOrder'){ check = newCheck(); editMsg = ''; view = 'menu'; render(); return; }
 });
 function openMore(gid, name){
   const g = groupById(gid); const o = g.options.find(x => x.name === name); const m = draft.mods.find(x => x.g === gid && x.o === name);
@@ -718,7 +806,7 @@ $('#cMore').addEventListener('click', () => {
     <button data-a="schedule">Schedule</button>
     <button data-a="open">Open item</button>
     <button data-a="nosale">No sale</button>
-    <a href="../admin/orders.html${DEMO ? '?demo' : ''}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none">Past orders and refunds</a>
+    <button data-a="past">Past orders</button>
     <button data-a="void">Void order</button>
     <button data-a="clearDisc" ${check.discount ? '' : 'disabled'}>Remove discount</button></div>
     <div class="muted" style="margin-top:12px">Discounts</div><div class="grid2">${discounts.map((d, i) => `<button data-disc="${i}" class="${check.discount && check.discount.name === d.name ? 'on' : ''}">${esc(d.name)} · ${d.type === 'percent' ? d.value + '%' : money(d.value)}</button>`).join('')}</div>
@@ -735,6 +823,7 @@ $('#cMore').addEventListener('click', () => {
     if (a === 'exempt'){ check.taxExempt = !check.taxExempt; audit(check.taxExempt ? 'tax_exempt' : 'tax_exempt_off'); closeSheet(); render(); }
     if (a === 'rewards'){ rewardsSheet(); return; }
     if (a === 'nosale'){ noSale(); return; }
+    if (a === 'past'){ ordersSheet(); return; }
     if (a === 'void') voidOrder();
     if (a === 'schedule') scheduleSheet();
     if (a === 'open') openItemSheet();
@@ -850,6 +939,7 @@ async function boot(){
   lockNow(); render();
 }
 const {createPayments} = await import('../payments.js');
+const HOLDS = await import('../shared/holds.mjs');
 if (DEMO){ PAY = createPayments({demo: true}); store = demoStore(); boot(); }
 else {
   const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
