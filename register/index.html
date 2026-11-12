@@ -601,6 +601,7 @@ async function takePayment(method){
     let p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
     if (method === 'card'){ p = await takeCard(amt); if (!p) return; }
     if (change) p.tendered = r2(amt + change);
+    if (method === 'cash') openDrawer('cash sale');
     check.payments.push(p);
   }
   const after = totals();
@@ -733,7 +734,7 @@ $('#cMore').addEventListener('click', () => {
     if (a === 'clearDisc'){ audit('discount_removed', {name: check.discount && check.discount.name}); check.discount = null; closeSheet(); render(); }
     if (a === 'exempt'){ check.taxExempt = !check.taxExempt; audit(check.taxExempt ? 'tax_exempt' : 'tax_exempt_off'); closeSheet(); render(); }
     if (a === 'rewards'){ rewardsSheet(); return; }
-    if (a === 'nosale'){ audit('no_sale'); closeSheet(); alertSheet('Drawer opened. No sale was logged.'); }
+    if (a === 'nosale'){ noSale(); return; }
     if (a === 'void') voidOrder();
     if (a === 'schedule') scheduleSheet();
     if (a === 'open') openItemSheet();
@@ -807,6 +808,16 @@ function closeSheet(){ $('#sheetRoot').innerHTML = ''; $('#sheetRoot').onclick =
 // One extra click handler per open sheet; replaced or removed so taps never double up.
 let sheetExtra = null;
 function onSheet(fn){ if (sheetExtra) $('#sheetRoot').removeEventListener('click', sheetExtra); sheetExtra = fn; if (fn) $('#sheetRoot').addEventListener('click', fn); }
+// Cash drawer: opens through the receipt printer's drawer port (set up on the Printers page).
+const openDrawer = why => store.addPrintJob({kind: 'drawer', reason: why, staff: user ? user.name : '', printerId: localStorage.getItem('proof.drawerPrinter') || null}).catch(e => console.error('drawer', e));
+const isManager = u => !!u && (!(STAFF.members || []).length || !!(STAFF.members.find(m => m.name === u.name) || {}).manager);
+function noSale(){
+  const go = who => { openDrawer('no sale'); audit('no_sale', who && user && who !== user.name ? {approvedBy: who} : {}); closeSheet(); alertSheet('Drawer opened. No sale was logged.'); };
+  if (isManager(user)) return go(user && user.name);
+  sheet(`<h3 style="margin:0">Manager code for No sale</h3><p class="muted" style="margin:0">Opening the drawer without a sale needs a manager.</p><input id="mgrPin" type="password" inputmode="numeric" autocomplete="off" style="font-size:22px;padding:10px;width:100%"><div class="err" id="mgrErr"></div><div class="row"><button data-close>Cancel</button><button class="primary" id="mgrOk">Open drawer</button></div>`);
+  setTimeout(() => $('#mgrPin')?.focus(), 50);
+  onSheet(e => { if (e.target.id !== 'mgrOk') return; const m = (STAFF.members || []).find(x => x.manager && String(x.pin) === $('#mgrPin').value.trim()); if (!m){ $('#mgrErr').textContent = 'That isn\'t a manager code.'; return; } go(m.name); });
+}
 function alertSheet(msg){ sheet(`<p>${esc(msg)}</p><div class="row"><button class="primary" data-close>OK</button></div>`); }
 
 // ---------- Staff lock ----------

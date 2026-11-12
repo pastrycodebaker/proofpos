@@ -1,6 +1,8 @@
 // Builds ESC/POS bytes for network receipt printers (Toast TP200, Epson TM-L90 and similar).
 const ESC = 0x1b, GS = 0x1d;
 // The printers use code page 437: keep to plain characters.
+// Cash drawer kick through the printer's drawer port: ESC p <pin> <on> <off>. Pin 0 (connector pin 2) or 1 (pin 5); on/off are pulse times in 2 ms steps.
+export const drawerKick = (pin = 0, on = 0x19, off = 0xFA) => Buffer.from([ESC, 0x40, ESC, 0x70, pin & 1, on & 0xff, off & 0xff]);
 const clean = s => String(s ?? '').replace(/[×✕]/g, 'x').replace(/[–—−]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/•/g, '*').replace(/…/g, '...').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\x20-\x7e\n]/g, '');
 export class Doc {
   constructor(cols = 48){ this.cols = cols; this.parts = [Buffer.from([ESC, 0x40])]; }
@@ -9,7 +11,7 @@ export class Doc {
   bold(on){ return this.raw(ESC, 0x45, on ? 1 : 0); }
   invert(on){ return this.raw(0x1D, 0x42, on ? 1 : 0); }  // white text on black, for allergies
   size(w = 1, h = 1){ return this.raw(GS, 0x21, ((w - 1) << 4) | (h - 1)); }
-  text(s){ this.parts.push(Buffer.from(clean(s) + '\n', 'latin1')); return this; }
+  text(s){ this.parts.push(Buffer.from(clean(s) + '\r\n', 'latin1')); return this; }  // CR LF, tested on the Toast TP200
   // Long text wraps at the paper width (halved for double-width text).
   wrap(s, indent = 0, w = 1){ const width = Math.floor(this.cols / w) - indent; const words = clean(s).split(' '); let line = '';
     for (const word of words){ if ((line + ' ' + word).trim().length > width){ this.text(' '.repeat(indent) + line.trim()); line = word; } else line += ' ' + word; }

@@ -564,7 +564,7 @@ async function renderSettings(){
     <div class="bar"><button class="primary" id="saveSettings">Save settings</button><span class="status" id="setStatus"></span></div>
     <h3 id="set-register-sign-in">Register sign-in</h3>
     <p class="muted">Staff sign in on the register with their code. The register locks after the idle time below. Leave the list empty to skip sign-in.</p>
-    <label>Staff, one per line, like "Britty O: 1234"</label><textarea id="s_staff" rows="5" placeholder="Britty O: 1234">${esc((staffNow.members || []).map(m => `${m.name}: ${m.pin}`).join('\n'))}</textarea>
+    <label>Staff, one per line, like "Britty O: 1234". Add "manager" after the code for anyone who can open the drawer with No sale.</label><textarea id="s_staff" rows="5" placeholder="Britty O: 1234 manager">${esc((staffNow.members || []).map(m => `${m.name}: ${m.pin}${m.manager ? ' manager' : ''}`).join('\n'))}</textarea>
     <label>Lock after this many idle minutes</label><input id="s_sleep" type="number" min="1" step="1" value="${esc(staffNow.sleepMinutes || 5)}" style="max-width:140px">
     <div class="bar"><button class="primary" id="saveStaff">Save sign-in</button><span class="status" id="staffStatus"></span></div>
     <h3 id="set-owner-sign-ins">Owner sign-ins</h3>
@@ -708,7 +708,7 @@ document.addEventListener('click', async e => {
     }
     if (t.id === 'saveStaff'){
       const lines = $('#s_staff').value.split('\n').map(l => l.trim()).filter(Boolean);
-      const members = lines.map(l => { const i = l.lastIndexOf(':'); return i > 0 ? {name: l.slice(0, i).trim(), pin: l.slice(i + 1).trim()} : null; }).filter(m => m && m.name && /^\d{3,6}$/.test(m.pin));
+      const members = lines.map(l => { const i = l.lastIndexOf(':'); if (i <= 0) return null; const rest = l.slice(i + 1).trim(); const mg = /\bmanager\b/i.test(rest); return {name: l.slice(0, i).trim(), pin: rest.replace(/\bmanager\b/i, '').trim(), ...(mg ? {manager: true} : {})}; }).filter(m => m && m.name && /^\d{3,6}$/.test(m.pin));
       if (members.length !== lines.length){ status('#staffStatus', 'Each line needs a name, a colon, and a 3 to 6 digit code.', 'err'); return; }
       if (new Set(members.map(m => m.pin)).size !== members.length){ status('#staffStatus', 'Two people have the same code.', 'err'); return; }
       await store.saveStaff({members, sleepMinutes: Math.max(1, Number($('#s_sleep').value || 5))}); status('#staffStatus', 'Saved', 'ok');

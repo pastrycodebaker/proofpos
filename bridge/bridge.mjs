@@ -8,7 +8,7 @@ import readline from 'node:readline/promises';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, query, where, onSnapshot, updateDoc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { ticket, stickers, receipt, testPage } from './escpos.mjs';
+import { ticket, stickers, receipt, testPage, drawerKick } from './escpos.mjs';
 
 const firebaseConfig = {apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'};
 const CONFIG = new URL('./config.json', import.meta.url);
@@ -38,7 +38,8 @@ function send(printer, bytes){
     const fail = e => { sock.destroy(); reject(e); };
     sock.setTimeout(8000, () => fail(new Error(`No answer from ${printer.name} at ${printer.ip}`)));
     sock.on('error', fail);
-    sock.on('connect', () => sock.end(bytes, () => resolve()));
+    // Tested on the TP200: closing right after sending didn't print. Write, wait about 2 seconds, then close.
+    sock.on('connect', () => sock.write(bytes, () => setTimeout(() => { sock.end(); resolve(); }, 2000)));
   });
 }
 // One printer at a time, in order, so tickets never interleave.
@@ -91,6 +92,7 @@ async function handleJob(id, job){
     const pick = kind => PRINTERS.find(p => p.id === job.printerId) || PRINTERS.find(p => p.kind === kind);
     let printer, bytes;
     if (job.kind === 'test'){ printer = pick('receipts'); bytes = testPage(printer); }
+    else if (job.kind === 'drawer'){ printer = PRINTERS.find(p => p.id === job.printerId && p.drawer) || PRINTERS.find(p => p.drawer); if (!printer) throw new Error('No printer has a cash drawer set up'); bytes = drawerKick(printer.drawer.pin, printer.drawer.on, printer.drawer.off); }
     else {
       const o = await getDoc(doc(db, 'orders', job.orderId)); if (!o.exists()) throw new Error('Order not found');
       const order = {id: o.id, ...o.data()};

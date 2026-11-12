@@ -67,6 +67,7 @@ function demoStore(){
   return {
     async get(){ return structuredClone(data); }, async save(x){ data = structuredClone(x); },
     watchStatus(cb){ cb({bridgeSeenAt: Date.now() - 30000, bridgeHost: 'demo-laptop'}); },
+    async kick(p){},
     async testPrint(p){ return {id: 'demo'}; }, watchJob(id, cb){ setTimeout(() => cb({status: 'printed', printer: 'demo'}), 800); },
   };
 }
@@ -76,6 +77,7 @@ async function firebaseStore(app){
     async get(){ const s = await F.getDoc(F.doc(db, 'settings', 'printers')); return s.exists() ? s.data() : {}; },
     async save(x){ await F.setDoc(F.doc(db, 'settings', 'printers'), x); },
     watchStatus(cb){ F.onSnapshot(F.doc(db, 'menu', 'status'), s => cb(s.exists() ? s.data() : {})); },
+    async kick(p){ await F.addDoc(F.collection(db, 'printJobs'), {kind: 'drawer', printerId: p.id, status: 'queued', createdAt: Date.now(), staff: 'Printers page'}); },
     async testPrint(p){ const ref = await F.addDoc(F.collection(db, 'printJobs'), {kind: 'test', printerId: p.id, status: 'queued', createdAt: Date.now()}); return {id: ref.id}; },
     watchJob(id, cb){ const un = F.onSnapshot(F.doc(db, 'printJobs', id), s => { const d = s.data() || {}; cb(d); if (d.status === 'printed' || d.status === 'error') un(); }); },
   };
@@ -94,12 +96,16 @@ function printerCard(p, i){
   return `<div class="card" data-i="${i}"><div class="row"><div><label>Name</label><input data-f="name" value="${esc(p.name)}" placeholder="Kitchen tickets"></div><div><label>Network address (IP)</label><input data-f="ip" value="${esc(p.ip)}" placeholder="192.168.192.3"></div><div style="max-width:110px"><label>Port</label><input data-f="port" type="number" value="${esc(p.port || 9100)}"></div></div>
     <label>What it prints</label><select data-f="kind">${KINDS.map(([k, l]) => `<option value="${k}" ${p.kind === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <div class="${p.kind === 'receipts' ? 'hidden' : ''}" data-stations><label>Prints new items from these stations by itself</label><div class="checks">${STATIONS.map(([k, l]) => `<label><input type="checkbox" data-st="${k}" ${(p.stations || []).includes(k) ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
+    <div class="row"><div style="max-width:260px"><label>Cash drawer plugged into this printer</label><select data-f="drawer">${[['', 'No drawer'], ['0', 'Yes, kick pin 2 (most drawers)'], ['1', 'Yes, kick pin 5']].map(([v, l]) => `<option value="${v}" ${String(p.drawer ? p.drawer.pin : '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div style="max-width:150px"><label>Pulse on (ms)</label><input data-f="don" type="number" min="2" max="510" step="2" value="${esc(p.drawer ? p.drawer.on * 2 : 50)}"></div>
+      <div style="max-width:150px"><label>Pulse off (ms)</label><input data-f="doff" type="number" min="2" max="510" step="2" value="${esc(p.drawer ? p.drawer.off * 2 : 500)}"></div>
+      ${p.drawer ? `<div style="align-self:end;padding-bottom:6px"><button data-kick="${i}">Open drawer</button></div>` : ''}</div>
     <div class="row"><div style="max-width:200px"><label>Characters per line</label><input data-f="cols" type="number" value="${esc(p.cols || 48)}"></div><div class="muted" style="font-size:13px;padding-bottom:10px">48 fits 80 mm paper. Use 32 for narrow (58 mm) paper.</div></div>
     <div class="bar"><button data-test="${i}">Send a test print</button><span data-testmsg="${i}" class="muted"></span><span class="sp"></span><button class="danger" data-del="${i}">Remove</button></div></div>`;
 }
 function readForm(){
   printers = [...document.querySelectorAll('#list .card[data-i]')].map((el, i) => ({id: printers[i].id, name: el.querySelector('[data-f=name]').value.trim() || 'Printer', ip: el.querySelector('[data-f=ip]').value.trim(), port: Number(el.querySelector('[data-f=port]').value || 9100),
-    kind: el.querySelector('[data-f=kind]').value, stations: [...el.querySelectorAll('[data-st]')].filter(c => c.checked).map(c => c.dataset.st), cols: Number(el.querySelector('[data-f=cols]').value || 48)}));
+    kind: el.querySelector('[data-f=kind]').value, stations: [...el.querySelectorAll('[data-st]')].filter(c => c.checked).map(c => c.dataset.st), cols: Number(el.querySelector('[data-f=cols]').value || 48), drawer: (() => { const v = el.querySelector('[data-f=drawer]').value; if (v === '') return null; const ms = (f, d) => Math.max(1, Math.min(255, Math.round(Number(el.querySelector(`[data-f=${f}]`).value || d) / 2))); return {pin: Number(v), on: ms('don', 50), off: ms('doff', 500)}; })()}));
   shop = {name: $('#shopName').value.trim() || 'Flour & Salt', lines: $('#shopLines').value.split(/\s*\|\s*|\n/).map(x => x.trim()).filter(Boolean)};
 }
 function renderList(){ $('#list').innerHTML = printers.map(printerCard).join('') || '<div class="card muted">No printers yet. Add one with the address from its status slip.</div>'; }
@@ -110,6 +116,7 @@ async function save(){
 }
 $('#app').addEventListener('change', e => { if (e.target.dataset.f === 'kind'){ e.target.closest('.card').querySelector('[data-stations]').classList.toggle('hidden', e.target.value === 'receipts'); } $('#saveMsg').textContent = 'Unsaved changes'; });
 $('#app').addEventListener('click', async e => {
+  if (e.target.dataset.kick !== undefined){ if (!(await save())) return; await (store.kick ? store.kick(printers[Number(e.target.dataset.kick)]) : Promise.resolve()); e.target.textContent = 'Sent'; setTimeout(() => e.target.textContent = 'Open drawer', 2000); return; }
   const t = e.target.closest('button'); if (!t) return;
   if (t.id === 'addPrinter'){ readForm(); printers.push({id: uid(), name: '', ip: '', port: 9100, kind: 'tickets', stations: [], cols: 48}); renderList(); }
   if (t.dataset.del !== undefined){ readForm(); printers.splice(Number(t.dataset.del), 1); renderList(); $('#saveMsg').textContent = 'Unsaved changes'; }
