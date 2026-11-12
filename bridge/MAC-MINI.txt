@@ -1,0 +1,18 @@
+PROOF POS PRINT BRIDGE ON A MAC MINI
+
+One-time setup (about 10 minutes):
+1. Plug the Mac mini into the router with a network cable, and into the battery backup (UPS) with the router.
+2. System Settings:
+   - Energy: turn on "Start up automatically after a power failure"; set it to never sleep.
+   - Users & Groups: make a user just for the bridge and turn on automatic login for it.
+   - Privacy & Security: turn FileVault off on this Mac (otherwise it waits for a password after every restart).
+   - General > Software Update: download updates automatically, but install them yourself on a closed day.
+3. Install Node.js (LTS) from https://nodejs.org.
+4. Unzip proof-print-bridge.zip into the bridge user's Documents folder.
+5. Double-click install-mac.command. If macOS blocks it: right-click > Open > Open.
+   Sign in with the shop's Proof POS account when it asks.
+6. Open the Printers page on any tablet: the bridge box turns green.
+
+From then on it starts by itself when the Mac turns on and restarts within seconds if it stops.
+To update the bridge later: unzip the new version over the old folder and double-click install-mac.command again.
+Problems: the log is in the logs folder next to the bridge (logs/bridge.log).
