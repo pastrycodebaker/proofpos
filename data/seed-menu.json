@@ -1,5 +1,5 @@
 {
- "_about": "Built from Toast product mix (Sep 30–Oct 31, 2026) and modifier selections (Oct 11–Nov 7, 2026). Items marked review need a look.",
+ "_about": "Built from Toast product mix (Sep 30\u2013Oct 31, 2026) and modifier selections (Oct 11\u2013Nov 7, 2026). Items marked review need a look.",
  "settings": {
   "categories": [
    "Sandwiches",
@@ -455,7 +455,12 @@
      "pricing": "flat",
      "price": 2.5,
      "bySize": {},
-     "counts": [],
+     "counts": [
+      {
+       "name": "Egg",
+       "qty": 2
+      }
+     ],
      "subs": [],
      "hideOnline": false
     }
@@ -4512,7 +4517,12 @@
     }
    ],
    "modifierGroupIds": [],
-   "counts": [],
+   "counts": [
+    {
+     "name": "Hash brown",
+     "qty": 2
+    }
+   ],
    "reroute": "none",
    "taxable": true,
    "active": true,
@@ -4608,7 +4618,12 @@
     }
    ],
    "modifierGroupIds": [],
-   "counts": [],
+   "counts": [
+    {
+     "name": "Bacon",
+     "qty": 1
+    }
+   ],
    "reroute": "none",
    "taxable": true,
    "active": true,
@@ -4640,7 +4655,12 @@
     }
    ],
    "modifierGroupIds": [],
-   "counts": [],
+   "counts": [
+    {
+     "name": "Sausage",
+     "qty": 1
+    }
+   ],
    "reroute": "none",
    "taxable": true,
    "active": true,

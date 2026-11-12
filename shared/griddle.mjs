@@ -22,13 +22,19 @@ const NOT_TOASTED = /^not toasted$/i;
 export function griddleParts(line, item, groupById){
   const out = {bread: [], prep: [], cook: [], notes: []};
   const ir = itemRole(item);
-  if (ir === 'cook') out.cook.push({n: (line.name || '').replace(/^(two|2)\s+/i, ''), q: /^(two|2)\s/i.test(line.name || '') ? 2 : 1});
+  if (ir === 'cook'){ const cs = (item.counts || []).filter(c => c.name && Number(c.qty) > 0 && (!c.size || c.size === line.size));
+    if (cs.length) for (const c of cs) out.cook.push({n: c.name, q: Number(c.qty)}); else out.cook.push({n: line.name, q: 1}); }
   if (ir === 'bread') out.bread.push(line.name);
   for (const m of line.mods || []){
     const g = groupById(m.g); const o = g && (g.options || []).find(x => x.name === m.o);
     const r = optionRole(g, o || {name: m.o}); const q = m.q || 1;
     const label = (m.pre ? m.pre + ' ' : '') + m.o + (m.sub ? ' (' + m.sub + ')' : '');
-    if (r === 'cook') out.cook.push({n: label, q});
+    if (m.pre === 'No') continue; // taken off the sandwich: nothing to cook
+    if (r === 'cook'){
+      // Production counts say what a choice really means (Double egg = Egg 2); with none set it counts as 1 of itself.
+      const cs = (!m.pre && !m.sub && o && (o.counts || []).filter(c => c.name && Number(c.qty) > 0)) || [];
+      if (cs.length) for (const c of cs) out.cook.push({n: c.name, q: Number(c.qty) * q}); else out.cook.push({n: label, q});
+    }
     // The usual (Toasted, the group's default) goes unsaid, like on every KDS ticket.
     else if (r === 'bread'){ if (g && (g.id === 'toasting' || g.id === 'slicing' || /toast|slic/i.test(g.name))){ if (!(m.def || (!m.pre && q === 1 && !m.sub && g.default === m.o))) out.prep.push(label); } else out.bread.push(q > 1 ? q + '× ' + label : label); }
     else if (r === 'note') out.notes.push(label);

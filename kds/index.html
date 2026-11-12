@@ -405,6 +405,7 @@ function colorClass(o, v){
   return min >= t.r ? 't-crit' : min >= t.y ? 't-warn' : 't-ok';
 }
 function renderCounts(v, orders){
+  $('#counts').classList.toggle('hidden', v.shows === 'griddle'); if (v.shows === 'griddle') return; // the griddle's To cook column shows these
   const tot = {};
   for (const o of orders) for (const l of linesFor(o, v)) if (live(l) && !l.done) for (const k in l.counts || {}) tot[k] = (tot[k] || 0) + l.counts[k];
   const keys = Object.keys(tot).filter(k => tot[k] > 0).sort();
