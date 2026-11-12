@@ -449,7 +449,9 @@ function griddleHtml(orders, past){
   if (gTab === 'summary'){
     const cook = {}, bread = {}, prep = {};
     for (const {p} of rows){ for (const c of p.cook) cook[c.n] = (cook[c.n] || 0) + c.q; const how = p.prep.join(' · '); for (const b of p.bread){ const k = b + '|' + how; bread[k] = (bread[k] || 0) + 1; } }
-    const breadCol = Object.keys(bread).length ? `<div class="gcol"><h3>Bagels and bread</h3>${Object.entries(bread).sort((a, b) => a[0].localeCompare(b[0]) || b[1] - a[1]).map(([k, n]) => { const [b, how] = k.split('|'); return `<div class="grow"><b>${n}</b><span>${esc(b)}${how ? `<span class="gprep" style="display:block">${esc(how)}</span>` : ''}</span></div>`; }).join('')}</div>` : '';
+    // Breads in the order they were ordered (rush first), so toasting follows the line.
+    const bq = []; for (const {o, l, p} of rows) for (const b of p.bread) bq.push({o, b, how: p.prep.join(' · ')});
+    const breadCol = bq.length ? `<div class="gcol"><h3>Bagels and bread, in order · ${bq.length}</h3>${bq.map(x => `<div class="grow"><small style="min-width:44px;text-align:right;font-size:15px;font-weight:700;color:var(--quiet)">#${esc(x.o.num ?? '')}</small><span>${esc(x.b)}${x.how ? `<span class="gprep" style="display:block">${esc(x.how)}</span>` : ''}<small>${esc(x.o.name || '')}</small></span></div>`).join('')}</div>` : '';
     const tbl = (title, m) => Object.keys(m).length ? `<div class="gcol"><h3>${title}</h3>${Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="grow"><b>${n}</b><span>${esc(k)}</span></div>`).join('')}</div>` : '';
     const combos = {};
     for (const {o, p} of rows){ if (!p.cook.length) continue; const k = p.cook.map(c => (c.q > 1 ? c.q + ' ' : '') + c.n).sort().join(' + '); const c = combos[k] = combos[k] || {n: 0, nums: []}; c.n++; c.nums.push('#' + o.num); }
