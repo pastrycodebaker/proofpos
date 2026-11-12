@@ -260,7 +260,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const VIEWS = [
   {id:'espresso', label:'Espresso bar', shows:'espresso', layout:'grid'},
   {id:'kitchen1', label:'Expo 1', shows:'kitchen', layout:'grid', claim:true},
-  {id:'kitchen2', label:'Expo 2', shows:'kitchen', layout:'rail', claim:true},
+  {id:'kitchen2', label:'Expo 2', shows:'kitchen', layout:'grid', claim:true},
   {id:'griddle', label:'Griddle', shows:'griddle', layout:'griddle'},
   {id:'pass', label:'Pass', shows:'kitchen', layout:'grid', pass:true},
   {id:'runner', label:'Runner', shows:'all', layout:'grid'},
@@ -438,24 +438,22 @@ function ticketHtml(o, v, past){
   return `<div class="ticket ${claimCls} ${past ? 'past' : colorClass(o, v)} ${o.rush ? 'rush' : ''} ${o.staffMeal ? 'staffmeal' : ''} ${o.lines.some(l => l.allergy && !l.removed) ? 'hasallergy' : ''}" ${past ? '' : `data-oid="${o.id}"`}><div class="thead"><div><div class="name">${esc(o.name)}</div><div class="num">#${o.num ?? '…'}</div>${claimBar}</div><span class="timer">${fmt(now - fireAt(o))}</span></div>${badges ? `<div class="badges">${badges}</div>` : ''}<ul class="items">${items}</ul>${foot}</div>`;
 }
 // ---------- Griddle ----------
-let gTab = (() => { try { return localStorage.getItem('kds-griddle-tab') || 'order'; } catch(e){ return 'order'; } })();
+let gTab = (() => { try { const t = localStorage.getItem('kds-griddle-tab'); return t === 'order' ? 'order' : 'summary'; } catch(e){ return 'summary'; } })();
 const qn = (n, q) => (q > 1 ? `<b>${q}</b> ` : '') + esc(n);
 function griddleHtml(orders, past){
   const v = view(), now = Date.now();
-  const tabs = `<div class="gtabs">${[['order', 'In order'], ['totals', 'Totals'], ['together', 'Goes together']].map(([k, l]) => `<button data-act="gtab" data-t="${k}" class="${gTab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const tabs = `<div class="gtabs">${[['summary', 'Totals and together'], ['order', 'Tickets']].map(([k, l]) => `<button data-act="gtab" data-t="${k}" class="${gTab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   const rows = []; for (const o of orders) for (const l of linesFor(o, v)) if (live(l) && !l.done){ const p = partsOf(l); if (p) rows.push({o, l, p}); }
   if (!orders.length && !past.length) return tabs + `<div class="empty">Nothing for the griddle right now</div>`;
-  if (gTab === 'totals'){
+  if (gTab === 'summary'){
     const cook = {}, bread = {}, prep = {};
     for (const {p} of rows){ for (const c of p.cook) cook[c.n] = (cook[c.n] || 0) + c.q; for (const b of p.bread) bread[b] = (bread[b] || 0) + 1; for (const x of p.prep) prep[x] = (prep[x] || 0) + 1; }
     const tbl = (title, m) => Object.keys(m).length ? `<div class="gcol"><h3>${title}</h3>${Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="grow"><b>${n}</b><span>${esc(k)}</span></div>`).join('')}</div>` : '';
-    return tabs + `<div class="gtotals">${tbl('To cook', cook)}${tbl('Bagels and bread', bread)}${tbl('Toasting and slicing', prep)}</div><p class="muted" style="margin:10px 14px">Totals for the ${orders.length} open ticket${orders.length === 1 ? '' : 's'} on the griddle.</p>`;
-  }
-  if (gTab === 'together'){
     const combos = {};
     for (const {o, p} of rows){ if (!p.cook.length) continue; const k = p.cook.map(c => (c.q > 1 ? c.q + ' ' : '') + c.n).sort().join(' + '); const c = combos[k] = combos[k] || {n: 0, nums: []}; c.n++; c.nums.push('#' + o.num); }
     const list = Object.entries(combos).sort((a, b) => b[1].n - a[1].n);
-    return tabs + (list.length ? `<div class="gtotals"><div class="gcol wide"><h3>Cooked together on one sandwich</h3>${list.map(([k, c]) => `<div class="grow"><b>${c.n}</b><span>${esc(k)}<small>${esc(c.nums.join(' '))}</small></span></div>`).join('')}</div></div>` : `<div class="empty">No cooked items on open tickets</div>`);
+    const together = list.length ? `<div class="gcol"><h3>Goes together</h3>${list.map(([k, c]) => `<div class="grow"><b>${c.n}</b><span>${esc(k)}<small>${esc(c.nums.join(' '))}</small></span></div>`).join('')}</div>` : '';
+    return tabs + `<div class="gtotals">${tbl('To cook', cook)}${together}${tbl('Bagels and bread', bread)}${tbl('Not the usual toast, and slicing', prep)}</div><p class="muted" style="margin:6px 14px">For the ${orders.length} open ticket${orders.length === 1 ? '' : 's'} on the griddle. Toasted is the usual, so only changes show (Not toasted, Lightly toasted). Tap Tickets to see them one by one.</p>`;
   }
   const card = (o, isPast) => { const ls = linesFor(o, v).filter(l => live(l) && (isPast || !l.done));
     const body = ls.map(l => { const p = partsOf(l); if (!p) return '';

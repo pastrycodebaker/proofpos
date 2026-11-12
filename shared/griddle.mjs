@@ -29,7 +29,8 @@ export function griddleParts(line, item, groupById){
     const r = optionRole(g, o || {name: m.o}); const q = m.q || 1;
     const label = (m.pre ? m.pre + ' ' : '') + m.o + (m.sub ? ' (' + m.sub + ')' : '');
     if (r === 'cook') out.cook.push({n: label, q});
-    else if (r === 'bread'){ if (g && (g.id === 'toasting' || g.id === 'slicing' || /toast|slic/i.test(g.name))) out.prep.push(label); else out.bread.push(q > 1 ? q + '× ' + label : label); }
+    // The usual (Toasted, the group's default) goes unsaid, like on every KDS ticket.
+    else if (r === 'bread'){ if (g && (g.id === 'toasting' || g.id === 'slicing' || /toast|slic/i.test(g.name))){ if (!(m.def || (!m.pre && q === 1 && !m.sub && g.default === m.o))) out.prep.push(label); } else out.bread.push(q > 1 ? q + '× ' + label : label); }
     else if (r === 'note') out.notes.push(label);
   }
   // Toasting matters only on something with bread; a sandwich with no bread pick still shows its cook items.
