@@ -447,13 +447,14 @@ function griddleHtml(orders, past){
   if (!orders.length && !past.length) return tabs + `<div class="empty">Nothing for the griddle right now</div>`;
   if (gTab === 'summary'){
     const cook = {}, bread = {}, prep = {};
-    for (const {p} of rows){ for (const c of p.cook) cook[c.n] = (cook[c.n] || 0) + c.q; for (const b of p.bread) bread[b] = (bread[b] || 0) + 1; for (const x of p.prep) prep[x] = (prep[x] || 0) + 1; }
+    for (const {p} of rows){ for (const c of p.cook) cook[c.n] = (cook[c.n] || 0) + c.q; const how = p.prep.join(' · '); for (const b of p.bread){ const k = b + '|' + how; bread[k] = (bread[k] || 0) + 1; } }
+    const breadCol = Object.keys(bread).length ? `<div class="gcol"><h3>Bagels and bread</h3>${Object.entries(bread).sort((a, b) => a[0].localeCompare(b[0]) || b[1] - a[1]).map(([k, n]) => { const [b, how] = k.split('|'); return `<div class="grow"><b>${n}</b><span>${esc(b)}${how ? `<span class="gprep" style="display:block">${esc(how)}</span>` : ''}</span></div>`; }).join('')}</div>` : '';
     const tbl = (title, m) => Object.keys(m).length ? `<div class="gcol"><h3>${title}</h3>${Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="grow"><b>${n}</b><span>${esc(k)}</span></div>`).join('')}</div>` : '';
     const combos = {};
     for (const {o, p} of rows){ if (!p.cook.length) continue; const k = p.cook.map(c => (c.q > 1 ? c.q + ' ' : '') + c.n).sort().join(' + '); const c = combos[k] = combos[k] || {n: 0, nums: []}; c.n++; c.nums.push('#' + o.num); }
     const list = Object.entries(combos).sort((a, b) => b[1].n - a[1].n);
     const together = list.length ? `<div class="gcol"><h3>Goes together</h3>${list.map(([k, c]) => `<div class="grow"><b>${c.n}</b><span>${esc(k)}<small>${esc(c.nums.join(' '))}</small></span></div>`).join('')}</div>` : '';
-    return tabs + `<div class="gtotals">${tbl('To cook', cook)}${together}${tbl('Bagels and bread', bread)}${tbl('Not the usual toast, and slicing', prep)}</div><p class="muted" style="margin:6px 14px">For the ${orders.length} open ticket${orders.length === 1 ? '' : 's'} on the griddle. Toasted is the usual, so only changes show (Not toasted, Lightly toasted). Tap Tickets to see them one by one.</p>`;
+    return tabs + `<div class="gtotals">${tbl('To cook', cook)}${together}${breadCol}</div><p class="muted" style="margin:6px 14px">For the ${orders.length} open ticket${orders.length === 1 ? '' : 's'} on the griddle. Everything is toasted unless it says otherwise under the bread. Tap Tickets to see them one by one.</p>`;
   }
   const card = (o, isPast) => { const ls = linesFor(o, v).filter(l => live(l) && (isPast || !l.done));
     const body = ls.map(l => { const p = partsOf(l); if (!p) return '';
