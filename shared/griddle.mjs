@@ -33,13 +33,18 @@ export function griddleParts(line, item, groupById){
     if (r === 'cook'){
       // Production counts say what a choice really means (Double egg = Egg 2); with none set it counts as 1 of itself.
       const cs = (!m.pre && !m.sub && o && (o.counts || []).filter(c => c.name && Number(c.qty) > 0)) || [];
-      if (cs.length) for (const c of cs) out.cook.push({n: c.name, q: Number(c.qty) * q}); else out.cook.push({n: label, q});
+      // A count naming a bagel or bread ("Plain bagel 1" on a pack sandwich) goes on the bread line, not the cook list.
+      if (cs.length) for (const c of cs){ const n = Number(c.qty) * q; if (/bagel$|bread$|sourdough|brioche/i.test(c.name)) out.bread.push(n > 1 ? `${n}× ${c.name}` : c.name); else out.cook.push({n: c.name, q: n}); }
+      else out.cook.push({n: label, q});
     }
     // The usual (Toasted, the group's default) goes unsaid, like on every KDS ticket.
     else if (r === 'bread'){ if (g && (g.id === 'toasting' || g.id === 'slicing' || /toast|slic/i.test(g.name))){ if (!(m.def || (!m.pre && q === 1 && !m.sub && g.default === m.o))) out.prep.push(label); } else out.bread.push(q > 1 ? q + '× ' + label : label); }
     else if (r === 'note') out.notes.push(label);
   }
   // Toasting matters only on something with bread; a sandwich with no bread pick still shows its cook items.
+  // Same thing twice on one line (a pack with two egg sandwiches) shows once, added up.
+  const sum = {}; for (const c of out.cook) sum[c.n] = (sum[c.n] || 0) + c.q; out.cook = Object.entries(sum).map(([n, q]) => ({n, q}));
+  const bsum = {}; for (const b of out.bread){ const m = /^(\d+)× (.*)$/.exec(b); const k = m ? m[2] : b; bsum[k] = (bsum[k] || 0) + (m ? Number(m[1]) : 1); } out.bread = Object.entries(bsum).map(([k, n]) => n > 1 ? `${n}× ${k}` : k);
   if (!out.bread.length && !out.cook.length) return null;
   if (!out.bread.length) out.prep = out.prep.filter(p => !NOT_TOASTED.test(p));
   return out;

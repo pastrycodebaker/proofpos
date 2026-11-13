@@ -2001,6 +2001,86 @@
     "source": "Toast, Oct 2026",
     "note": null
    }
+  },
+  {
+   "id": "pack-sandwiches",
+   "name": "Sandwich Type",
+   "min": 10,
+   "max": 99,
+   "qtyEach": true,
+   "minKinds": 2,
+   "maxKinds": 3,
+   "griddle": "cook",
+   "showOn": {
+    "register": true,
+    "kiosk": false,
+    "asap": false,
+    "preorder": true
+   },
+   "options": [
+    {
+     "name": "Bacon, egg, and cheese",
+     "pricing": "flat",
+     "price": 6,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Egg",
+       "qty": 1
+      },
+      {
+       "name": "Bacon",
+       "qty": 1
+      },
+      {
+       "name": "Plain bagel",
+       "qty": 1
+      }
+     ],
+     "subs": [],
+     "hideOnline": false
+    },
+    {
+     "name": "Sausage, egg, and cheese",
+     "pricing": "flat",
+     "price": 6,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Egg",
+       "qty": 1
+      },
+      {
+       "name": "Sausage",
+       "qty": 1
+      },
+      {
+       "name": "Plain bagel",
+       "qty": 1
+      }
+     ],
+     "subs": [],
+     "hideOnline": false
+    },
+    {
+     "name": "Egg and cheese",
+     "pricing": "flat",
+     "price": 4,
+     "bySize": {},
+     "counts": [
+      {
+       "name": "Egg",
+       "qty": 1
+      },
+      {
+       "name": "Plain bagel",
+       "qty": 1
+      }
+     ],
+     "subs": [],
+     "hideOnline": false
+    }
+   ]
   }
  ],
  "items": [
@@ -6742,6 +6822,42 @@
     "note": "Toast showed $12.04 before tax; this is that price with tax included."
    },
    "sortOrder": 2
+  },
+  {
+   "id": "bagel-sandwich-packs",
+   "name": "Bagel Sandwich Packs",
+   "description": "Feeding a group? We've got you.\nOur Bagel Packs are designed for athletic teams, campus groups, or meetings that need a quick, crowd-pleasing meal - without slowing down our kitchen.\n\nHow it works:\nChoose 2 or 3 sandwich options (all made on the plain bagels)\nWe'll prepare the quantity you choose of each sandwich\nNo modifications (to keep it fast & consistent)\nMinimum order: 10 sandwiches",
+   "category": "Sandwiches",
+   "section": "Special orders",
+   "station": "kitchen",
+   "visible": {
+    "register": true,
+    "kiosk": false,
+    "online": true
+   },
+   "onlineWhen": "preorder",
+   "fromCafe": true,
+   "alcohol": false,
+   "eightySixed": false,
+   "versions": [
+    {
+     "temp": "",
+     "size": "",
+     "price": 0
+    }
+   ],
+   "modifierGroupIds": [
+    "pack-sandwiches"
+   ],
+   "counts": [],
+   "reroute": "none",
+   "taxable": false,
+   "active": true,
+   "archived": false,
+   "sortOrder": 99,
+   "required": {
+    "pack-sandwiches": true
+   }
   }
  ]
 }

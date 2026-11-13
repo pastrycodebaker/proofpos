@@ -489,7 +489,13 @@ async function renderGroupEditor(){
   $('#editPane').innerHTML = `
     ${g.review ? `<div class="banner"><div><b>Check this group.</b> ${esc(g.review.note || '')}</div><label style="margin:0;color:inherit;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="g_reviewed"> Reviewed</label></div>` : ''}
     <h2>${esc(g.name)}</h2>
-    <div class="row"><div><label>Name</label><input id="g_name" value="${esc(g.name)}"></div><div><label>Choices</label><select id="g_rule">${RULES.map(([v,l]) => `<option value="${v}" ${v===rule?'selected':''}>${l}</option>`).join('')}${RULES.some(([v]) => v === rule) ? '' : `<option value="${rule}" selected>Min ${g.min}, max ${g.max}</option>`}</select></div></div>
+    <div class="row"><div><label>Name</label><input id="g_name" value="${esc(g.name)}"></div><div><label>Choices</label><select id="g_rule" ${g.qtyEach ? "disabled" : ""}>${RULES.map(([v,l]) => `<option value="${v}" ${v===rule?'selected':''}>${l}</option>`).join('')}${RULES.some(([v]) => v === rule) ? '' : `<option value="${rule}" selected>Min ${g.min}, max ${g.max}</option>`}</select></div></div>
+    <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:12px;color:var(--ink)"><input type="checkbox" id="g_qty" ${g.qtyEach ? 'checked' : ''} style="width:auto"> Customers pick how many of each (− 2 +), like sandwiches for a pack</label>
+    <div id="g_qtybox" class="${g.qtyEach ? '' : 'hidden'}">
+      <div class="row"><div><label>At least, in total</label><input type="number" min="0" step="1" id="g_min" value="${esc(g.qtyEach ? g.min || '' : '')}" placeholder="No minimum"></div><div><label>At most, in total</label><input type="number" min="0" step="1" id="g_max" value="${esc(g.qtyEach && g.max && g.max < 99 ? g.max : '')}" placeholder="No limit"></div>
+        <div><label>At least this many kinds</label><input type="number" min="0" step="1" id="g_minK" value="${esc(g.minKinds || '')}" placeholder="Any"></div><div><label>At most this many kinds</label><input type="number" min="0" step="1" id="g_maxK" value="${esc(g.maxKinds || '')}" placeholder="Any"></div></div>
+      <p class="muted" style="margin:2px 0 0;font-size:13px">Customers see it as "Choose 2 or 3 kinds, at least 10 in total" with − and + buttons on each choice. Put the price of one on each choice.</p>
+    </div>
     <label>Pre-selected option (optional, must match an option name)</label><input id="g_default" value="${esc(g.default || '')}" style="max-width:320px">
     <label>Shows on</label><div class="toggles">${Object.entries(CHANNELS).map(([k, l]) => `<label class="${g.showOn?.[k] !== false ? 'on' : ''}"><input type="checkbox" data-show="${k}" ${g.showOn?.[k] !== false ? 'checked' : ''}>${l}</label>`).join('')}</div>
     <p class="muted" style="margin:2px 0 0;font-size:13px">Untick a place to leave this whole group off there. For example, a Slicing group set to Online, pre-order only.</p>
@@ -510,7 +516,6 @@ function optRow(o, sizes){
   const gNow = S.groups.find(x => x.id === groupIdNow) || {id: groupIdNow};
   const auto = optionRole(gNow, {name: o.name});
   const gsel = `<label style="display:flex;gap:5px;align-items:center;margin:0 0 0 8px;color:var(--ink);font-size:14px">Griddle <select data-o="griddle" style="width:auto;padding:4px 6px;font-size:14px"><option value="__" ${o.griddle == null ? 'selected' : ''}>Automatic: ${GRIDDLE_ROLES[auto]}</option>${Object.entries(GRIDDLE_ROLES).map(([k, l]) => `<option value="${k}" ${o.griddle === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
-  const c = (o.counts || [])[0] || {name:'', qty:''};
   const linked = !!o.stockAs;
   return `<div class="opt" data-stockas="${esc(o.stockAs || '')}">${linked ? `<div class="muted" style="font-size:13px;margin-bottom:4px">Shares stock with <b>${esc(stockLabel(o.stockAs))}</b>. Counts and 86 apply everywhere it's used.</div>` : ''}
     <div class="row"><div><label>Option</label><input data-o="name" value="${esc(o.name)}"></div>
@@ -518,7 +523,7 @@ function optRow(o, sizes){
       <div><label>Price (negative for a discount)</label><input type="number" step="0.01" data-o="price" value="${esc(o.price ?? 0)}"></div>
       <div style="flex:none;align-self:end"><button data-o="del" aria-label="Remove option">✕</button></div></div>
     <div class="bysize ${o.pricing==='bySize'?'':'hidden'}"><div class="scroll"><table class="grid"><tr>${sizes.map(s => `<th>${esc(colLabel(s))}</th>`).join('')}</tr><tr>${sizes.map(s => `<td><input type="number" step="0.01" min="0" data-bs="${esc(s)}" value="${esc(o.bySize?.[s] ?? '')}"></td>`).join('')}</tr></table></div></div>
-    <div class="row"><div><label>Adds to production count</label><input data-o="cname" list="countNames" placeholder="Pick or type, like Egg" value="${esc(c.name)}"></div><div style="max-width:100px"><label>Qty</label><input type="number" step="1" min="0" data-o="cqty" value="${esc(c.qty)}"></div>
+    <div class="row"><div><label>Adds to production count <span class="muted">(one row each: a Bacon, egg and cheese = Egg 1, Bacon 1, Plain bagel 1)</span></label><div class="ocounts">${(o.counts && o.counts.length ? o.counts : [{name: '', qty: ''}]).map(cc => `<div class="crow" style="display:flex;gap:6px;margin-bottom:4px"><input data-o="cname" list="countNames" placeholder="Pick or type, like Egg" value="${esc(cc.name)}"><input type="number" step="1" min="0" data-o="cqty" value="${esc(cc.qty)}" style="max-width:80px" aria-label="How many"></div>`).join('')}</div><button type="button" data-o="addcount" style="padding:4px 10px;font-size:13px">+ Another count</button></div>
       <div style="max-width:130px"><label>Count on hand</label><input type="number" step="1" min="0" data-o="stock" placeholder="Not tracked" value="${esc(modStockNow[o.stockAs || groupIdNow + '~' + o.name] ?? '')}"></div></div>
     <div class="row"><div><label>Styles, shown after it's picked (comma separated)</label><input data-o="subs" placeholder="Over easy, over medium, over hard" value="${esc((o.subs || []).join(', '))}"></div>
 </div>
@@ -529,14 +534,16 @@ function readGroupForm(g){
   const out = structuredClone(g);
   out.name = $('#g_name').value.trim() || g.name;
   const [mn, mx] = $('#g_rule').value.split(',').map(Number); out.min = mn; out.max = mx;
+  out.qtyEach = !!$('#g_qty')?.checked;
+  if (out.qtyEach){ const n = id => Math.max(0, Math.floor(Number($(id).value) || 0)); out.min = n('#g_min'); out.max = n('#g_max') || 99; out.minKinds = n('#g_minK') || null; out.maxKinds = n('#g_maxK') || null; }
+  else { out.minKinds = null; out.maxKinds = null; }
   out.default = $('#g_default').value.trim();
   out.showOn = Object.fromEntries([...document.querySelectorAll('[data-show]')].map(i => [i.dataset.show, i.checked]));
   if ($('#g_griddle')) out.griddle = $('#g_griddle').value;
   out.options = [...document.querySelectorAll('#opts .opt')].map(el => {
     const bySize = {}; el.querySelectorAll('[data-bs]').forEach(i => { if (i.value !== '') bySize[i.dataset.bs] = Number(i.value); });
-    const cname = el.querySelector('[data-o=cname]').value.trim();
     return {name: el.querySelector('[data-o=name]').value.trim(), pricing: el.querySelector('[data-o=pricing]').value, price: Number(el.querySelector('[data-o=price]').value || 0), bySize,
-            counts: cname ? [{name: cname, qty: Number(el.querySelector('[data-o=cqty]').value || 1)}] : [],
+            counts: [...el.querySelectorAll('.crow')].map(r => ({name: r.querySelector('[data-o=cname]').value.trim(), qty: Number(r.querySelector('[data-o=cqty]').value || 1)})).filter(c => c.name),
             subs: el.querySelector('[data-o=subs]').value.split(',').map(x => x.trim()).filter(Boolean),
             showOn: Object.fromEntries([...el.querySelectorAll('[data-oc]')].map(i => [i.dataset.oc, i.checked])),
             ...(el.querySelector('[data-o=griddle]') && el.querySelector('[data-o=griddle]').value !== '__' ? {griddle: el.querySelector('[data-o=griddle]').value} : {}),
@@ -627,6 +634,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', async e => {
   { const t = e.target;
+  if (t.id === 'g_qty'){ $('#g_qtybox').classList.toggle('hidden', !t.checked); $('#g_rule').disabled = t.checked; return; }
   if (t.dataset && t.dataset.bref !== undefined){ const n = t.closest('.boxrow').querySelector('[data-bname]'); n.style.display = t.value ? 'none' : ''; if (!t.value) n.focus(); return; }
   if (t.id === 'f_photo' && t.files[0]){
     const box = t.closest('.photorow'); $('#photoStatus').textContent = 'Uploading…';
@@ -687,6 +695,7 @@ document.addEventListener('click', async e => {
     }
     if (t.id === 'addOpt'){ $('#opts').insertAdjacentHTML('beforeend', optRow({name:'', pricing:'flat', price:0, bySize:{}, counts:[]}, priceColsNow())); }
     if (t.dataset?.o === 'del'){ t.closest('.opt').remove(); }
+    if (t.dataset?.o === 'addcount'){ const box = t.parentElement.querySelector('.ocounts'); const row = box.querySelector('.crow').cloneNode(true); row.querySelectorAll('input').forEach(i => i.value = ''); box.appendChild(row); row.querySelector('input').focus(); }
     if (t.id === 'saveGroup'){
       const g = S.groups.find(x => x.id === selId); const out = readGroupForm(g);
       for (const o of out.options){ const v = o._stock; delete o._stock; const key = stockKeyOf(out.id, o); const cur = modStockNow[key]; const n = v === '' ? null : Math.max(0, Math.floor(Number(v))); if (n !== (cur ?? null)) await store.setModStock(key, n); }

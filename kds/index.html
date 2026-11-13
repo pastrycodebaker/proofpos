@@ -390,7 +390,7 @@ function sortedMods(l){
   // Built-from items: hide kept included ingredients, show "No X" for removed ones.
   // Every ingredient shows; only the usual extras (Toasted, To go cup) stay unsaid.
   const isDef = m => m.def || (!m.pre && (m.q || 1) === 1 && !m.sub && (groupById(m.g) || {}).default === m.o);
-  const shown = l.mods.filter(m => m.pre !== 'No' && (m.inc || !isDef(m))); // the full build only: removed ingredients just don't appear // every ingredient on the sandwich shows, named or build-your-own; only the usual extras like Toasted stay unsaid
+  const shown = l.mods.filter(m => m.pre !== 'No' && (m.inc || !isDef(m))); // the full build only: removed ingredients just don't appear
   return shown.sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
 }
 // Pre-orders (special orders) only bring their cafe-made items (coffee boxes, sandwich packs) to the KDS; the rest are packed from the special orders page.

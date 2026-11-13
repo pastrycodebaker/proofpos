@@ -159,6 +159,22 @@ function countPrice(n, unit, tiersIn){
   return {price: r2(price), parts};
 }
 export const versionLabel = v => { if (!v) return ''; const t = v.temp === 'hot' ? 'Hot' : v.temp === 'iced' ? 'Iced' : ''; return [t, v.size].filter(Boolean).join(' '); };
+// Groups where customers pick how many of each (Bagel Sandwich Packs): total and how-many-kinds limits.
+export function groupRuleText(it, g){
+  if (!g.qtyEach) return '';
+  const k = g.minKinds && g.maxKinds ? (g.minKinds === g.maxKinds ? `Choose ${g.minKinds} kinds` : `Choose ${g.minKinds} or ${g.maxKinds} kinds`) : g.maxKinds ? `Choose up to ${g.maxKinds} kinds` : g.minKinds ? `Choose at least ${g.minKinds} kinds` : '';
+  const min = minFor(it, g), max = g.max && g.max < 99 ? g.max : 0;
+  const n = min && max ? `${min} to ${max} in total` : min ? `at least ${min} in total` : max ? `up to ${max} in total` : '';
+  return [k, n].filter(Boolean).join(', ');
+}
+export function groupProblem(it, g, mods){
+  if (!g.qtyEach) return '';
+  const mine = mods.filter(m => m.g === g.id), n = mine.reduce((s, m) => s + (m.q || 1), 0), kinds = mine.length, min = minFor(it, g);
+  if (g.maxKinds && kinds > g.maxKinds) return `Choose up to ${g.maxKinds} kinds for ${it.name}.`;
+  if (g.minKinds && kinds < g.minKinds) return `Choose at least ${g.minKinds} kinds for ${it.name}.`;
+  if (min && n < min) return `Pick at least ${min} for ${it.name} (${n} so far).`;
+  return '';
+}
 export function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 // Where a modifier group shows: register, kiosk, asap (online today) and preorder (online for a future day). Unset means everywhere.
 export const CHANNELS = {register: 'Register', kiosk: 'Kiosk', asap: 'Online, today', preorder: 'Online, pre-order'};
@@ -180,7 +196,8 @@ export function buildLine(menu, d, kds = {}, channel = null){
   const v = vers[vi]; const groups = (it.modifierGroupIds || []).map(id => menu.groups.find(g => g.id === id)).filter(Boolean);
   const mods = (d.mods || []).filter(m => groups.some(g => g.id === m.g && groupShown(it, g.id, d.mods)));
   for (const m of mods){ const g = groups.find(x => x.id === m.g); const o = g.options.find(x => x.name === m.o); if (!o || !optOn(o, channel)) throw new Error(`${m.o} isn't available for ${it.name}.`); m.q = Math.max(1, Math.min(99, Math.floor(Number(m.q || 1)))); }
-  for (const g of groups){ if (!groupShown(it, g.id, mods)) continue; const n = mods.filter(m => m.g === g.id).reduce((s, m) => s + m.q, 0); if (n < minFor(it, g)) throw new Error(`Pick ${g.name.toLowerCase()} for ${it.name}.`); const cp = it.countPricing && it.countPricing.group === g.id; if (!cp && g.max && n > g.max) throw new Error(`Too many ${g.name.toLowerCase()} for ${it.name}.`); }
+  for (const g of groups){ if (!groupShown(it, g.id, mods)) continue; const n = mods.filter(m => m.g === g.id).reduce((s, m) => s + m.q, 0); const msg = groupProblem(it, g, mods); if (msg) throw new Error(msg);
+    if (n < minFor(it, g)) throw new Error(`Pick ${g.name.toLowerCase()} for ${it.name}.`); const cp = it.countPricing && it.countPricing.group === g.id; if (!cp && g.max && n > g.max) throw new Error(`Too many ${g.name.toLowerCase()} for ${it.name}.`); }
   let price = Number(v.price || 0); const counts = {};
   for (const c of it.counts || []) if (!c.size || c.size === v.size) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0);
   for (const m of mods){ const g = groups.find(x => x.id === m.g); const o = g.options.find(x => x.name === m.o); price += optPrice(o, v.size, v.temp) * m.q; for (const c of o.counts || []) counts[c.name] = (counts[c.name] || 0) + Number(c.qty || 0) * m.q; }
@@ -278,6 +295,11 @@ export function bagelFlavorOf(key, groups = []){
 export function lineBagels(line, item, menu = {}){
   const out = {}; const add = (f, n) => { if (f && n > 0) out[f] = (out[f] || 0) + n; };
   for (const c of (line.contents || boxContents(item, menu))) add(bagelFlavorOf(c.stock, menu.groups), c.qty);
-  for (const m of line.mods || []) add(bagelFlavorOf(m.g + '~' + m.o, menu.groups), m.q || 1);
+  for (const m of line.mods || []){
+    add(bagelFlavorOf(m.g + '~' + m.o, menu.groups), m.q || 1);
+    // A choice whose production counts name a bagel ("Plain bagel 1"), like a sandwich in a pack.
+    const o = ((menu.groups || []).find(g => g.id === m.g)?.options || []).find(x => x.name === m.o);
+    for (const c of (o && o.counts) || []){ const f = /^(.*) bagel$/i.exec(c.name || ''); if (f) add(f[1][0].toUpperCase() + f[1].slice(1), Number(c.qty || 0) * (m.q || 1)); }
+  }
   return out;
 }

@@ -60,7 +60,8 @@
   .opts button small{color:var(--quiet);font-size:13px}
   .opts button:disabled{opacity:.45;text-decoration:line-through}
   .step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:12px;padding:4px 4px 4px 12px;border:2px solid transparent}
-  .step.on{border-color:var(--accent);background:var(--accent-bg)} .step span{min-width:110px;font-weight:600}
+  .step.on{border-color:var(--accent);background:var(--accent-bg)} .step span{min-width:110px;font-weight:600;flex:1}
+  .grp .step{width:100%}
   .step button{background:var(--soft);padding:8px 14px;font-weight:700} .step b{min-width:22px;text-align:center}
   .ln{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 0;border-bottom:1px solid var(--line)}
   .ln .m{grid-column:1/-1;font-size:14px;color:var(--quiet)} .ln .bad{grid-column:1/-1;font-size:14px;color:var(--crit);font-weight:700}
@@ -273,7 +274,8 @@ function openItem(id){
   renderItem();
 }
 const gCount = gid => draft.mods.filter(m => m.g === gid).reduce((s, m) => s + (m.q || 1), 0);
-function tryLine(){ try { return BL(structuredClone(draft), M.kds); } catch (e){ return null; } }
+let lineErr = '';
+function tryLine(){ try { lineErr = ''; return BL(structuredClone(draft), M.kds); } catch (e){ lineErr = e.message; return null; } }
 function renderItem(){
   const it = itemById(draft.itemId); const vers = it.versions || []; const v = vers[draft.versionIdx ?? 0] || {};
   // Drop picks from groups that are now hidden (e.g. bagel flavor after switching away from Bagel)
@@ -282,16 +284,16 @@ function renderItem(){
   if (vers.length > 1) parts.push(`<div class="grp"><h4>Size <span class="tag ${draft.versionIdx === null ? 'need' : ''}">Required</span></h4><div class="opts">${vers.map((x, i) => `<button class="${draft.versionIdx === i ? 'on' : ''}" data-ver="${i}">${esc(R.versionLabel(x) || 'Regular')} <small>${money(x.price)}</small></button>`).join('')}</div></div>`);
   for (const g of ids.map(groupById).filter(Boolean)){
     if (!R.groupShown(it, g.id, draft.mods)) continue;
-    const min = R.minFor(it, g), n = gCount(g.id); const counted = it.countPricing && it.countPricing.group === g.id;
+    const min = R.minFor(it, g), n = gCount(g.id); const counted = (it.countPricing && it.countPricing.group === g.id) || g.qtyEach; const rule = R.groupRuleText(it, g);
     const opts = g.options.filter(o => R.optOn(o, chan()));
-    const head = `<h4>${esc(g.name)} ${min ? `<span class="tag ${n < min ? 'need' : ''}">Required</span>` : '<span class="tag">Optional</span>'}${counted ? ` <span class="tag">${n} picked</span>` : ''}</h4>`;
-    const body = counted ? opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? m.q : 0; return `<div class="step ${q ? 'on' : ''}"><span>${esc(o.name)}</span><button data-minus="${esc(g.id)}|${esc(o.name)}" aria-label="One less ${esc(o.name)}" ${q ? '' : 'disabled'}>−</button><b>${q}</b><button data-plus="${esc(g.id)}|${esc(o.name)}" aria-label="One more ${esc(o.name)}">+</button></div>`; }).join('')
+    const head = `<h4>${esc(g.name)} ${min ? `<span class="tag ${n < min ? 'need' : ''}">Required</span>` : '<span class="tag">Optional</span>'}${counted ? ` <span class="tag">${n} picked</span>` : ''}</h4>${rule ? `<div class="muted" style="margin:-4px 0 8px;font-size:14px">${esc(rule)}</div>` : ''}`;
+    const body = counted ? opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? m.q : 0; return `<div class="step ${q ? 'on' : ''}"><span>${esc(o.name)}${g.qtyEach && R.optPrice(o, v.size, v.temp) ? ` <small class="muted">${money(R.optPrice(o, v.size, v.temp))} each</small>` : ''}</span><button data-minus="${esc(g.id)}|${esc(o.name)}" aria-label="One less ${esc(o.name)}" ${q ? '' : 'disabled'}>−</button><b>${q}</b><button data-plus="${esc(g.id)}|${esc(o.name)}" aria-label="One more ${esc(o.name)}" ${!q && g.maxKinds && draft.mods.filter(x => x.g === g.id).length >= g.maxKinds ? 'disabled' : ''}>+</button></div>`; }).join('')
       : opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = R.optPrice(o, v.size, v.temp); const inc = (it.included || []).some(x => x.g === g.id && x.o === o.name); return `<button class="${m ? 'on' : ''}" data-opt="${esc(g.id)}|${esc(o.name)}">${esc(inc && !m ? 'No ' + o.name : o.name)}${inc ? (m ? ' <small>Included</small>' : '') : p ? ` <small>${p > 0 ? '+' : '−'}${money(Math.abs(p))}</small>` : ''}</button>`; }).join('');
     parts.push(`<div class="grp">${head}<div class="opts">${body}</div></div>`);
   }
   const l = tryLine();
-  $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="${esc(it.name)}">${it.image ? `<img class="hero" src="${esc(it.image)}" alt="">` : ''}<div class="hd"><div><h2>${esc(it.name)}</h2>${it.description ? `<div class="muted">${esc(it.description)}</div>` : ''}</div><button class="x" data-close="1" aria-label="Close">✕</button></div>
-    <div class="bd">${parts.join('')}</div><div class="ft"><span class="muted">${l && l.countNote ? esc(l.countNote) : ''}</span><span class="sp"></span><button class="primary" id="addBtn" ${l ? '' : 'disabled'}>${l ? 'Add · ' + money(l.price) : 'Make your choices'}</button></div></div></div>`;
+  $('#sheetRoot').innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog" aria-label="${esc(it.name)}">${it.image ? `<img class="hero" src="${esc(it.image)}" alt="">` : ''}<div class="hd"><div><h2>${esc(it.name)}</h2>${it.description ? `<div class="muted" style="white-space:pre-line">${esc(it.description)}</div>` : ''}</div><button class="x" data-close="1" aria-label="Close">✕</button></div>
+    <div class="bd">${parts.join('')}</div><div class="ft"><span class="muted">${l && l.countNote ? esc(l.countNote) : !l && /at least|up to|kinds/.test(lineErr) ? esc(lineErr.replace(/ for .*?(\.| \()/, '$1').replace(/\($/, '')) : ''}</span><span class="sp"></span><button class="primary" id="addBtn" ${l ? '' : 'disabled'}>${l ? 'Add · ' + money(l.price) : 'Make your choices'}</button></div></div></div>`;
 }
 function addDraft(){ const l = BL(structuredClone(draft), M.kds); cart.push({...structuredClone(draft), price: l.price, name: l.name, version: l.version, label: lineLabel(l)}); save(cartKey(), cart); draft = null; $('#sheetRoot').innerHTML = ''; renderBar(); }
 const lineLabel = l => [...(l.noMods || []).map(x => 'No ' + x.o), ...l.mods.filter(m => !m.inc && !m.def).map(m => (m.q > 1 ? m.q + '× ' : '') + m.o)].join(' · ');
