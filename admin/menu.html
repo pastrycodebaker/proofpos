@@ -232,7 +232,7 @@ async function firestoreStore(app){
 
 // ---------- State ----------
 let S = {settings:{}, items:[], groups:[]};
-let tab = 'items', selId = null, search = '', filter = 'all';
+let tab = 'items', selId = null, search = '', filter = 'all', groupFilter = '';
 // Columns for "by size and temp" modifier prices, e.g. "hot 16 oz", "iced 20 oz" (Settings → Drink price columns).
 const priceColsNow = () => S.settings.priceCols && S.settings.priceCols.length ? S.settings.priceCols : (S.settings.sizes || []);
 const colLabel = c => String(c).replace(/^(hot|iced) /, m => m[0].toUpperCase() + m.slice(1));
@@ -270,11 +270,17 @@ function renderItemList(){
   let list = S.items.filter(i => (!q || i.name.toLowerCase().includes(q)) && (filter === 'archived' ? i.archived : !i.archived));
   if (filter === 'review') list = list.filter(i => i.review);
   if (filter === '86') list = list.filter(i => i.eightySixed);
+  // Narrow to one menu group (category) or to the items that use one modifier group.
+  const base = list;
+  if (groupFilter.startsWith('c:')) list = list.filter(i => (i.category || 'Other') === groupFilter.slice(2));
+  if (groupFilter.startsWith('g:')) list = list.filter(i => (i.modifierGroupIds || []).includes(groupFilter.slice(2)));
   const cats = [...new Set(list.map(i => i.category || 'Other'))].sort((a,b) => (S.settings.categories || []).indexOf(a) - (S.settings.categories || []).indexOf(b));
   const nRev = S.items.filter(i => i.review && !i.archived).length;
   $('#listPane').innerHTML = `<div class="listhead">
       <div class="row"><input id="search" placeholder="Search items" value="${esc(search)}"><button class="primary" id="newItem" style="flex:none">New item</button></div>
-      <div class="row"><select id="filter"><option value="all">All items (${S.items.filter(i => !i.archived).length})</option><option value="review" ${filter==='review'?'selected':''}>Needs review (${nRev})</option><option value="86" ${filter==='86'?'selected':''}>86'd</option><option value="archived" ${filter==='archived'?'selected':''}>Archived (${S.items.filter(i => i.archived).length})</option></select></div>
+      <div class="row"><select id="filter"><option value="all">All items (${S.items.filter(i => !i.archived).length})</option><option value="review" ${filter==='review'?'selected':''}>Needs review (${nRev})</option><option value="86" ${filter==='86'?'selected':''}>86'd</option><option value="archived" ${filter==='archived'?'selected':''}>Archived (${S.items.filter(i => i.archived).length})</option></select>
+        <select id="groupFilter" aria-label="Menu group">${(() => { const allCats = [...new Set(base.map(i => i.category || 'Other'))].sort((a, b) => ((S.settings.categories || []).indexOf(a) + 1 || 999) - ((S.settings.categories || []).indexOf(b) + 1 || 999));
+          return `<option value="">All menu groups</option><optgroup label="Menu groups">${allCats.map(c => `<option value="c:${esc(c)}" ${groupFilter === 'c:' + c ? 'selected' : ''}>${esc(c)} (${base.filter(i => (i.category || 'Other') === c).length})</option>`).join('')}</optgroup><optgroup label="Items using a modifier group">${S.groups.filter(g => !g.archived).sort((a, b) => a.name.localeCompare(b.name)).map(g => `<option value="g:${esc(g.id)}" ${groupFilter === 'g:' + g.id ? 'selected' : ''}>${esc(g.name)} (${base.filter(i => (i.modifierGroupIds || []).includes(g.id)).length})</option>`).join('')}</optgroup>`; })()}</select></div>
     </div>` +
     (S.items.length ? '' : `<div style="padding:16px" class="muted">No items yet. Load the starter menu from Settings.</div>`) +
     cats.map(c => `<div class="cat">${esc(c)}</div>` + list.filter(i => (i.category || 'Other') === c).map(i =>
@@ -655,6 +661,7 @@ document.addEventListener('change', async e => {
   }
   const t = e.target;
   if (t.id === 'filter'){ filter = t.value; renderItemList(); }
+  if (t.id === 'groupFilter'){ groupFilter = t.value; renderItemList(); }
   if (t.name === 'pmode'){ $('#singleBox').classList.toggle('hidden', t.value !== 'single'); $('#sizesBox').classList.toggle('hidden', t.value !== 'sizes'); }
   if (t.type === 'checkbox' || t.type === 'radio'){ const l = t.closest('.toggles label'); if (l){ if (t.type === 'radio') l.parentElement.querySelectorAll('label').forEach(x => x.classList.remove('on')); l.classList.toggle('on', t.checked); } }
   if (t.dataset?.o === 'pricing') t.closest('.opt').querySelector('.bysize').classList.toggle('hidden', t.value !== 'bySize');
