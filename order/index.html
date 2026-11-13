@@ -282,11 +282,11 @@ function renderItem(){
   const ids = it.modifierGroupIds || []; draft.mods = draft.mods.filter(m => !ids.includes(m.g) || R.groupShown(it, m.g, draft.mods));
   const parts = [];
   if (vers.length > 1) parts.push(`<div class="grp"><h4>Size <span class="tag ${draft.versionIdx === null ? 'need' : ''}">Required</span></h4><div class="opts">${vers.map((x, i) => `<button class="${draft.versionIdx === i ? 'on' : ''}" data-ver="${i}">${esc(R.versionLabel(x) || 'Regular')} <small>${money(x.price)}</small></button>`).join('')}</div></div>`);
-  for (const g of ids.map(groupById).filter(Boolean)){
+  for (const g of ids.map(id => R.ruleGroup(it, groupById(id), chan())).filter(Boolean)){
     if (!R.groupShown(it, g.id, draft.mods)) continue;
     const min = R.minFor(it, g), n = gCount(g.id); const counted = (it.countPricing && it.countPricing.group === g.id) || g.qtyEach; const rule = R.groupRuleText(it, g);
     const opts = g.options.filter(o => R.optOn(o, chan()));
-    const head = `<h4>${esc(g.name)} ${min ? `<span class="tag ${n < min ? 'need' : ''}">Required</span>` : '<span class="tag">Optional</span>'}${counted ? ` <span class="tag">${n} picked</span>` : ''}</h4>${rule ? `<div class="muted" style="margin:-4px 0 8px;font-size:14px">${esc(rule)}</div>` : ''}`;
+    const head = `<h4>${esc(g.name)} ${min ? `<span class="tag ${n < min ? 'need' : ''}">Required</span>` : '<span class="tag">Optional</span>'}${counted ? ` <span class="tag">${n} picked${g._ruled && g.max && g.max < 99 ? ' of ' + g.max : ''}</span>` : ''}</h4>${rule ? `<div class="muted" style="margin:-4px 0 8px;font-size:14px">${esc(rule)}</div>` : ''}`;
     const body = counted ? opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? m.q : 0; return `<div class="step ${q ? 'on' : ''}"><span>${esc(o.name)}${g.qtyEach && R.optPrice(o, v.size, v.temp) ? ` <small class="muted">${money(R.optPrice(o, v.size, v.temp))} each</small>` : ''}</span><button data-minus="${esc(g.id)}|${esc(o.name)}" aria-label="One less ${esc(o.name)}" ${q ? '' : 'disabled'}>−</button><b>${q}</b><button data-plus="${esc(g.id)}|${esc(o.name)}" aria-label="One more ${esc(o.name)}" ${!q && g.maxKinds && draft.mods.filter(x => x.g === g.id).length >= g.maxKinds ? 'disabled' : ''}>+</button></div>`; }).join('')
       : opts.map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = R.optPrice(o, v.size, v.temp); const inc = (it.included || []).some(x => x.g === g.id && x.o === o.name); return `<button class="${m ? 'on' : ''}" data-opt="${esc(g.id)}|${esc(o.name)}">${esc(inc && !m ? 'No ' + o.name : o.name)}${inc ? (m ? ' <small>Included</small>' : '') : p ? ` <small>${p > 0 ? '+' : '−'}${money(Math.abs(p))}</small>` : ''}</button>`; }).join('');
     parts.push(`<div class="grp">${head}<div class="opts">${body}</div></div>`);
@@ -382,10 +382,10 @@ document.addEventListener('click', e => {
   if (t.dataset.item){ openItem(t.dataset.item); return; }
   if (t.id === 'addBtn'){ addDraft(); return; }
   if (t.dataset.ver !== undefined){ draft.versionIdx = Number(t.dataset.ver); renderItem(); return; }
-  if (t.dataset.opt){ const [gid, name] = t.dataset.opt.split('|'); const g = groupById(gid); const cur = draft.mods.find(m => m.g === gid && m.o === name);
+  if (t.dataset.opt){ const [gid, name] = t.dataset.opt.split('|'); const g = R.ruleGroup(itemById(draft.itemId), groupById(gid), chan()); const cur = draft.mods.find(m => m.g === gid && m.o === name);
     if (cur) draft.mods = draft.mods.filter(m => m !== cur); else { if (g.max === 1) draft.mods = draft.mods.filter(m => m.g !== gid); if (gCount(gid) < (g.max || 99)) draft.mods.push({g: gid, o: name, q: 1}); }
     renderItem(); return; }
-  if (t.dataset.plus){ const [gid, name] = t.dataset.plus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur) cur.q++; else draft.mods.push({g: gid, o: name, q: 1}); renderItem(); return; }
+  if (t.dataset.plus){ const [gid, name] = t.dataset.plus.split('|'); const g = R.ruleGroup(itemById(draft.itemId), groupById(gid), chan()); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (g.max && g.max < 99 && gCount(gid) >= g.max) return; if (cur) cur.q++; else draft.mods.push({g: gid, o: name, q: 1}); renderItem(); return; }
   if (t.dataset.minus){ const [gid, name] = t.dataset.minus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur){ cur.q--; if (cur.q <= 0) draft.mods = draft.mods.filter(m => m !== cur); } renderItem(); return; }
   if (t.id === 'cartBtn'){ tipPct = null; confirmed = false; renderCart(); return; }
   if (t.id === 'fConfirm'){ confirmed = t.checked; return; }

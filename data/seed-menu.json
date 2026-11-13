@@ -5613,6 +5613,14 @@
    "sortOrder": 2,
    "required": {
     "bagel-flavors": true
+   },
+   "groupRules": {
+    "bagel-flavors": {
+     "min": 6,
+     "max": 6,
+     "qtyEach": true,
+     "notRegister": true
+    }
    }
   },
   {
@@ -5652,6 +5660,14 @@
    "sortOrder": 3,
    "required": {
     "bagel-flavors": true
+   },
+   "groupRules": {
+    "bagel-flavors": {
+     "min": 12,
+     "max": 12,
+     "qtyEach": true,
+     "notRegister": true
+    }
    }
   },
   {
@@ -5691,6 +5707,14 @@
    "sortOrder": 4,
    "required": {
     "bagel-flavors": true
+   },
+   "groupRules": {
+    "bagel-flavors": {
+     "min": 1,
+     "max": 1,
+     "qtyEach": true,
+     "notRegister": true
+    }
    }
   },
   {

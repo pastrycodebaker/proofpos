@@ -167,7 +167,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onChannel, optOn } from '../shared/online.mjs';
+import { onChannel, optOn, ruleGroup } from '../shared/online.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -241,9 +241,9 @@ const daysText = i => [3,4,5,6,0,1,2].filter(d => i.days.includes(d)).map(d => D
 const soldOut = i => i.eightySixed || (typeof i.stockCount === 'number' && i.stockCount <= 0);
 const modOut = (g, o) => typeof MODSTOCK[modKey(g, o)] === 'number' && MODSTOCK[modKey(g, o)] <= 0;
 function whyNot(i){ if (soldOut(i)) return 'Sold out'; if (offToday(i)) return daysText(i) + ' only'; if (drinksPaused() && madeDrink(i)) return 'Paused for a few minutes'; return ''; }
-function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
+function minFor(it, g){ if (g && g._ruled) return g.min || 0; const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 const groupShown = (it, gid, mods) => { const w = (it.showWhen || {})[gid]; return !w || mods.some(m => m.g === w.g && m.o === w.o); };
-const itemGroups = it => (it.modifierGroupIds || []).filter(id => !draft || draft.itemId !== it.id || groupShown(it, id, draft.mods)).map(groupById).filter(Boolean);
+const itemGroups = it => (it.modifierGroupIds || []).filter(id => !draft || draft.itemId !== it.id || groupShown(it, id, draft.mods)).map(id => ruleGroup(it, groupById(id), 'kiosk')).filter(Boolean);
 function pruneHidden(){ const it = itemById(draft.itemId); const ids = it.modifierGroupIds || []; let changed = true;
   while (changed){ const n = draft.mods.length; draft.mods = draft.mods.filter(m => !ids.includes(m.g) || groupShown(it, m.g, draft.mods)); changed = draft.mods.length !== n; } }
 const visibleOpts = g => g.options.filter(o => optOn(o, 'kiosk'));
@@ -324,8 +324,8 @@ function renderItem(){
   const parts = [];
   if (vers.length > 1) parts.push(`<div class="grp"><h4>Size <span class="req ${draft.versionIdx === null ? 'need' : ''}">Required</span></h4><div class="opts">${vers.map((v, i) => `<button class="${draft.versionIdx === i ? 'on' : ''}" data-ver="${i}">${esc(versionLabel(v) || 'Regular')} <small>${money(Number(v.price || 0))}</small></button>`).join('')}</div></div>`);
   for (const g of itemGroups(it)){
-    const min = minFor(it, g), n = groupCount(g.id); const counted = it.countPricing && it.countPricing.group === g.id;
-    const head = `<h4>${esc(g.name)}${min ? ` <span class="req ${n < min ? 'need' : ''}">Required</span>` : ' <span class="req">Optional</span>'}${counted ? ` <span class="req">${n} picked</span>` : ''}</h4>`;
+    const min = minFor(it, g), n = groupCount(g.id); const counted = (it.countPricing && it.countPricing.group === g.id) || g.qtyEach;
+    const head = `<h4>${esc(g.name)}${min ? ` <span class="req ${n < min ? 'need' : ''}">Required</span>` : ' <span class="req">Optional</span>'}${counted ? ` <span class="req">${n} picked${g.max && g.max < 99 ? ' of ' + (g.min === g.max ? g.max : g.max + ' max') : ''}</span>` : ''}</h4>`;
     const opts = visibleOpts(g).map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const p = optPrice(o, size, temp); const out = modOut(g.id, o.name);
       return `<button class="${m ? 'on' : ''}" data-opt="${esc(g.id)}|${esc(o.name)}" ${out && !m ? 'disabled' : ''}>${esc(o.name)}${p ? ` <small>${p > 0 ? '+' : ''}${money(p)}</small>` : ''}${out ? ' <small>Sold out</small>' : ''}</button>`; }).join('');
     const steps = counted ? visibleOpts(g).map(o => { const m = draft.mods.find(x => x.g === g.id && x.o === o.name); const q = m ? (m.q || 1) : 0; const out = modOut(g.id, o.name);
@@ -342,11 +342,11 @@ $('#sheetRoot').addEventListener('click', e => {
   if (t.id === 'itemCancel' || t.id === 'payCancel'){ draft = null; $('#sheetRoot').innerHTML = ''; return; }
   if (t.id === 'itemAdd'){ if (!ready()) return; cart.push(lineFrom(draft)); draft = null; $('#sheetRoot').innerHTML = ''; renderShop(); return; }
   if (t.dataset.ver !== undefined){ draft.versionIdx = Number(t.dataset.ver); renderItem(); return; }
-  if (t.dataset.opt){ const [gid, name] = t.dataset.opt.split('|'); const g = groupById(gid); const cur = draft.mods.find(m => m.g === gid && m.o === name);
+  if (t.dataset.opt){ const [gid, name] = t.dataset.opt.split('|'); const g = ruleGroup(itemById(draft.itemId), groupById(gid), 'kiosk'); const cur = draft.mods.find(m => m.g === gid && m.o === name);
     if (cur) draft.mods = draft.mods.filter(m => m !== cur);
     else { if (g.max === 1) draft.mods = draft.mods.filter(m => m.g !== gid); if (groupCount(gid) < (g.max || 99)) draft.mods.push({g: gid, o: name, q: 1}); }
     renderItem(); return; }
-  if (t.dataset.plus){ const [gid, name] = t.dataset.plus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur) cur.q = (cur.q || 1) + 1; else draft.mods.push({g: gid, o: name, q: 1}); renderItem(); return; }
+  if (t.dataset.plus){ const [gid, name] = t.dataset.plus.split('|'); const it = itemById(draft.itemId); const g = ruleGroup(it, groupById(gid), 'kiosk'); if (g.max && g.max < 99 && groupCount(gid) >= g.max) return; const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur) cur.q = (cur.q || 1) + 1; else draft.mods.push({g: gid, o: name, q: 1}); renderItem(); return; }
   if (t.dataset.minus){ const [gid, name] = t.dataset.minus.split('|'); const cur = draft.mods.find(m => m.g === gid && m.o === name); if (cur){ cur.q = (cur.q || 1) - 1; if (cur.q <= 0) draft.mods = draft.mods.filter(m => m !== cur); } renderItem(); return; }
   if (t.dataset.tip !== undefined){ tipPct = t.dataset.tip === '' ? 0 : Number(t.dataset.tip); renderPay(); return; }
   if (t.id === 'payBtn') pay();

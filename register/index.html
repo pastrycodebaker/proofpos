@@ -183,7 +183,7 @@
 
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { onChannel, optOn, groupProblem, groupRuleText } from '../shared/online.mjs';
+import { onChannel, optOn, groupProblem, groupRuleText, ruleGroup } from '../shared/online.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -422,11 +422,11 @@ function renderMenu(){
 // ---------- Modifier view ----------
 // A group can show only after a choice in another group (item.showWhen[groupId] = {g, o}), like Bagel flavors after Bagel.
 const groupShown = (it, gid, mods) => { const w = (it.showWhen || {})[gid]; return !w || mods.some(m => m.g === w.g && m.o === w.o && m.pre !== 'No'); };
-function draftGroups(){ const it = itemById(draft.itemId); return (it.modifierGroupIds || []).filter(id => groupShown(it, id, draft.mods)).map(groupById).filter(Boolean); }
+function draftGroups(){ const it = itemById(draft.itemId); return (it.modifierGroupIds || []).filter(id => groupShown(it, id, draft.mods)).map(id => ruleGroup(it, groupById(id), 'register')).filter(Boolean); }
 function pruneHidden(){ const it = itemById(draft.itemId); const ids = it.modifierGroupIds || []; let changed = true;
   while (changed){ const before = draft.mods.length; draft.mods = draft.mods.filter(m => !ids.includes(m.g) || groupShown(it, m.g, draft.mods)); changed = draft.mods.length !== before; } }
 // "Required on this item" (item.required[groupId]) overrides the group's own rule.
-function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
+function minFor(it, g){ if (g && g._ruled) return g.min || 0; const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 function groupStatus(g){ const n = draft.mods.filter(m => m.g === g.id).reduce((s, m) => s + (m.q || 1), 0); const it = itemById(draft.itemId); const min = minFor(it, g); return {n, min, need: n < min || !!groupProblem(it, g, draft.mods)}; }
 function draftReady(){ const it = itemById(draft.itemId); if ((it.versions || []).length > 1 && draft.versionIdx === null) return false; return draftGroups().every(g => !groupStatus(g).need); }
 // Allergies: a red note on the line that the KDS and kitchen ticket show loudly, instead of a modifier group.
@@ -755,7 +755,7 @@ $('#main').addEventListener('click', e => {
   if (t.dataset.item){ startDraft(t.dataset.item); return; }
   if (t.dataset.ver !== undefined){ draft.versionIdx = Number(t.dataset.ver); renderMods(); return; }
   if (t.dataset.mod){
-    const [gid, name] = t.dataset.mod.split('|'); const g = groupById(gid); const cur = draft.mods.find(m => m.g === gid && m.o === name);
+    const [gid, name] = t.dataset.mod.split('|'); const g = ruleGroup(itemById(draft.itemId), groupById(gid), 'register'); const cur = draft.mods.find(m => m.g === gid && m.o === name);
     const incl = (itemById(draft.itemId).included || []).some(x => x.g === gid && x.o === name);
     if (incl && cur && (cur.q || 1) === 1){ draft.mods = draft.mods.filter(m => m !== cur); }
     else if (incl && !cur){ draft.mods.push({g:gid, o:name, q:1, inc:true}); }

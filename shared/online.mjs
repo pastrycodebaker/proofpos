@@ -164,8 +164,9 @@ export function groupRuleText(it, g){
   if (!g.qtyEach) return '';
   const k = g.minKinds && g.maxKinds ? (g.minKinds === g.maxKinds ? `Choose ${g.minKinds} kinds` : `Choose ${g.minKinds} or ${g.maxKinds} kinds`) : g.maxKinds ? `Choose up to ${g.maxKinds} kinds` : g.minKinds ? `Choose at least ${g.minKinds} kinds` : '';
   const min = minFor(it, g), max = g.max && g.max < 99 ? g.max : 0;
-  const n = min && max ? `${min} to ${max} in total` : min ? `at least ${min} in total` : max ? `up to ${max} in total` : '';
-  return [k, n].filter(Boolean).join(', ');
+  const n = min && max && min === max ? `pick ${min} in total` : min && max ? `${min} to ${max} in total` : min ? `at least ${min} in total` : max ? `up to ${max} in total` : '';
+  const t = [k, n].filter(Boolean).join(', ');
+  return t ? t[0].toUpperCase() + t.slice(1) : '';
 }
 export function groupProblem(it, g, mods){
   if (!g.qtyEach) return '';
@@ -175,7 +176,13 @@ export function groupProblem(it, g, mods){
   if (min && n < min) return `Pick at least ${min} for ${it.name} (${n} so far).`;
   return '';
 }
-export function minFor(it, g){ const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
+// One group, different rules per item: item.groupRules[gid] = {min, max, notRegister}. "notRegister": the register keeps the group's own rule.
+export function ruleGroup(it, g, channel){
+  const r = it && g && (it.groupRules || {})[g.id];
+  if (!r || (r.notRegister && channel === 'register')) return g;
+  return {...g, min: r.min ?? g.min ?? 0, max: r.max || g.max || 99, qtyEach: r.qtyEach ?? g.qtyEach, _ruled: true};
+}
+export function minFor(it, g){ if (g && g._ruled) return g.min || 0; const r = (it.required || {})[g.id]; return r === undefined ? (g.min || 0) : r ? Math.max(1, g.min || 1) : 0; }
 // Where a modifier group shows: register, kiosk, asap (online today) and preorder (online for a future day). Unset means everywhere.
 export const CHANNELS = {register: 'Register', kiosk: 'Kiosk', asap: 'Online, today', preorder: 'Online, pre-order'};
 // A single choice can also be limited to some places. Older choices used hideOnline (register only).
@@ -193,7 +200,7 @@ export function buildLine(menu, d, kds = {}, channel = null){
   const it = onChannel(menu.items.find(i => i.id === d.itemId), id => menu.groups.find(g => g.id === id), channel); if (!it) throw new Error('An item in your cart is no longer on the menu.');
   const vers = it.versions || []; const vi = vers.length > 1 ? d.versionIdx : 0;
   if (vi === null || vi === undefined || !vers[vi]) throw new Error(`Pick a size for ${it.name}.`);
-  const v = vers[vi]; const groups = (it.modifierGroupIds || []).map(id => menu.groups.find(g => g.id === id)).filter(Boolean);
+  const v = vers[vi]; const groups = (it.modifierGroupIds || []).map(id => ruleGroup(it, menu.groups.find(g => g.id === id), channel || 'online')).filter(Boolean);
   const mods = (d.mods || []).filter(m => groups.some(g => g.id === m.g && groupShown(it, g.id, d.mods)));
   for (const m of mods){ const g = groups.find(x => x.id === m.g); const o = g.options.find(x => x.name === m.o); if (!o || !optOn(o, channel)) throw new Error(`${m.o} isn't available for ${it.name}.`); m.q = Math.max(1, Math.min(99, Math.floor(Number(m.q || 1)))); }
   for (const g of groups){ if (!groupShown(it, g.id, mods)) continue; const n = mods.filter(m => m.g === g.id).reduce((s, m) => s + m.q, 0); const msg = groupProblem(it, g, mods); if (msg) throw new Error(msg);
