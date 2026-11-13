@@ -254,7 +254,7 @@ function renderMenu(top){
     ${special.length ? `<h2 class="cat">Specials for ${esc(R.dayLabel(later.date))}</h2><div class="grid">${special.sort(order).map(tile).join('')}</div>` : ''}
     <div class="cats">${cats.map(c => `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <h2 class="cat">${esc(cat)}</h2><div class="grid">${items.filter(i => (i.category || 'Other') === cat).sort((a, b) => (avail(b).ok - avail(a).ok) || order(a, b)).map(tile).join('')}</div>
-    <footer class="foot">Prices include sales tax · 37 Lebanon Street, Hamilton, NY</footer>`;
+    <footer class="foot"><a href="/texts/?list=weekly" style="color:var(--accent);font-weight:600">Get a text reminder before each Monday deadline</a><br>Prices include sales tax · 37 Lebanon Street, Hamilton, NY</footer>`;
   renderBar();
 }
 function renderBar(){

@@ -22,8 +22,10 @@ export async function sendText(to, body){
   const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {method: 'POST',
     headers: {authorization: 'Basic ' + Buffer.from(sid + ':' + process.env.TWILIO_AUTH_TOKEN).toString('base64'), 'content-type': 'application/x-www-form-urlencoded'},
     body: new URLSearchParams({To: '+1' + n, From: process.env.TWILIO_FROM, Body: body})});
-  if (!r.ok) console.error('text failed', r.status, await r.text().catch(() => ''));
-  return {ok: r.ok};
+  if (r.ok) return {ok: true};
+  const err = await r.json().catch(() => ({}));
+  console.error('text failed', r.status, err.code, err.message);
+  return {ok: false, code: err.code, message: err.message}; // 21610 = they replied STOP
 }
 
 const lineText = l => [l.version, l.name].filter(Boolean).join(' ') + (() => { const m = [...(l.noMods || []).map(x => 'No ' + x.o), ...(l.mods || []).filter(x => !x.def && !x.inc).map(x => (x.q > 1 ? x.q + '× ' : '') + x.o)]; return m.length ? ' (' + m.join(', ') + ')' : ''; })();
