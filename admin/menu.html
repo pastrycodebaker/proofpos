@@ -286,6 +286,13 @@ function renderItemList(){
     cats.map(c => `<div class="cat">${esc(c)}</div>` + list.filter(i => (i.category || 'Other') === c).map(i =>
       `<div class="li ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}"><div><div class="n">${esc(i.name)}</div><div class="s">${esc(priceSummary(i))} · ${esc(STATIONS[i.station] || '')}</div></div><div class="chips">${i.eightySixed ? '<span class="pill p-86">86</span>' : ''}${i.review ? '<span class="pill p-rev">Review</span>' : ''}</div></div>`).join('')).join('');
 }
+// Where an item shows, as the item page's "Shows on" switches: register, kiosk, online today (asap), online pre-order.
+function shownOn(it){ const w = onlineWhen(it), on = it.visible?.online !== false && !it.alcohol; return {register: it.visible?.register !== false, kiosk: it.visible?.kiosk !== false && !it.alcohol, asap: on && w !== 'preorder', preorder: on && w !== 'asap'}; }
+function setShownOn(it, k, val){
+  const v = {...shownOn(it), [k]: val};
+  it.visible = {...(it.visible || {}), register: v.register, kiosk: v.kiosk, online: v.asap || v.preorder};
+  if (v.asap || v.preorder){ it.onlineWhen = v.asap && v.preorder ? 'both' : v.asap ? 'asap' : 'preorder'; it.preorderOnly = !v.asap && v.preorder; }
+}
 function versionMode(it){ return (it.versions || []).some(v => v.size || v.temp) ? 'sizes' : 'single'; }
 let pendingImage, pendingFor = null;   // photo picked but not saved yet (null = removed)
 function photoBox(it){
@@ -896,7 +903,7 @@ function massBar(){
 function itemsTable(){
   const cols = sizeCols(); const rows = visibleRows();
   const allSel = rows.length && rows.every(r => selRows.has(r.id));
-  return `<table class="sheet"><thead><tr><th><input type="checkbox" id="selAll" ${allSel ? 'checked' : ''} aria-label="Select all shown"></th><th>Item</th><th>Category</th><th>Station</th><th>Price</th>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th>Register</th><th>Kiosk</th><th>Online</th><th>Taxed</th><th>86</th><th>In season</th><th>Days</th><th></th></tr></thead><tbody>
+  return `<table class="sheet"><thead><tr><th><input type="checkbox" id="selAll" ${allSel ? 'checked' : ''} aria-label="Select all shown"></th><th>Item</th><th>Category</th><th>Station</th><th>Price</th>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th>Register</th><th>Kiosk</th><th>Online today</th><th>Online pre-order</th><th>Taxed</th><th>86</th><th>In season</th><th>Days</th><th></th></tr></thead><tbody>
   ${rows.map(it => {
     const sized = hasSizes(it); const single = !sized ? (it.versions?.[0]?.price ?? '') : '';
     const cls = [!origItem(it.id) ? 'newrow' : draftItems.has(it.id) ? 'chg' : '', selRows.has(it.id) ? 'sel' : ''].join(' ');
@@ -906,7 +913,7 @@ function itemsTable(){
       <td><select data-sf="station">${Object.entries(STATIONS).map(([k, v]) => `<option value="${k}" ${it.station === k ? 'selected' : ''}>${v.split(' (')[0]}</option>`).join('')}</select></td>
       <td><input type="number" step="0.01" min="0" data-sf="price" ${sized ? 'disabled placeholder="sizes →"' : ''} value="${single !== '' && single !== null && single !== undefined ? Number(single).toFixed(2) : ''}"></td>
       ${cols.map(c => { const v = (it.versions || []).find(x => x.temp === c.t && x.size === c.s); return `<td><input type="number" step="0.01" min="0" data-sf="v" data-t="${c.t}" data-s="${esc(c.s)}" value="${v && v.price !== null && v.price !== undefined ? Number(v.price).toFixed(2) : ''}"></td>`; }).join('')}
-      ${['register', 'kiosk', 'online'].map(k => `<td style="text-align:center"><input type="checkbox" data-sf="vis" data-k="${k}" ${it.visible?.[k] !== false ? 'checked' : ''}></td>`).join('')}
+      ${(() => { const v = shownOn(it); return ['register', 'kiosk', 'asap', 'preorder'].map(k => `<td style="text-align:center"><input type="checkbox" data-sf="vis" data-k="${k}" ${v[k] ? 'checked' : ''}></td>`).join(''); })()}
       <td style="text-align:center"><input type="checkbox" data-sf="taxable" ${it.taxable ? 'checked' : ''}></td>
       <td style="text-align:center"><input type="checkbox" data-sf="e86" ${it.eightySixed ? 'checked' : ''}></td>
       <td style="text-align:center"><input type="checkbox" data-sf="active" ${it.active !== false ? 'checked' : ''}></td>
@@ -939,7 +946,7 @@ function onSheetEdit(e){
       if (f === 'station') it.station = el.value;
       if (f === 'price') setPrice(it, '', '', el.value);
       if (f === 'v') setPrice(it, el.dataset.t, el.dataset.s, el.value);
-      if (f === 'vis'){ it.visible = {...(it.visible || {}), [el.dataset.k]: el.checked}; }
+      if (f === 'vis') setShownOn(it, el.dataset.k, el.checked);
       if (f === 'taxable') it.taxable = el.checked;
       if (f === 'e86') it.eightySixed = el.checked;
       if (f === 'active') it.active = el.checked;
@@ -1156,13 +1163,13 @@ $('#layoutPane').addEventListener('click', async e => {
 function csvCell(v){ const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function exportCsv(){
   const cols = sizeCols();
-  const head = ['id', 'name', 'category', 'station', 'price', ...cols.map(c => c.label), 'register', 'kiosk', 'online', 'taxed'];
+  const head = ['id', 'name', 'category', 'station', 'price', ...cols.map(c => c.label), 'register', 'kiosk', 'online today', 'online pre-order', 'taxed'];
   const lines = [head.map(csvCell).join(',')];
   for (const it of visibleRows()){
     const sized = hasSizes(it);
     lines.push([it.id, it.name, it.category, it.station, sized ? '' : (it.versions?.[0]?.price ?? ''),
       ...cols.map(c => { const v = (it.versions || []).find(x => x.temp === c.t && x.size === c.s); return v && v.price !== null ? v.price : ''; }),
-      ...['register', 'kiosk', 'online'].map(k => it.visible?.[k] === false ? 'no' : 'yes'), it.taxable ? 'yes' : 'no'].map(csvCell).join(','));
+      ...(v => ['register', 'kiosk', 'asap', 'preorder'].map(k => v[k] ? 'yes' : 'no'))(shownOn(it)), it.taxable ? 'yes' : 'no'].map(csvCell).join(','));
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'})); a.download = 'proofpos-menu.csv'; document.body.appendChild(a); a.click(); a.remove();
   sheetMsg('Downloaded proofpos-menu.csv. Fill it in, then Upload CSV.', 'ok');
@@ -1199,6 +1206,7 @@ async function importCsv(file){
       for (const sh of sizeHeads){ const v = (r[sh.i] ?? '').trim().replace('$', ''); if (v !== '') setPrice(x, sh.t, sh.s, v); }
       const p = get('price'); if (p !== undefined && p !== '' && !hasSizes(x)) setPrice(x, '', '', p.replace('$', ''));
       for (const k of ['register', 'kiosk', 'online']){ const v = get(k); if (v !== undefined && v !== '') x.visible = {...(x.visible || {}), [k]: yes(v)}; }
+      for (const [col, k] of [['online today', 'asap'], ['online pre-order', 'preorder']]){ const v = get(col); if (v !== undefined && v !== '') setShownOn(x, k, yes(v)); }
       const tx = get('taxed'); if (tx !== undefined && tx !== '') x.taxable = yes(tx);
     });
     if (!isNewRow){
