@@ -30,7 +30,7 @@ async function queueWeekly(now){
   await setDoc(sref, {lastWeekly: today}, {merge: true});
   if (!(preorderDays(menu, now).open || []).length) return; // closed for the week: no reminder
   const body = s.weeklyText.replace('{deadline}', deadlineText(menu, today));
-  await addDoc(collection(db, 'textBlasts'), {list: 'weekly', body, status: 'queued', sendAt: now, createdAt: now, kind: 'weekly', sent: 0, failed: 0, by: 'automatic'});
+  await addDoc(collection(db, 'textBlasts'), {channel: 'text', list: 'weekly', body, status: 'queued', sendAt: now, createdAt: now, kind: 'weekly', sent: 0, failed: 0, by: 'automatic'});
 }
 
 async function sendDue(now){
@@ -39,13 +39,14 @@ async function sendDue(now){
   for (const d of due){
     if (budget <= 0) break;
     const bl = d.data(); const text = finalText(bl.body);
-    const subs = (await getDocs(query(collection(db, 'textSubs'), where('active', '==', true), where(`lists.${bl.list}`, '==', true)))).docs.map(x => x.data()).sort((a, b) => a.phone.localeCompare(b.phone));
+    if ((bl.channel || 'text') !== 'text') continue; // email newsletters go through Resend (separate)
+    const subs = (await getDocs(query(collection(db, 'customers'), where(`subs.${bl.list}_text`, '==', true)))).docs.map(x => x.data()).filter(x => x.textOk !== false && x.phone).sort((a, b) => a.phone.localeCompare(b.phone));
     const todo = subs.filter(x => !bl.cursor || x.phone > bl.cursor).slice(0, budget);
     let sent = bl.sent || 0, failed = bl.failed || 0, cursor = bl.cursor || '';
     await updateDoc(d.ref, {status: 'sending', total: subs.length, startedAt: bl.startedAt || now});
     for (const x of todo){
       const r = await sendText(x.phone, text); budget--; cursor = x.phone;
-      if (r.ok) sent++; else { failed++; if (r.code === 21610) await updateDoc(doc(db, 'textSubs', x.phone), {active: false, stoppedAt: now}); }
+      if (r.ok) sent++; else { failed++; if (r.code === 21610) await updateDoc(doc(db, 'customers', x.phone), {textOk: false, stoppedAt: now}); }
     }
     const done = !subs.some(x => x.phone > cursor);
     await updateDoc(d.ref, {sent, failed, cursor, ...(done ? {status: 'sent', sentAt: Date.now()} : {})});

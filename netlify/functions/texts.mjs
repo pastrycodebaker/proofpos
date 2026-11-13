@@ -1,13 +1,13 @@
-// Text sign-ups and test texts.
-//   POST {action:'subscribe', name, phone, lists:['weekly',...], agree:true}   anyone (the /texts/ sign-up page)
+// Sign-ups (texts and email, one profile per person) and test texts.
+//   POST {action:'subscribe', name, phone, email, picks:['weekly_text','newsletter_email',...], agree:true}   anyone (the /texts/ sign-up page)
 //   POST {action:'test', to, body}   signed-in Proof POS users only (Texts page → Send me a test)
 //   POST {action:'status'}           signed-in: is texting set up yet?
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { sendText, canText } from '../../shared/notify.mjs';
-import { LISTS, phone10, CONSENT, finalText, listName, BRAND } from '../../shared/texts.mjs';
+import { LISTS, phone10, cleanEmail, emailId, subKey, CONSENT, finalText, listName, BRAND } from '../../shared/texts.mjs';
 
 const PROJECT = 'proofpos-90500';
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: PROJECT}, 'texts');
@@ -23,20 +23,37 @@ export default async (req) => {
   const b = await req.json().catch(() => ({}));
   try {
     if (b.action === 'subscribe'){
-      const p = phone10(b.phone); const name = String(b.name || '').trim().slice(0, 60);
-      const chosen = LISTS.map(l => l[0]).filter(id => (b.lists || []).includes(id));
-      if (!p) return json(400, {error: 'Please enter a 10-digit US mobile number.', field: 'phone'});
-      if (!chosen.length) return json(400, {error: 'Pick at least one list.', field: 'lists'});
-      if (b.agree !== true) return json(400, {error: 'Please check the box to agree to texts.', field: 'agree'});
+      const p = phone10(b.phone), em = cleanEmail(b.email), name = String(b.name || '').trim().slice(0, 60);
+      const valid = new Set(LISTS.flatMap(([id, , , chs]) => chs.map(ch => subKey(id, ch))));
+      const picks = (b.picks || []).filter(k => valid.has(k));
+      const wantsText = picks.some(k => k.endsWith('_text')), wantsEmail = picks.some(k => k.endsWith('_email'));
+      if (!picks.length) return json(400, {error: 'Pick at least one list.', field: 'lists'});
+      if (wantsText && !p) return json(400, {error: 'Please enter a 10-digit US mobile number for texts.', field: 'phone'});
+      if (wantsEmail && !em) return json(400, {error: 'Please enter your email address for emails.', field: 'email'});
+      if (b.agree !== true) return json(400, {error: 'Please check the box to agree.', field: 'agree'});
       await signIn();
-      const ref = doc(db, 'textSubs', p); const was = (await getDoc(ref)).data();
-      const lists = Object.fromEntries(LISTS.map(l => [l[0], chosen.includes(l[0])]));
-      const now = Date.now();
-      await setDoc(ref, {phone: p, name, lists, active: true, consentAt: now, consentText: CONSENT, consentLists: chosen, source: 'sign-up page',
-        createdAt: was?.createdAt || now, updatedAt: now, stoppedAt: null}, {merge: true});
-      // A welcome text, unless they just signed up for the same lists (a double tap).
-      const same = was?.active && JSON.stringify(was.lists) === JSON.stringify(lists) && now - (was.updatedAt || 0) < 3600000;
-      if (!same) await sendText(p, `${BRAND}: you're signed up for ${chosen.map(listName).join(', ').toLowerCase()} texts. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to cancel.`);
+      // One profile per person: the rewards record by phone; email-only people get e_<email> until they add a phone.
+      const byEmail = em ? (await getDocs(query(collection(db, 'customers'), where('email', '==', em)))).docs : [];
+      let ref = p ? doc(db, 'customers', p) : (byEmail.find(d => !d.id.startsWith('e_')) || byEmail[0])?.ref || doc(db, 'customers', emailId(em));
+      const was = (await getDoc(ref)).data() || {};
+      let merged = {...was};
+      for (const d of byEmail) if (d.id !== ref.id && d.id.startsWith('e_')){ // fold an email-only profile into the phone one
+        const o = d.data(); merged = {...o, ...merged, subs: {...(o.subs || {}), ...(merged.subs || {})}, consent: {...(o.consent || {}), ...(merged.consent || {})}, createdAt: Math.min(o.createdAt || Date.now(), merged.createdAt || Date.now())};
+        await deleteDoc(d.ref);
+      }
+      const now = Date.now(), subs = {...(merged.subs || {})};
+      // The boxes they saw on this sign-up set those lists exactly, for the ways they gave us (a phone for texts, an email for emails).
+      for (const [id, , , chs] of LISTS) for (const ch of chs) if ((ch === 'text' && p) || (ch === 'email' && em)) subs[subKey(id, ch)] = picks.includes(subKey(id, ch));
+      const consent = {...(merged.consent || {})};
+      if (wantsText) consent.text = {at: now, wording: CONSENT, picks: picks.filter(k => k.endsWith('_text')), source: 'sign-up page'};
+      if (wantsEmail) consent.email = {at: now, wording: CONSENT, picks: picks.filter(k => k.endsWith('_email')), source: 'sign-up page'};
+      // Only the sign-up fields are written (merge), so points from a register sale at the same moment aren't lost.
+      await setDoc(ref, {...(merged.name && !name ? {name: merged.name} : {}), ...(merged.email && !em ? {email: merged.email} : {}), ...(name ? {name} : {}), ...(p ? {phone: p} : {}), ...(em ? {email: em} : {}), subs, consent,
+        ...(wantsText ? {textOk: true, stoppedAt: null} : {}), ...(wantsEmail ? {emailOk: true} : {}), createdAt: merged.createdAt || now, updatedAt: now}, {merge: true});
+      // A welcome text for new text sign-ups (not on a double tap).
+      const textLists = LISTS.filter(([id]) => subs[subKey(id, 'text')]).map(([, n]) => n.toLowerCase());
+      const before = JSON.stringify(Object.keys(was.subs || {}).filter(k => was.subs[k] && k.endsWith('_text')).sort()), after = JSON.stringify(picks.filter(k => k.endsWith('_text')).sort());
+      if (wantsText && (before !== after || was.textOk === false)) await sendText(p, `${BRAND}: you're signed up for ${textLists.join(', ')} texts. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to cancel.`);
       return json(200, {ok: true, texting: canText()});
     }
     await staffOnly(req).catch(() => { throw Object.assign(new Error('Sign in first.'), {status: 401}); });

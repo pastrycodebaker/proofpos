@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="/icons/icon-192.png">
-<title>Proof POS · Texts</title>
+<title>Proof POS · Texts and email</title>
 <style>
   :root{--line:#dfe3e8;--quiet:#5b6470;--accent:#1a5fb4;--accent-bg:#e7f0fb;--ok:#1a7f37;--crit:#b42318}
   *{box-sizing:border-box}
@@ -39,10 +39,12 @@
   .pill{display:inline-block;padding:1px 8px;border-radius:999px;background:#eef1f4;font-size:12px;margin:0 3px 3px 0}
   .stat{display:inline-block;margin-right:18px}.stat b{font-size:22px;display:block}
   h3{margin:0 0 6px}
+  iframe.mail{width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:8px}
+  .tag{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;background:#e7f0fb;color:#1a5fb4;margin-left:4px}
 </style>
 </head>
 <body>
-<header><h1>Texts</h1><span class="sp" style="flex:1"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a></header>
+<header><h1>Texts and email</h1><span class="sp" style="flex:1"></span><a href="../?pick" id="switchLink" class="muted">Switch screen</a></header>
 <div id="login" class="card hidden" style="max-width:360px;margin:60px auto">
   <h3 style="margin-top:0">Sign in</h3>
   <input id="email" type="email" placeholder="Email" aria-label="Email" style="margin-bottom:8px">
@@ -54,17 +56,18 @@
   <div class="card" id="statusCard"></div>
   <div class="card">
     <h3>Sign-up page</h3>
-    <p class="muted" style="margin:0 0 8px">Share this link (or a QR code of it) on the website, receipts, and a sign by the register. People pick their lists and agree there; you can't add numbers yourself, because carriers require each person's own sign-up.</p>
+    <p class="muted" style="margin:0 0 8px">One page for texts and emails. Share it on the website, receipts, and a sign by the register. People pick their lists and agree there; you can't add numbers yourself, because carriers require each person's own sign-up.</p>
     <div class="row"><div style="flex:3"><input id="signupLink" readonly></div><div style="flex:0"><button id="copyLink">Copy</button></div></div>
   </div>
-  <div class="card" id="weeklyCard"></div>
   <div class="card" id="sendCard"></div>
+  <div class="card" id="weeklyCard"></div>
   <div class="card" id="historyCard"></div>
   <div class="card" id="subsCard"></div>
+  <div class="card" id="importCard"></div>
 </main>
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
-import { LISTS, listName, finalText, segments, textSettings, prettyPhone, phone10, DEFAULT_WEEKLY } from '../shared/texts.mjs';
+import { LISTS, CHANNELS, subKey, listName, finalText, segments, textSettings, prettyPhone, phone10, cleanEmail, emailId, onList, DEFAULT_WEEKLY } from '../shared/texts.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -72,35 +75,49 @@ if (DEMO) $('#switchLink').href = '../?pick&demo';
 const SIGNUP = (DEMO || location.hostname.endsWith('netlify.app') ? location.origin : 'https://order.flourandsalt.com') + '/texts/';
 $('#signupLink').value = SIGNUP;
 $('#copyLink').addEventListener('click', () => { navigator.clipboard?.writeText(SIGNUP); $('#copyLink').textContent = 'Copied'; setTimeout(() => $('#copyLink').textContent = 'Copy', 1500); });
-let store, SUBS = [], BLASTS = [], SET = {}, texting = null, q = '';
+let store, PEOPLE = [], BLASTS = [], SET = {}, texting = null, q = '', channel = 'text', IMPORT = null;
 const when = ms => ms ? new Date(ms).toLocaleString([], {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}) : '';
+const day = ms => ms ? new Date(ms).toLocaleDateString([], {month: 'short', day: 'numeric', year: 'numeric'}) : '';
 
 function demoStore(){
   const now = Date.now();
-  let subs = [['3155550101', 'Maya', ['weekly', 'specials']], ['3155550102', 'Theo', ['weekly']], ['3155550103', 'Rae', ['weekly', 'specials', 'closures']], ['3155550104', 'Sam', ['closures']]]
-    .map(([phone, name, l], i) => ({phone, name, lists: Object.fromEntries(LISTS.map(x => [x[0], l.includes(x[0])])), active: i !== 3, createdAt: now - i * 86400000 * 3, stoppedAt: i === 3 ? now - 86400000 : null}));
-  let blasts = [{id: 'b1', list: 'weekly', body: 'Pre-orders for this week close tomorrow (Monday) at 1pm. Order at order.flourandsalt.com', status: 'sent', sendAt: now - 5 * 86400000, sentAt: now - 5 * 86400000, sent: 3, failed: 0, total: 3, kind: 'weekly', by: 'automatic'}];
-  let set = {}; const subsCb = [], blCb = [], setCb = [];
-  const emit = () => { subsCb.forEach(f => f(structuredClone(subs))); blCb.forEach(f => f(structuredClone(blasts))); setCb.forEach(f => f(structuredClone(set))); };
+  const mk = (id, o) => ({id, ...o});
+  let people = [
+    mk('3155550101', {phone: '3155550101', email: 'maya@example.com', name: 'Maya', points: 212, visits: 14, subs: {weekly_text: true, specials_text: true, newsletter_email: true}, textOk: true, emailOk: true, createdAt: now - 3 * 86400000}),
+    mk('3155550102', {phone: '3155550102', name: 'Theo', points: 40, visits: 3, subs: {weekly_text: true}, textOk: true, createdAt: now - 6 * 86400000}),
+    mk('e_rae@example.com', {email: 'rae@example.com', name: 'Rae', subs: {newsletter_email: true, closures_email: true}, emailOk: true, createdAt: now - 400 * 86400000}),
+    mk('3155550104', {phone: '3155550104', name: 'Sam', points: 12, visits: 1, subs: {closures_text: true}, textOk: false, stoppedAt: now - 86400000, createdAt: now - 9 * 86400000}),
+  ];
+  let blasts = [{id: 'b1', channel: 'text', list: 'weekly', body: 'Pre-orders for this week close tomorrow (Monday) at 1pm. Order at order.flourandsalt.com', status: 'sent', sendAt: now - 5 * 86400000, createdAt: now - 5 * 86400000, sent: 2, failed: 0, total: 2, kind: 'weekly'}];
+  let set = {}; const pc = [], bc = [], sc = [];
+  const emit = () => { pc.forEach(f => f(structuredClone(people))); bc.forEach(f => f(structuredClone(blasts))); sc.forEach(f => f(structuredClone(set))); };
   return {
-    watchSubs(f){ subsCb.push(f); f(structuredClone(subs)); }, watchBlasts(f){ blCb.push(f); f(structuredClone(blasts)); }, watchSettings(f){ setCb.push(f); f(structuredClone(set)); },
+    watchPeople(f){ pc.push(f); f(structuredClone(people)); }, watchBlasts(f){ bc.push(f); f(structuredClone(blasts)); }, watchSettings(f){ sc.push(f); f(structuredClone(set)); },
     async saveSettings(x){ set = {...set, ...x}; emit(); },
     async addBlast(b){ blasts.unshift({...b, id: Math.random().toString(36).slice(2)}); emit(); },
-    async cancelBlast(id){ const b = blasts.find(x => x.id === id); if (b) b.status = 'cancelled'; emit(); },
-    async removeSub(p){ const s = subs.find(x => x.phone === p); if (s){ s.active = false; s.stoppedAt = Date.now(); s.removedBy = 'staff'; } emit(); },
-    async api(action){ if (action === 'status') return {texting: false}; throw new Error('Demo: texts are not sent.'); },
+    async updateBlast(id, x){ Object.assign(blasts.find(b => b.id === id) || {}, x); emit(); },
+    async removePerson(id){ const p = people.find(x => x.id === id); if (p){ p.textOk = false; p.emailOk = false; p.stoppedAt = Date.now(); } emit(); },
+    async importRows(rows){ for (const r of rows){ const p = people.find(x => x.id === r.id); if (p){ p.subs = {...p.subs, ...r.subs}; p.emailOk = true; p.email = r.email; p.name = p.name || r.name; } else people.push({...r}); } emit(); },
+    async api(action){ if (action === 'status') return {texting: false}; throw new Error('Demo: nothing is sent.'); },
   };
 }
 async function firebaseStore(app, auth){
   const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'); const db = F.getFirestore(app);
   return {
-    watchSubs(f){ F.onSnapshot(F.collection(db, 'textSubs'), s => f(s.docs.map(d => d.data()))); },
+    watchPeople(f){ F.onSnapshot(F.collection(db, 'customers'), s => f(s.docs.map(d => ({id: d.id, ...d.data()})))); },
     watchBlasts(f){ F.onSnapshot(F.query(F.collection(db, 'textBlasts'), F.orderBy('createdAt', 'desc'), F.limit(25)), s => f(s.docs.map(d => ({...d.data(), id: d.id})))); },
     watchSettings(f){ F.onSnapshot(F.doc(db, 'settings', 'texts'), s => f(s.exists() ? s.data() : {})); },
     saveSettings: x => F.setDoc(F.doc(db, 'settings', 'texts'), x, {merge: true}),
     addBlast: b => F.addDoc(F.collection(db, 'textBlasts'), b),
-    cancelBlast: id => F.updateDoc(F.doc(db, 'textBlasts', id), {status: 'cancelled'}),
-    removeSub: p => F.updateDoc(F.doc(db, 'textSubs', p), {active: false, stoppedAt: Date.now(), removedBy: auth.currentUser?.email || 'staff'}),
+    updateBlast: (id, x) => F.updateDoc(F.doc(db, 'textBlasts', id), x),
+    removePerson: id => F.updateDoc(F.doc(db, 'customers', id), {textOk: false, emailOk: false, stoppedAt: Date.now(), removedBy: auth.currentUser?.email || 'staff'}),
+    async importRows(rows, progress){
+      for (let i = 0; i < rows.length; i += 400){
+        const b = F.writeBatch(db);
+        for (const r of rows.slice(i, i + 400)){ const {id, ...data} = r; b.set(F.doc(db, 'customers', id), data, {merge: true}); }
+        await b.commit(); progress(Math.min(rows.length, i + 400));
+      }
+    },
     async api(action, body = {}){
       const r = await fetch('/.netlify/functions/texts', {method: 'POST', headers: {'content-type': 'application/json', authorization: 'Bearer ' + await auth.currentUser.getIdToken()}, body: JSON.stringify({action, ...body})});
       const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'That did not work.'); return j;
@@ -108,85 +125,157 @@ async function firebaseStore(app, auth){
   };
 }
 
-const active = () => SUBS.filter(s => s.active);
-const countFor = id => active().filter(s => s.lists && s.lists[id]).length;
+const countFor = (id, ch) => PEOPLE.filter(c => onList(c, id, ch)).length;
+const listsOf = c => LISTS.flatMap(([id, n, , chs]) => chs.filter(ch => onList(c, id, ch)).map(ch => [id, n, ch]));
 
 function renderStatus(){
   $('#statusCard').innerHTML = `<h3>${texting ? '<span class="dot on"></span>Texting is on' : '<span class="dot off"></span>Texting is not set up yet'}</h3>
-    <p class="muted" style="margin:0">${texting ? 'Texts go out from your Twilio number.' : 'Everything here works and saves, but no texts go out until Twilio approves the campaign and the TWILIO keys are added in Netlify. Sign-ups are still collected.'}</p>
-    <div style="margin-top:10px">${LISTS.map(([id, name]) => `<span class="stat"><b>${countFor(id)}</b>${esc(name)}</span>`).join('')}</div>`;
+    <p class="muted" style="margin:0">${texting ? 'Texts go out from your Twilio number.' : 'Sign-ups are collected and everything here saves, but no texts go out until Twilio approves the campaign and the TWILIO keys are in Netlify.'} Email newsletters: write and schedule them here; sending switches on once the Resend newsletter plan is chosen.</p>
+    <table style="margin-top:10px;max-width:560px"><thead><tr><th>List</th><th>By text</th><th>By email</th></tr></thead><tbody>${LISTS.map(([id, n, , chs]) => `<tr><td>${esc(n)}</td><td>${chs.includes('text') ? countFor(id, 'text') : '–'}</td><td>${chs.includes('email') ? countFor(id, 'email') : '–'}</td></tr>`).join('')}</tbody></table>`;
 }
+const today = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York'}).format(new Date());
+const nextSunday = () => { const d = new Date(today() + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7)); return d.toISOString().slice(0, 10); };
 function renderWeekly(){
   const s = textSettings(SET); const ex = finalText(s.weeklyText.replace('{deadline}', 'tomorrow (Monday) at 1pm'));
-  $('#weeklyCard').innerHTML = `<h3>Sunday pre-order reminder</h3>
-    <p class="muted" style="margin:0 0 8px">Goes to the Weekly pre-order reminder list every Sunday. It skips weeks when pre-orders are closed. {deadline} fills in the deadline from your online ordering settings.</p>
+  $('#weeklyCard').innerHTML = `<h3>Sunday pre-order reminder (text)</h3>
+    <p class="muted" style="margin:0 0 8px">Goes to the Weekly pre-order reminder text list every Sunday. It skips weeks when pre-orders are closed. {deadline} fills in the deadline from your online ordering settings.</p>
     <div class="checks"><label><input type="checkbox" id="wOn" ${s.weeklyOn ? 'checked' : ''}> Send it every Sunday</label>
       <label>at <select id="wTime" style="width:auto;padding:4px 6px">${['16:00', '17:00', '18:00', '19:00', '20:00'].map(t => `<option ${s.weeklyTime === t ? 'selected' : ''} value="${t}">${Number(t.slice(0, 2)) - 12}pm</option>`).join('')}</select></label></div>
     <label for="wText">Message</label><textarea id="wText">${esc(s.weeklyText)}</textarea>
     <div class="preview" id="wPrev">${esc(ex)}</div><div class="muted" id="wLen" style="font-size:13px;margin-top:4px">${ex.length} characters · ${segments(ex)} text${segments(ex) > 1 ? 's' : ''} each</div>
     <div class="bar"><button id="wSkip">${s.skipDate && s.skipDate >= today() ? 'Skipping ' + s.skipDate + ' · undo' : 'Skip this Sunday'}</button><button id="wDefault">Use the standard wording</button><span class="sp"></span><span id="wMsg"></span><button class="primary" id="wSave">Save</button></div>
     ${s.lastWeekly ? `<p class="muted" style="font-size:13px;margin:8px 0 0">Last sent ${esc(s.lastWeekly)}.</p>` : ''}`;
-  const upd = () => { const t = finalText($('#wText').value.replace('{deadline}', 'tomorrow (Monday) at 1pm')); $('#wPrev').textContent = t; $('#wLen').textContent = `${t.length} characters · ${segments(t)} text${segments(t) > 1 ? 's' : ''} each`; };
-  $('#wText').addEventListener('input', upd);
+  $('#wText').addEventListener('input', () => { const t = finalText($('#wText').value.replace('{deadline}', 'tomorrow (Monday) at 1pm')); $('#wPrev').textContent = t; $('#wLen').textContent = `${t.length} characters · ${segments(t)} text${segments(t) > 1 ? 's' : ''} each`; });
 }
-const today = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York'}).format(new Date());
-const nextSunday = () => { const d = new Date(today() + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7)); return d.toISOString().slice(0, 10); };
 function renderSend(){
-  $('#sendCard').innerHTML = `<h3>Send a text</h3>
-    <div class="row"><div><label for="sList">To</label><select id="sList">${LISTS.filter(l => l[0] !== 'weekly').concat(LISTS.filter(l => l[0] === 'weekly')).map(([id, name]) => `<option value="${id}">${esc(name)} (${countFor(id)})</option>`).join('')}</select></div>
+  const lists = LISTS.filter(l => l[3].includes(channel)).sort((a, b) => channel === 'email' ? (b[0] === 'newsletter') - (a[0] === 'newsletter') : 0);
+  $('#sendCard').innerHTML = `<h3>Send</h3>
+    <div class="checks" style="margin-bottom:4px">${Object.entries(CHANNELS).map(([k, l]) => `<label><input type="radio" name="ch" value="${k}" ${channel === k ? 'checked' : ''}> ${l}</label>`).join('')}</div>
+    <div class="row"><div><label for="sList">To</label><select id="sList">${lists.map(([id, name]) => `<option value="${id}">${esc(name)} (${countFor(id, channel)})</option>`).join('')}</select></div>
       <div><label for="sWhen">When</label><select id="sWhen"><option value="now">Now</option><option value="later">Later…</option></select></div>
       <div class="hidden" id="sAtBox"><label for="sAt">Send at</label><input type="datetime-local" id="sAt"></div></div>
-    <label for="sBody">Message</label><textarea id="sBody" placeholder="Pumpkin pies are on the pre-order menu for Thanksgiving pickup. Order by Nov 23 at order.flourandsalt.com"></textarea>
+    ${channel === 'text' ? `<label for="sBody">Message</label><textarea id="sBody" placeholder="Pumpkin pies are on the pre-order menu for Thanksgiving pickup. Order by Nov 23 at order.flourandsalt.com"></textarea>
     <div class="preview" id="sPrev">Your message shows here, starting with Flour and Salt Bakery LLC and ending with how to opt out.</div><div class="muted" id="sLen" style="font-size:13px;margin-top:4px"></div>
-    <div class="bar"><input id="testTo" placeholder="Your cell for a test" style="max-width:200px"><button id="sTest">Send me a test</button><span class="sp"></span><span id="sMsg"></span><button class="primary" id="sGo">Send</button></div>`;
-  const upd = () => { const v = $('#sBody').value.trim(); const t = v ? finalText(v) : ''; $('#sPrev').textContent = t || 'Your message shows here, starting with Flour and Salt Bakery LLC and ending with how to opt out.'; $('#sLen').textContent = t ? `${t.length} characters · ${segments(t)} text${segments(t) > 1 ? 's' : ''} per person` : ''; };
-  $('#sBody').addEventListener('input', upd);
+    <div class="bar"><input id="testTo" placeholder="Your cell for a test" style="max-width:200px"><button id="sTest">Send me a test</button><span class="sp"></span><span id="sMsg"></span><button class="primary" id="sGo">Send</button></div>`
+    : `<div class="row"><div style="flex:2"><label for="eSubject">Subject</label><input id="eSubject" placeholder="Pies, pies, pies"></div><div style="flex:2"><label for="ePre">Preview line (shows after the subject in the inbox)</label><input id="ePre"></div></div>
+    <label for="eHtml">Email HTML <span class="muted">(paste what we wrote; an unsubscribe link and your address are added at the bottom if missing)</span></label><textarea id="eHtml" style="min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:13px" placeholder="<h1>Hello!</h1>"></textarea>
+    <iframe class="mail" id="ePrev" title="Email preview" sandbox=""></iframe>
+    <div class="bar"><span class="muted" style="font-size:13px">Sending turns on once the Resend newsletter plan is set up. Until then, save it here and it's ready to go.</span><span class="sp"></span><span id="sMsg"></span><button class="primary" id="eSave">Save draft</button></div>`}`;
+  if (channel === 'text') $('#sBody').addEventListener('input', () => { const v = $('#sBody').value.trim(); const t = v ? finalText(v) : ''; $('#sPrev').textContent = t || 'Your message shows here, starting with Flour and Salt Bakery LLC and ending with how to opt out.'; $('#sLen').textContent = t ? `${t.length} characters · ${segments(t)} text${segments(t) > 1 ? 's' : ''} per person` : ''; });
+  else $('#eHtml').addEventListener('input', () => { $('#ePrev').srcdoc = finalEmail($('#eHtml').value); });
   $('#sWhen').addEventListener('change', () => $('#sAtBox').classList.toggle('hidden', $('#sWhen').value !== 'later'));
 }
+// The footer email rules require: who it's from, the mailing address, and an unsubscribe link.
+function finalEmail(html){
+  let h = String(html || '');
+  if (!/RESEND_UNSUBSCRIBE_URL/.test(h)) h += `<div style="font:12px Helvetica,Arial,sans-serif;color:#6B6157;text-align:center;padding:24px 12px">Flour and Salt Bakery LLC · 37 Lebanon Street, Hamilton, NY 13346<br>You're getting this because you signed up. <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#6B6157">Unsubscribe</a></div>`;
+  return h;
+}
 function renderHistory(){
-  const st = b => b.status === 'sent' ? `<span class="ok">Sent</span> ${b.sent || 0}${b.failed ? `, ${b.failed} didn't go through` : ''}` : b.status === 'sending' ? `Sending… ${b.sent || 0} of ${b.total || '?'}` : b.status === 'cancelled' ? '<span class="muted">Cancelled</span>' : `Scheduled for ${when(b.sendAt)}`;
-  $('#historyCard').innerHTML = `<h3>Recent texts</h3>${BLASTS.length ? `<table><thead><tr><th>When</th><th>To</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>${BLASTS.map(b => `<tr><td>${when(b.sendAt)}</td><td>${esc(listName(b.list))}${b.kind === 'weekly' ? '<br><span class="muted" style="font-size:12px">automatic</span>' : ''}</td><td>${esc(b.body)}</td><td>${st(b)}</td><td>${b.status === 'queued' ? `<button class="danger" data-cancel="${esc(b.id)}">Cancel</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted" style="margin:0">Nothing sent yet.</p>'}`;
+  const st = b => b.status === 'sent' ? `<span class="ok">Sent</span> ${b.sent || 0}${b.failed ? `, ${b.failed} didn't go through` : ''}` : b.status === 'sending' ? `Sending… ${b.sent || 0} of ${b.total || '?'}` : b.status === 'cancelled' ? '<span class="muted">Cancelled</span>' : b.status === 'draft' ? 'Draft' : `Scheduled for ${when(b.sendAt)}`;
+  $('#historyCard').innerHTML = `<h3>Recent</h3>${BLASTS.length ? `<table><thead><tr><th>When</th><th>To</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>${BLASTS.map(b => `<tr><td>${when(b.sendAt || b.createdAt)}</td><td>${esc(listName(b.list))}<span class="tag">${b.channel === 'email' ? 'Email' : 'Text'}</span>${b.kind === 'weekly' ? '<br><span class="muted" style="font-size:12px">automatic</span>' : ''}</td><td>${esc(b.channel === 'email' ? b.subject : b.body)}</td><td>${st(b)}</td><td>${['queued', 'draft'].includes(b.status) ? `<button class="danger" data-cancel="${esc(b.id)}">${b.status === 'draft' ? 'Delete' : 'Cancel'}</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted" style="margin:0">Nothing sent yet.</p>'}`;
 }
 function renderSubs(){
-  const list = SUBS.filter(s => !q || (s.name || '').toLowerCase().includes(q.toLowerCase()) || s.phone.includes(q.replace(/\D/g, '') || '~')).sort((a, b) => (b.active - a.active) || (b.createdAt || 0) - (a.createdAt || 0));
-  $('#subsCard').innerHTML = `<h3>People signed up</h3>
-    <div class="bar" style="margin:0 0 8px"><input id="subQ" placeholder="Search name or number" value="${esc(q)}" style="max-width:260px"><span class="sp"></span><button id="csv">Download CSV</button></div>
-    <table><thead><tr><th>Name</th><th>Number</th><th>Lists</th><th>Signed up</th><th></th></tr></thead><tbody>${list.map(s => `<tr${s.active ? '' : ' class="muted"'}><td>${esc(s.name || '')}</td><td>${esc(prettyPhone(s.phone))}</td><td>${LISTS.filter(l => s.lists && s.lists[l[0]]).map(l => `<span class="pill">${esc(l[1])}</span>`).join('')}</td><td>${when(s.createdAt)}</td><td>${s.active ? `<button class="danger" data-rm="${esc(s.phone)}">Remove</button>` : `Stopped ${when(s.stoppedAt)}`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No one yet.</td></tr>'}</tbody></table>`;
+  const ql = q.toLowerCase(), qd = q.replace(/\D/g, '');
+  const signed = PEOPLE.filter(c => c.subs && Object.values(c.subs).some(Boolean));
+  const list = signed.filter(c => !q || (c.name || '').toLowerCase().includes(ql) || (c.email || '').includes(ql) || (qd && (c.phone || '').includes(qd)))
+    .sort((a, b) => (listsOf(b).length > 0) - (listsOf(a).length > 0) || (b.createdAt || 0) - (a.createdAt || 0));
+  const shown = list.slice(0, 200);
+  $('#subsCard').innerHTML = `<h3>People (${signed.length})</h3>
+    <p class="muted" style="margin:0 0 8px">One profile per person: the same record as their rewards account when they have one.</p>
+    <div class="bar" style="margin:0 0 8px"><input id="subQ" placeholder="Search name, number or email" value="${esc(q)}" style="max-width:280px"><span class="sp"></span><button id="csv">Download CSV</button></div>
+    <table><thead><tr><th>Name</th><th>Number / email</th><th>Lists</th><th>Rewards</th><th>Signed up</th><th></th></tr></thead><tbody>${shown.map(c => { const ls = listsOf(c); return `<tr${ls.length ? '' : ' class="muted"'}><td>${esc(c.name || '')}</td><td>${esc(prettyPhone(c.phone))}${c.phone && c.email ? '<br>' : ''}${esc(c.email || '')}</td><td>${ls.map(([, n, ch]) => `<span class="pill">${esc(n)} · ${ch === 'text' ? 'text' : 'email'}</span>`).join('') || 'Stopped'}</td><td>${c.points || c.visits ? `${c.points || 0} pts · ${c.visits || 0} visits` : ''}</td><td>${day(c.createdAt)}</td><td>${ls.length ? `<button class="danger" data-rm="${esc(c.id)}">Remove</button>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">No one yet.</td></tr>'}</tbody></table>
+    ${list.length > shown.length ? `<p class="muted" style="font-size:13px">Showing 200 of ${list.length}. Search to find someone.</p>` : ''}`;
   const inp = $('#subQ'); inp.addEventListener('input', () => { q = inp.value; renderSubs(); $('#subQ').focus(); $('#subQ').setSelectionRange(q.length, q.length); });
+}
+function renderImport(){
+  $('#importCard').innerHTML = `<h3>Bring over MailerLite subscribers</h3>
+    <p class="muted" style="margin:0 0 8px">In MailerLite: Subscribers → Active → Export → CSV. Choose it here. Everyone comes in on the Newsletter email list with the date they subscribed. People already here (same email) are joined to their profile.</p>
+    <input type="file" id="mlFile" accept=".csv,text/csv" style="max-width:360px">
+    <div id="mlInfo" style="margin-top:8px"></div>`;
 }
 const renderAll = () => { renderStatus(); renderHistory(); renderSubs(); };
 
+// ---------- MailerLite CSV ----------
+function parseCsv(text){
+  const rows = []; let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (inQ){ if (c === '"' && text[i + 1] === '"'){ cell += '"'; i++; } else if (c === '"') inQ = false; else cell += c; }
+    else if (c === '"') inQ = true; else if (c === ','){ row.push(cell); cell = ''; } else if (c === '\n' || c === '\r'){ if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; } else cell += c;
+  }
+  if (cell || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function readMailerLite(text){
+  const [h, ...rows] = parseCsv(text); const H = h.map(x => x.trim().toLowerCase());
+  const col = (...names) => H.findIndex(x => names.some(n => x === n || x.includes(n)));
+  const ie = col('email'), iname = col('name', 'first name', 'first_name'), ilast = H.findIndex(x => x === 'last name' || x === 'last_name' || x === 'surname'), idate = col('subscribed', 'date', 'created');
+  if (ie < 0) throw new Error("This file has no Email column. Export subscribers from MailerLite as CSV.");
+  const byEmail = new Map(PEOPLE.filter(p => p.email).map(p => [p.email, p]));
+  const seen = new Set(), out = []; let joined = 0, bad = 0;
+  for (const r of rows){
+    const em = cleanEmail(r[ie]); if (!em){ bad++; continue; } if (seen.has(em)) continue; seen.add(em);
+    const name = [iname >= 0 ? r[iname] : '', ilast >= 0 ? r[ilast] : ''].join(' ').trim();
+    const at = idate >= 0 && Date.parse(r[idate]) ? Date.parse(r[idate]) : Date.now();
+    const ex = byEmail.get(em); if (ex) joined++;
+    out.push({id: ex ? ex.id : emailId(em), email: em, ...(name && !(ex && ex.name) ? {name} : {}), subs: {newsletter_email: true}, emailOk: true,
+      consent: {email: {at, source: 'MailerLite import', wording: 'Subscribed on MailerLite', picks: ['newsletter_email']}}, ...(ex ? {} : {createdAt: at})});
+  }
+  return {rows: out, joined, bad};
+}
+
+document.addEventListener('change', async e => {
+  if (e.target.name === 'ch'){ channel = e.target.value; renderSend(); }
+  if (e.target.id === 'mlFile' && e.target.files[0]){
+    try {
+      IMPORT = readMailerLite(await e.target.files[0].text());
+      $('#mlInfo').innerHTML = `<p style="margin:0 0 8px"><b>${IMPORT.rows.length.toLocaleString()}</b> subscribers ready${IMPORT.joined ? `, ${IMPORT.joined} of them already here (they'll be joined to that profile)` : ''}${IMPORT.bad ? `. ${IMPORT.bad} ${IMPORT.bad === 1 ? 'row has' : 'rows have'} no usable email and will be skipped` : ''}.</p><button class="primary" id="mlGo">Bring them in</button> <span id="mlMsg"></span>`;
+    } catch (err){ $('#mlInfo').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+  }
+});
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return;
-  const msg = (id, text, cls = 'ok') => { const el = $('#' + id); el.className = cls; el.textContent = text; };
+  const msg = (id, text, cls = 'ok') => { const el = $('#' + id); if (el){ el.className = cls; el.textContent = text; } };
   try {
     if (t.id === 'wSave'){ await store.saveSettings({weeklyOn: $('#wOn').checked, weeklyText: $('#wText').value.trim() || DEFAULT_WEEKLY, weeklyTime: $('#wTime').value}); msg('wMsg', 'Saved'); }
     if (t.id === 'wDefault'){ $('#wText').value = DEFAULT_WEEKLY; $('#wText').dispatchEvent(new Event('input')); }
     if (t.id === 'wSkip'){ const s = textSettings(SET); await store.saveSettings({skipDate: s.skipDate && s.skipDate >= today() ? null : nextSunday()}); }
-    if (t.dataset.cancel){ if (confirm('Cancel this scheduled text?')) await store.cancelBlast(t.dataset.cancel); }
-    if (t.dataset.rm){ if (confirm('Remove this number from every list? They can sign up again on the sign-up page.')) await store.removeSub(t.dataset.rm); }
+    if (t.dataset.cancel){ if (confirm('Cancel this?')) await store.updateBlast(t.dataset.cancel, {status: 'cancelled'}); }
+    if (t.dataset.rm){ if (confirm('Take this person off every list? They keep their rewards points and can sign up again any time.')) await store.removePerson(t.dataset.rm); }
     if (t.id === 'sTest'){ if (!phone10($('#testTo').value)) return msg('sMsg', 'Enter your cell number first.', 'err'); if (!$('#sBody').value.trim()) return msg('sMsg', 'Write the message first.', 'err'); await store.api('test', {to: $('#testTo').value, body: $('#sBody').value}); msg('sMsg', 'Test sent'); }
+    const sendAt = () => { if ($('#sWhen').value !== 'later') return Date.now(); const ms = new Date($('#sAt').value).getTime(); if (!ms || ms < Date.now()) throw new Error('Pick a time in the future.'); return ms; };
     if (t.id === 'sGo'){
-      const body = $('#sBody').value.trim(), list = $('#sList').value, n = countFor(list);
+      const body = $('#sBody').value.trim(), list = $('#sList').value, n = countFor(list, 'text');
       if (!body) return msg('sMsg', 'Write the message first.', 'err');
-      let sendAt = Date.now();
-      if ($('#sWhen').value === 'later'){ sendAt = new Date($('#sAt').value).getTime(); if (!sendAt || sendAt < Date.now()) return msg('sMsg', 'Pick a time in the future.', 'err'); }
+      const at = sendAt();
       if (!confirm(`${$('#sWhen').value === 'later' ? 'Schedule' : 'Send'} this text to ${n} ${n === 1 ? 'person' : 'people'} on ${listName(list)}?\n\n${finalText(body)}`)) return;
-      await store.addBlast({list, body, status: 'queued', sendAt, createdAt: Date.now(), sent: 0, failed: 0, kind: 'manual', by: 'Texts page'});
+      await store.addBlast({channel: 'text', list, body, status: 'queued', sendAt: at, createdAt: Date.now(), sent: 0, failed: 0, kind: 'manual', by: 'Texts and email page'});
       $('#sBody').value = ''; $('#sBody').dispatchEvent(new Event('input'));
-      msg('sMsg', $('#sWhen').value === 'later' ? `Scheduled for ${when(sendAt)}` : 'Sending now. It goes out within 10 minutes.');
+      msg('sMsg', $('#sWhen').value === 'later' ? `Scheduled for ${when(at)}` : 'Sending now. It goes out within 10 minutes.');
+    }
+    if (t.id === 'eSave'){
+      const subject = $('#eSubject').value.trim(), html = $('#eHtml').value.trim(); if (!subject || !html) return msg('sMsg', 'Add a subject and the HTML first.', 'err');
+      const at = sendAt();
+      await store.addBlast({channel: 'email', list: $('#sList').value, subject, preview: $('#ePre').value.trim(), html: finalEmail(html), status: 'draft', sendAt: at, createdAt: Date.now(), kind: 'manual', by: 'Texts and email page'});
+      msg('sMsg', 'Saved as a draft.');
+    }
+    if (t.id === 'mlGo' && IMPORT){
+      t.disabled = true; await store.importRows(IMPORT.rows, n => msg('mlMsg', `${n.toLocaleString()} of ${IMPORT.rows.length.toLocaleString()}…`, 'muted'));
+      msg('mlMsg', `Done: ${IMPORT.rows.length.toLocaleString()} on the Newsletter list.`); IMPORT = null;
     }
     if (t.id === 'csv'){
-      const rows = [['Name', 'Phone', ...LISTS.map(l => l[1]), 'Signed up', 'Active']].concat(SUBS.map(s => [s.name || '', s.phone, ...LISTS.map(l => s.lists && s.lists[l[0]] ? 'yes' : ''), new Date(s.createdAt || 0).toISOString().slice(0, 10), s.active ? 'yes' : 'no']));
-      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')], {type: 'text/csv'})); a.download = 'text-signups.csv'; a.click();
+      const rows = [['Name', 'Phone', 'Email', ...LISTS.flatMap(([id, n, , chs]) => chs.map(ch => `${n} (${ch})`)), 'Points', 'Signed up']].concat(PEOPLE.filter(c => c.subs).map(c => [c.name || '', c.phone || '', c.email || '', ...LISTS.flatMap(([id, , , chs]) => chs.map(ch => onList(c, id, ch) ? 'yes' : '')), c.points || '', new Date(c.createdAt || 0).toISOString().slice(0, 10)]));
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')], {type: 'text/csv'})); a.download = 'contacts.csv'; a.click();
     }
   } catch (err){ const box = t.closest('.card')?.querySelector('[id$=Msg]'); if (box){ box.className = 'err'; box.textContent = err.message; } else alert(err.message); }
 });
 
 async function boot(){
   $('#app').classList.remove('hidden'); $('#login').classList.add('hidden');
+  renderImport();
   store.watchSettings(s => { SET = s; renderWeekly(); });
-  store.watchSubs(s => { SUBS = s; renderAll(); renderSend(); });
+  let first = true; store.watchPeople(p => { PEOPLE = p; renderAll(); if (first){ renderSend(); first = false; } });
   store.watchBlasts(b => { BLASTS = b; renderHistory(); });
   try { texting = (await store.api('status')).texting; } catch (e){ texting = false; } renderStatus();
 }

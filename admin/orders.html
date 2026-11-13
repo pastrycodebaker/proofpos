@@ -300,7 +300,7 @@ async function renderActivity(){
 let rq = '', rsort = 'recent', rsel = null, CUST = [];
 const fmtPhone = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
 async function renderRewards(){
-  CUST = await store.customers();
+  CUST = (await store.customers()).filter(c => c.phone && (c.points || c.visits)); // rewards members only (email-only newsletter contacts live in Texts and email)
   const q = rq.toLowerCase(), qd = rq.replace(/\D/g, '');
   const list = CUST.filter(c => !q || (c.name || '').toLowerCase().includes(q) || (qd && c.phone.includes(qd)))
     .sort(rsort === 'points' ? (a, b) => (b.points || 0) - (a.points || 0) : rsort === 'visits' ? (a, b) => (b.visits || 0) - (a.visits || 0) : (a, b) => (b.lastVisit || 0) - (a.lastVisit || 0));
