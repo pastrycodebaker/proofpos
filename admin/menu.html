@@ -1020,21 +1020,22 @@ function daysLabel(days){
   const od = openDays(); if (od.every(d => days.includes(d))) return '';
   return DAYS.filter(([, n]) => days.includes(n)).map(([l]) => l).join(', ');
 }
-let layoutCat = '', layoutOpen = null, layoutDirty = false;
+let layoutCat = '', layoutOpen = null, layoutDirty = false, movingCat = null;
 let L = null; // working copy: {cats:[], sections:{cat:[...]}, items: Map(id -> {section, sortOrder, days, active})}
 function layoutInit(){
   const cats = [...new Set([...(S.settings.categories || []), ...S.items.map(i => i.category).filter(Boolean)])];
   const sections = structuredClone(S.settings.sections || {});
-  const items = new Map(S.items.map(i => [i.id, {section: i.section || '', sortOrder: i.sortOrder ?? 999, days: i.days || null, active: i.active !== false}]));
+  const items = new Map(S.items.map(i => [i.id, {category: i.category || '', section: i.section || '', sortOrder: i.sortOrder ?? 999, days: i.days || null, active: i.active !== false}]));
   L = {cats, sections, items}; layoutDirty = false;
 }
-const layoutItemsIn = (cat, sec) => S.items.filter(i => (i.category || '') === cat && (L.items.get(i.id).section || '') === sec).sort((a, b) => L.items.get(a.id).sortOrder - L.items.get(b.id).sortOrder || a.name.localeCompare(b.name));
+const catOf = i => L.items.get(i.id).category;
+const layoutItemsIn = (cat, sec) => S.items.filter(i => catOf(i) === cat && (L.items.get(i.id).section || '') === sec).sort((a, b) => L.items.get(a.id).sortOrder - L.items.get(b.id).sortOrder || a.name.localeCompare(b.name));
 function renderLayout(){
   if (!L) layoutInit();
   if (!layoutCat || !L.cats.includes(layoutCat)) layoutCat = L.cats[0] || '';
   const secs = L.sections[layoutCat] || [];
   // items whose section no longer exists fall back to "no section"
-  for (const i of S.items) if (i.category === layoutCat){ const x = L.items.get(i.id); if (x.section && !secs.includes(x.section)) x.section = ''; }
+  for (const i of S.items) if (catOf(i) === layoutCat){ const x = L.items.get(i.id); if (x.section && !secs.includes(x.section)) x.section = ''; }
   const cols = [...(layoutItemsIn(layoutCat, '').length || !secs.length ? [''] : []), ...secs];
   const card = it => { const x = L.items.get(it.id); const dl = daysLabel(x.days); const open = layoutOpen === it.id;
     return `<div class="lcard ${x.active ? '' : 'off'}" data-lid="${esc(it.id)}"><div class="lrow"><span class="grip" aria-hidden="true">⠿</span><span class="ln">${esc(it.name)}</span>${!x.active ? '<span class="pill p-86">Off season</span>' : ''}${dl ? `<span class="pill p-rev">${esc(dl)}</span>` : ''}</div>
@@ -1043,7 +1044,8 @@ function renderLayout(){
         ${secs.length ? `<div class="row" style="margin-top:6px"><select data-lsec><option value="">No section</option>${secs.map(s => `<option ${s === x.section ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>` : ''}</div>` : ''}</div>`; };
   $('#layoutPane').innerHTML = `<div class="sbar"><b>Layout</b><span class="muted">Drag to reorder categories, sections and items. Tap an item for its days and season.</span><span class="sp"></span><span class="status" id="layoutStatus"></span>
       <button id="layoutDiscard" ${layoutDirty ? '' : 'disabled'}>Discard</button><button class="primary" id="layoutSave" ${layoutDirty ? '' : 'disabled'}>Save layout</button></div>
-    <div class="lwrap"><div class="card lcats"><div class="muted" style="margin-bottom:6px">Categories (register button order)</div><div class="dz" data-dz="cats">${L.cats.map(c => `<div class="lcat ${c === layoutCat ? 'sel' : ''}" data-lcat="${esc(c)}"><span class="grip" aria-hidden="true">⠿</span><span>${esc(c)}</span><span class="muted">${S.items.filter(i => i.category === c).length}</span></div>`).join('')}</div></div>
+    <div class="lwrap"><div class="card lcats"><div class="muted" style="margin-bottom:6px">Categories (register button order)</div><div class="dz" data-dz="cats">${L.cats.map(c => `<div class="lcat ${c === layoutCat ? 'sel' : ''}" data-lcat="${esc(c)}"><span class="grip" aria-hidden="true">⠿</span><span style="flex:1">${esc(c)}</span><span class="muted">${S.items.filter(i => catOf(i) === c && !i.archived).length}</span><button data-delcat="${esc(c)}" aria-label="Delete ${esc(c)}" title="Delete category" style="padding:0 8px;margin-left:6px;line-height:1.6">✕</button></div>`).join('')}</div>
+      ${movingCat ? (() => { const inCat = S.items.filter(i => catOf(i) === movingCat), arch = inCat.filter(i => i.archived).length, others = L.cats.filter(c => c !== movingCat); return `<div class="card" style="margin-top:10px;border:2px solid var(--line)"><b>Delete ${esc(movingCat)}</b><p class="muted" style="margin:4px 0 8px">It still has ${inCat.length} item${inCat.length === 1 ? '' : 's'}${arch ? ` (${arch} archived)` : ''}. Move ${inCat.length === 1 ? 'it' : 'them'} to:</p><select id="catMoveTo">${others.map(c => `<option>${esc(c)}</option>`).join('')}</select><div class="row" style="margin-top:8px"><button id="catMoveCancel">Cancel</button><button class="primary" id="catMoveGo" ${others.length ? '' : 'disabled'}>Move and delete</button></div></div>`; })() : ''}</div>
       <div class="lmain"><div class="sbar"><b>${esc(layoutCat)}</b><span class="muted">Sections become columns on the register, like Toast.</span><span class="sp"></span><input id="newSec" placeholder="New section, like Breakfast" style="width:220px"><button id="addSec">Add section</button></div>
         <div class="lcols dz" data-dz="secs">${cols.map(sec => `<div class="lcol" data-lsecname="${esc(sec)}"><div class="lcolh">${sec ? `<span class="grip" aria-hidden="true">⠿</span><input data-rensec="${esc(sec)}" value="${esc(sec)}"><button data-delsec="${esc(sec)}" aria-label="Delete section" title="Delete section (items move to No section)">✕</button>` : `<b>${secs.length ? 'No section' : 'Items'}</b>`}</div><div class="dz cards" data-dz="items" data-sec="${esc(sec)}">${layoutItemsIn(layoutCat, sec).map(card).join('')}</div></div>`).join('')}</div></div></div>`;
 }
@@ -1104,18 +1106,25 @@ $('#layoutPane').addEventListener('change', e => {
   if (t.dataset.lsec !== undefined && x){ x.section = t.value; x.sortOrder = 9999; layoutMark(); renderLayout(); }
   if (t.dataset.rensec){ const old = t.dataset.rensec, nu = t.value.trim(); const secs = L.sections[layoutCat] || [];
     if (!nu || (nu !== old && secs.includes(nu))){ status('#layoutStatus', nu ? 'There is already a section with that name.' : 'A section needs a name.', 'err'); renderLayout(); return; }
-    L.sections[layoutCat] = secs.map(s => s === old ? nu : s); for (const i of S.items) if (i.category === layoutCat && L.items.get(i.id).section === old) L.items.get(i.id).section = nu; layoutMark(); renderLayout(); }
+    L.sections[layoutCat] = secs.map(s => s === old ? nu : s); for (const i of S.items) if (catOf(i) === layoutCat && L.items.get(i.id).section === old) L.items.get(i.id).section = nu; layoutMark(); renderLayout(); }
 });
 $('#layoutPane').addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.id === 'addSec'){ const n = $('#newSec').value.trim(); const secs = L.sections[layoutCat] || []; if (!n || secs.includes(n)) return; layoutReadDom(); L.sections[layoutCat] = [...secs, n]; layoutMark(); renderLayout(); return; }
-  if (t.dataset.delsec){ layoutReadDom(); const s = t.dataset.delsec; L.sections[layoutCat] = (L.sections[layoutCat] || []).filter(x => x !== s); for (const i of S.items) if (i.category === layoutCat && L.items.get(i.id).section === s) L.items.get(i.id).section = ''; layoutMark(); renderLayout(); return; }
-  if (t.id === 'layoutDiscard'){ layoutInit(); renderLayout(); status('#layoutStatus', 'Changes discarded.'); return; }
+  if (t.dataset.delsec){ layoutReadDom(); const s = t.dataset.delsec; L.sections[layoutCat] = (L.sections[layoutCat] || []).filter(x => x !== s); for (const i of S.items) if (catOf(i) === layoutCat && L.items.get(i.id).section === s) L.items.get(i.id).section = ''; layoutMark(); renderLayout(); return; }
+  if (t.dataset.delcat !== undefined){ layoutReadDom(); const cat = t.dataset.delcat;
+    if (S.items.some(i => catOf(i) === cat)){ movingCat = cat; renderLayout(); return; }
+    L.cats = L.cats.filter(c => c !== cat); delete L.sections[cat]; if (layoutCat === cat) layoutCat = ''; layoutMark(); renderLayout(); status('#layoutStatus', `${cat} removed. Tap Save layout to keep it.`); return; }
+  if (t.id === 'catMoveCancel'){ movingCat = null; renderLayout(); return; }
+  if (t.id === 'catMoveGo'){ const to = $('#catMoveTo').value, cat = movingCat;
+    for (const i of S.items) if (catOf(i) === cat){ const x = L.items.get(i.id); x.category = to; x.section = ''; x.sortOrder = 9999; }
+    L.cats = L.cats.filter(c => c !== cat); delete L.sections[cat]; movingCat = null; layoutCat = to; layoutMark(); renderLayout(); status('#layoutStatus', `Moved to ${to} and removed ${cat}. Tap Save layout to keep it.`); return; }
+  if (t.id === 'layoutDiscard'){ movingCat = null; layoutInit(); renderLayout(); status('#layoutStatus', 'Changes discarded.'); return; }
   if (t.id === 'layoutSave'){
     try {
       layoutReadDom(); status('#layoutStatus', 'Saving…');
-      const changed = S.items.filter(i => { const x = L.items.get(i.id); return (i.section || '') !== x.section || (i.sortOrder ?? 999) !== x.sortOrder || JSON.stringify(i.days || null) !== JSON.stringify(x.days) || (i.active !== false) !== x.active; })
-        .map(i => { const x = L.items.get(i.id); return {...i, section: x.section, sortOrder: x.sortOrder, days: x.days, active: x.active}; });
+      const changed = S.items.filter(i => { const x = L.items.get(i.id); return (i.category || '') !== x.category || (i.section || '') !== x.section || (i.sortOrder ?? 999) !== x.sortOrder || JSON.stringify(i.days || null) !== JSON.stringify(x.days) || (i.active !== false) !== x.active; })
+        .map(i => { const x = L.items.get(i.id); return {...i, category: x.category, section: x.section, sortOrder: x.sortOrder, days: x.days, active: x.active}; });
       if (changed.length) await store.saveItems(changed);
       await store.saveSettings({...S.settings, categories: L.cats, sections: L.sections});
       await reload(); layoutInit(); renderLayout(); status('#layoutStatus', `Saved (${changed.length} item${changed.length === 1 ? '' : 's'}).`, 'ok');
