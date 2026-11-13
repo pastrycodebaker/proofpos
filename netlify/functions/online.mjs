@@ -6,7 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows } from '../../shared/online.mjs';
+import { buildLine, availability, asapState, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows, lineBagels } from '../../shared/online.mjs';
 import { orderConfirmation } from '../../shared/notify.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
@@ -130,6 +130,8 @@ async function production(from, to){
       // Boxes go to the planner as what's inside ("3 Plain bagel", "1 Scallion cream cheese"), so flavors count right.
       const box = packRows(l, M.items.find(i => i.id === l.itemId), M);
       if (box.length){ for (const c of box){ const k = o.pickupDate + '|' + c.name + '|'; sums[k] = (sums[k] || 0) + c.qty; } continue; }
+      // Cafe-made items (sandwich packs, sandwiches): the planner only needs their bagels ("10 Plain bagel").
+      if (l.fromCafe){ const bg = lineBagels(l, M.items.find(i => i.id === l.itemId), M); if (Object.keys(bg).length){ for (const [f, n] of Object.entries(bg)){ const k = o.pickupDate + '|' + f + ' bagel|'; sums[k] = (sums[k] || 0) + n; } continue; } }
       const name = [l.version, l.name].filter(Boolean).join(' ');
       const mods = (l.mods || []).filter(m => !m.def && !m.inc).map(m => (m.q || 1) + 'X ' + String(m.o).toUpperCase()).join(' • ');
       const k = o.pickupDate + '|' + name + '|' + mods; sums[k] = (sums[k] || 0) + 1;
