@@ -32,7 +32,6 @@ export function onlineSettings(settings = {}){
     hours: o.hours || {},                     // {3: {open:'07:00', close:'14:00'}, ...} by weekday; missing = closed
     prepMinutes: Number(o.prepMinutes ?? 15),
     asapPer15: Number(o.asapPer15 || 0),       // most ASAP online orders per 15 minutes (0 = no limit)
-    asapLimits: Array.isArray(o.asapLimits) ? o.asapLimits : [], // [{days:[3,4], from:'07:00', to:'09:00', per15: 3}] — first match wins, else asapPer15
     lastOrderMinutes: Number(o.lastOrderMinutes ?? 15), // stop ASAP this long before closing
     daysAhead: Number(o.daysAhead ?? 21),
     deadline: o.deadline || {weekly: true, weekday: 1, time: '13:00'}, // default pre-order deadline: Monday 1pm for that week's pickups (or {daysBefore, time})
@@ -54,11 +53,22 @@ export function isOpenDay(date, os, settings = {}){
 }
 // Online ordering paused by staff: either until turned back on, or until a time (onlinePausedUntil).
 export const onlinePausedNow = (status = {}, now = Date.now()) => !!status.onlinePaused && !(Number(status.onlinePausedUntil || 0) && Number(status.onlinePausedUntil) <= now);
-// Most ASAP online orders per 15 minutes right now: the first day-and-time rule that matches, otherwise the everyday number. 0 = no limit.
-export function asapLimitAt(os, now = Date.now()){
+// Kitchen load: sandwiches (anything sent to the kitchen screens) on screen and not yet bumped, from every source.
+export function sandwichesWaiting(orders, now = Date.now()){
+  let n = 0;
+  for (const o of orders || []){
+    if (o.cleared || o.status === 'void' || o.importedFrom || (o.fireAtMs || 0) > now) continue;
+    const lines = Array.isArray(o.lines) ? o.lines : Object.values(o.lines || {});
+    for (const l of lines) if (l && l.station === 'kitchen' && !l.removed && !l.done) n += Number(l.qty || 1);
+  }
+  return n;
+}
+// Most sandwiches waiting before online ordering pauses, right now: the first busy-time row that matches, else the everyday number. 0 = never.
+// Set on the KDS (Timing → Auto-pause online ordering); stored in settings/kds.
+export function sandwichLimitAt(kds = {}, now = Date.now()){
   const day = weekday(nyDate(now)), t = nyTime(now);
-  const r = (os.asapLimits || []).find(r => (r.days || []).includes(day) && (!r.from || t >= r.from) && (!r.to || t < r.to));
-  return r ? Number(r.per15 || 0) : os.asapPer15;
+  const r = (kds.onlineRules || []).find(r => (r.days || []).includes(day) && (!r.from || t >= r.from) && (!r.to || t < r.to));
+  return Number((r ? r.max : kds.onlineAutoAt) || 0);
 }
 // Is ASAP ordering open right now? Returns {ok, reason, readyAt}
 export function asapState(settings, status = {}, now = Date.now()){

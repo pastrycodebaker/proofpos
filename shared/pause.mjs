@@ -7,6 +7,7 @@ const clock = ms => new Date(ms).toLocaleTimeString('en-US', {timeZone: 'America
 // "OFF", "OFF · back on 2:45 PM"
 export function pauseLabel(status = {}, now = Date.now()){
   if (!onlinePausedNow(status, now)) return 'on';
+  if (status.onlineAutoPaused) return 'OFF · kitchen busy';
   const u = Number(status.onlinePausedUntil || 0);
   return !u ? 'OFF' : nyTime(u) === '00:00' ? 'OFF for today' : `OFF · back on ${clock(u)}`;
 }
@@ -14,7 +15,7 @@ export function pauseLabel(status = {}, now = Date.now()){
 // Tapping the button: if paused, turn back on right away. If on, ask how long. Resolves with the status change to save, or null.
 export function choosePause(status = {}, who = ''){
   const now = Date.now();
-  if (onlinePausedNow(status, now)) return Promise.resolve({onlinePaused: false, onlinePausedUntil: 0, changedAt: now, changedBy: who});
+  if (onlinePausedNow(status, now)) return Promise.resolve({onlinePaused: false, onlinePausedUntil: 0, onlineAutoPaused: false, changedAt: now, changedBy: who});
   return new Promise(resolve => {
     const endOfDay = nyMs(addDays(nyDate(now), 1), '00:00');
     const opts = [['15 minutes', now + 15 * 60000], ['30 minutes', now + 30 * 60000], ['1 hour', now + 60 * 60000], ['Rest of today', endOfDay], ['Until someone turns it back on', 0]];
@@ -28,7 +29,7 @@ export function choosePause(status = {}, who = ''){
     box.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b && e.target !== box) return;
       if (!b || b.hasAttribute('data-x')) return done(null);
-      done({onlinePaused: true, onlinePausedUntil: opts[+b.dataset.i][1], changedAt: Date.now(), changedBy: who});
+      done({onlinePaused: true, onlinePausedUntil: opts[+b.dataset.i][1], onlineAutoPaused: false, changedAt: Date.now(), changedBy: who});
     });
     document.body.appendChild(box);
   });

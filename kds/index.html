@@ -242,6 +242,12 @@
   <h2 style="margin-top:16px">Auto-pause kiosk drinks</h2>
   <div class="muted" style="margin-bottom:6px">Pause kiosk drinks by themselves when this many drinks are waiting at the espresso bar. They turn back on when it catches up. Blank = off.</div>
   <input type="number" min="1" id="autoPauseAt" placeholder="Off" style="max-width:120px">
+  <h2 style="margin-top:16px">Auto-pause online ordering</h2>
+  <div class="muted" style="margin-bottom:6px">Stop same-day online orders when this many sandwiches (anything on the kitchen screens, from the register, kiosk and online) are waiting. Online turns back on when the kitchen catches up. Pre-orders for later days still come in. Blank = off.</div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="number" min="1" id="onlineAutoAt" placeholder="Off" style="max-width:120px"><span class="muted">sandwiches waiting, any other time</span></div>
+  <div class="muted" style="margin:10px 0 6px">Busy times (first match wins):</div>
+  <div id="onlineRules"></div>
+  <button id="ruleAdd" type="button">+ Add a busy time</button>
   <div style="margin-top:12px"><button class="primary" id="timingSave">Save</button> <button id="timingClose">Close</button></div>
 </div>
 
@@ -254,6 +260,7 @@ document.addEventListener('click', e => { if (e.target.id !== 'btnTheme') return
 import { firebaseConfig } from '../firebase-config.js';
 import { griddleParts } from '../shared/griddle.mjs';
 import { choosePause, pauseLabel, onlinePausedNow } from '../shared/pause.mjs';
+import { sandwichesWaiting, sandwichLimitAt } from '../shared/online.mjs';
 import { readyToCapture, captureHolds } from '../shared/holds.mjs';
 import { createPayments } from '../payments.js';
 const DEMO = new URLSearchParams(location.search).has('demo');
@@ -590,19 +597,28 @@ $('#close86').addEventListener('click', closeAll);
 
 // ---------- Timing ----------
 $('#btnTiming').addEventListener('click', () => {
-  const t = settings.thresholds || DEFAULT_T; const labels = {espresso:'Espresso bar', kitchen:'Kitchen', all:'Runner'};
+  const t = settings.thresholds || DEFAULT_T; const labels = {espresso:'Espresso bar', kitchen:'Kitchen', griddle:'Griddle', all:'Runner'};
   $('#threshRows').innerHTML = '<div class="muted">Station</div><div class="muted">Yellow at</div><div class="muted">Red at</div>' +
     Object.keys(DEFAULT_T).map(k => `<div>${labels[k]}</div><input type="number" min="1" data-k="${k}" data-f="y" value="${t[k]?.y ?? DEFAULT_T[k].y}"><input type="number" min="1" data-k="${k}" data-f="r" value="${t[k]?.r ?? DEFAULT_T[k].r}">`).join('');
   $('#autoPauseAt').value = settings.autoPauseAt || '';
+  $('#onlineAutoAt').value = settings.onlineAutoAt || '';
+  $('#onlineRules').innerHTML = (settings.onlineRules || []).map(ruleRow).join('');
   openModal('timingModal');
 });
 $('#timingSave').addEventListener('click', () => {
   const t = structuredClone(settings.thresholds || DEFAULT_T);
   document.querySelectorAll('#threshRows input').forEach(i => { const n = Number(i.value); if (n > 0){ t[i.dataset.k] = t[i.dataset.k] || {}; t[i.dataset.k][i.dataset.f] = n; } });
   const ap = Number($('#autoPauseAt').value || 0);
-  settings = {...settings, thresholds: t, autoPauseAt: ap > 0 ? ap : null}; act(store.saveSettings(settings)); closeAll(); render();
+  const oa = Number($('#onlineAutoAt').value || 0);
+  const onlineRules = [...document.querySelectorAll('#onlineRules .rule')].map(r => ({days: [...r.querySelectorAll('[data-rd]:checked')].map(x => Number(x.dataset.rd)), from: r.querySelector('[data-rf]').value, to: r.querySelector('[data-rt]').value, max: Math.max(0, Math.floor(Number(r.querySelector('[data-rm]').value) || 0))})).filter(r => r.days.length);
+  settings = {...settings, thresholds: t, autoPauseAt: ap > 0 ? ap : null, onlineAutoAt: oa > 0 ? oa : null, onlineRules}; act(store.saveSettings(settings)); closeAll(); render();
 });
 $('#timingClose').addEventListener('click', closeAll);
+const RULE_DAYS = [[3, 'We'], [4, 'Th'], [5, 'Fr'], [6, 'Sa'], [0, 'Su'], [1, 'Mo'], [2, 'Tu']];
+const ruleRow = (r = {days: [6, 0], from: '08:00', to: '11:00', max: 12}) => `<div class="rule" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 8px">${RULE_DAYS.map(([n, l]) => `<label style="display:flex;gap:3px;align-items:center"><input type="checkbox" data-rd="${n}" ${(r.days || []).includes(n) ? 'checked' : ''}>${l}</label>`).join('')}
+  <input type="time" data-rf value="${r.from || ''}" style="width:auto"><span class="muted">to</span><input type="time" data-rt value="${r.to || ''}" style="width:auto"><input type="number" min="0" data-rm value="${r.max ?? 0}" style="width:70px"><span class="muted">sandwiches</span><button type="button" data-rx>Remove</button></div>`;
+$('#ruleAdd').addEventListener('click', () => $('#onlineRules').insertAdjacentHTML('beforeend', ruleRow()));
+$('#onlineRules').addEventListener('click', e => { const b = e.target.closest('[data-rx]'); if (b) b.closest('.rule').remove(); });
 
 // ---------- Test register ----------
 const drawer = $('#drawer');
@@ -751,7 +767,16 @@ function autoPause(){
   if (n >= at && (!paused || (status.kioskAutoPaused && until - now < 3 * 60000))){ const v = now + 10 * 60000; status = {...status, kioskDrinksPausedUntil: v, kioskAutoPaused: true}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: v, kioskAutoPaused: true, kioskChangedAt: now})); }
   else if (paused && status.kioskAutoPaused && n < Math.max(1, at - 2) && now - Number(status.kioskChangedAt || 0) > 2 * 60000){ status = {...status, kioskDrinksPausedUntil: 0, kioskAutoPaused: false}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: 0, kioskAutoPaused: false, kioskChangedAt: now})); }
 }
+// Auto-pause online ordering when the kitchen has too many sandwiches waiting; back on once it's down 25% (and at least 2 minutes later).
+// A pause someone tapped by hand is never undone by this, and turning it back on by hand gives the kitchen 5 minutes before it can pause again.
+function autoPauseOnline(){
+  const at = sandwichLimitAt(settings), now = Date.now(), n = sandwichesWaiting(ORDERS, now);
+  const paused = onlinePausedNow(status, now), since = now - Number(status.changedAt || 0);
+  if (at && n >= at && !paused && !(status.changedBy !== 'auto' && since < 5 * 60000)){ const ch = {onlinePaused: true, onlinePausedUntil: 0, onlineAutoPaused: true, changedAt: now, changedBy: 'auto'}; status = {...status, ...ch}; renderStatus(); act(store.setStatus(ch)); }
+  else if (paused && status.onlineAutoPaused && (!at || n <= Math.floor(at * 0.75)) && since > 2 * 60000){ const ch = {onlinePaused: false, onlineAutoPaused: false, changedAt: now, changedBy: 'auto'}; status = {...status, ...ch}; renderStatus(); act(store.setStatus(ch)); }
+}
 setInterval(autoPause, 20000);
+setInterval(autoPauseOnline, 20000);
 setInterval(() => renderStatus(), 15000);
 if (DEMO) $('#btnSwitch').href = '../?pick&demo';
 $('#btnOnline').addEventListener('click', async () => { const ch = await choosePause(status, 'KDS'); if (!ch) return; status = {...status, ...ch}; renderStatus(); act(store.setStatus(ch)); });

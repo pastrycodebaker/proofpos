@@ -6,7 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { buildLine, availability, asapState, asapLimitAt, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows, lineBagels } from '../../shared/online.mjs';
+import { buildLine, availability, asapState, sandwichLimitAt, sandwichesWaiting, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows, lineBagels } from '../../shared/online.mjs';
 import { orderConfirmation } from '../../shared/notify.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
@@ -56,7 +56,14 @@ async function start(b){
   } else {
     const a = asapState(M.settings, M.status, now); if (!a.ok) throw new Error(a.reason);
     const os = onlineSettings(M.settings);
-    const cap = asapLimitAt(os, now); if (cap){ const recent = await getDocs(query(collection(db, 'orders'), where('createdAtMs', '>=', now - 15 * 60000))); const n = recent.docs.filter(d => d.data().source === 'online' && d.data().pickup?.type === 'asap').length; if (n >= cap) throw new Error("We're very busy right now. Try again in a few minutes, or pre-order for later."); }
+    if (os.asapPer15){ const recent = await getDocs(query(collection(db, 'orders'), where('createdAtMs', '>=', now - 15 * 60000))); const n = recent.docs.filter(d => d.data().source === 'online' && d.data().pickup?.type === 'asap').length; if (n >= os.asapPer15) throw new Error("We're very busy right now. Try again in a few minutes, or pre-order for later."); }
+    // Kitchen too busy: the KDS normally pauses online ordering itself at this number; this catches an order placed in between.
+    const maxWaiting = sandwichLimitAt(M.kds, now);
+    if (maxWaiting){
+      const today = nyDate(now), seen = new Map();
+      for (const q of [query(collection(db, 'orders'), where('createdAtMs', '>=', nyMs(today, '00:00'))), query(collection(db, 'orders'), where('pickupDate', '==', today))]) for (const d of (await getDocs(q)).docs) seen.set(d.id, d.data());
+      if (sandwichesWaiting([...seen.values()], now) >= maxWaiting) throw new Error("The kitchen is very busy right now. Try again in a few minutes, or pre-order for later.");
+    }
     pickup = {type: 'asap'};
   }
   const date = pickup.type === 'asap' ? nyDate(now) : pickup.date;
