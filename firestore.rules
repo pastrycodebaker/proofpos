@@ -46,6 +46,8 @@ service cloud.firestore {
     // Gift cards: balances change only in transactions from the register and Orders and reports; every change is logged.
     match /giftCards/{num} { allow read, write: if signedIn(); }
     match /giftCardTx/{id} { allow read, create: if signedIn(); }
+    // Online gift card lookups per connection (slows down guessing)
+    match /giftLookups/{id} { allow read, write: if signedIn(); }
     // Texts and emails to send, and their settings. (Sign-ups live on the customer record.)
     match /textBlasts/{id} { allow read, write: if signedIn(); }
     match /settings/texts { allow read, write: if signedIn(); }

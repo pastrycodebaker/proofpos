@@ -166,6 +166,8 @@
   .faq summary::after{content:'+';color:var(--quiet);font-weight:700}
   .faq details[open] summary::after{content:'–'}
   .faq details p{margin:0 0 14px;color:var(--quiet);white-space:pre-line}
+  .giftbox{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  button.link{background:transparent;color:var(--accent);font-weight:700;padding:4px 0}
   footer.foot{margin-top:28px} footer.foot a{color:var(--accent);font-weight:600}
 </style>
 </head>
@@ -229,7 +231,8 @@ async function api(action, body = {}){
   if (!r.ok) throw new Error(d.error || 'Something went wrong.'); return d;
 }
 function demoApi(action, b){
-  if (action === 'start'){ const lines = b.cart.map(d => BL(d)); return {demo: true, paymentIntent: 'pi_demo', totals: R.cartTotals(lines, S(), b.tipPct)}; }
+  if (action === 'gift'){ if (b.number === '6012345678901234') return {last4: '••1234', balance: 25}; if (b.number === '6000000000000005') return {last4: '••0005', balance: 5}; throw new Error("We couldn't find a gift card with that number."); }
+  if (action === 'start'){ const lines = b.cart.map(d => BL(d)); const totals = R.cartTotals(lines, S(), b.tipPct); const sp = b.giftCard ? giftSplit(totals.charge, b.giftCard === '6012345678901234' ? 25 : 5) : {gift: 0, rest: totals.charge}; return {demo: true, giftOnly: !!b.giftCard && sp.rest === 0, paymentIntent: 'pi_demo', totals, due: sp.rest}; }
   if (action === 'finish') return {paid: true, num: 142, readyAt: pickup.type === 'asap' ? Date.now() + 15 * 60000 : null, pickup};
 }
 
@@ -304,7 +307,7 @@ function renderMenu(top){
   if (!cat || !cats.includes(cat)) cat = cats[0];
   const tile = i => { const a = avail(i); return `<button class="tile" data-item="${esc(i.id)}" ${a.ok ? '' : 'disabled'}><div class="ph">${i.image ? `<img src="${esc(i.image)}" alt="" loading="lazy">` : `<span class="ini">${esc((i.name || '?')[0])}</span>`}</div><div class="tb"><span class="t">${esc(i.name)}</span>${i.description ? `<span class="d">${esc(i.description)}</span>` : ''}
     ${a.ok ? `${fromPrice(i) > 0 ? `<span class="p">${(i.versions || []).length > 1 ? 'From ' : ''}${money(fromPrice(i))}</span>` : ''}${a.deadline && (ownDeadline(i) || a.left !== null) ? `<span class="dl">Order by ${esc(deadlineText(a.deadline))}${a.left !== null && a.left <= 10 ? ` · ${a.left} left` : ''}</span>` : ''}` : `<span class="why">${esc(a.reason)}</span>`}</div></button>`; };
-  const banner = pre ? `<div class="pick"><span><small>Pickup</small> ${esc(shortDay(later.date))} · ${esc(R.timeLabel(later.time))}</span><a href="#later" data-change="1">Change</a></div>`${os.pickupNote ? `<p class="muted small" style="margin:0 0 6px">${esc(os.pickupNote)}</p>` : ''}
+  const banner = pre ? `<div class="pick"><span><small>Pickup</small> ${esc(shortDay(later.date))} · ${esc(R.timeLabel(later.time))}</span><a href="#later" data-change="1">Change</a></div>${os.pickupNote ? `<p class="muted small" style="margin:0 0 6px">${esc(os.pickupNote)}</p>` : ''}`
     : `<div class="pick"><span><small>Today</small> ready in about ${os.prepMinutes} min</span><a href="#">Change</a></div>`;
   $('#app').innerHTML = `${top}${banner}
     ${special.length ? `<h2 class="cat">Specials for ${esc(R.dayLabel(later.date))}</h2><div class="grid">${special.sort(order).map(tile).join('')}</div>` : ''}
@@ -375,7 +378,10 @@ function renderCart(err = '', field = ''){
       ${pickup.type === 'date' ? `<label class="confirm" style="background:#FCE8EF;border-color:#E9A3BA"><input type="checkbox" id="fAllergy" ${allergy.separate ? 'checked' : ''}><span>Please pack my items separately for allergies</span></label>
       <div id="allergyBox" class="${allergy.separate ? '' : 'hidden'}"><label for="fAllergyNote">What should we keep apart?</label><input id="fAllergyNote" value="${esc(allergy.note)}" placeholder="e.g. nut allergy, keep the almond croissant separate"></div>` : ''}</div>
     <div><label>Add a tip for the team?</label><div class="tips" id="tipsRow">${tips.map(([p, l]) => `<button class="${tipPct !== null && String(tipPct) === p ? 'on' : ''}" data-tip="${p}">${l}${p !== '0' ? `<small>${money(t.sub * Number(p))}</small>` : ''}</button>`).join('')}</div></div>
-    <div class="tot"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:18px"><span>Total</span><span>${money(t.charge)}</span></div><div class="muted" style="font-size:13px"><span>Prices include sales tax</span><span>${money(t.tax)}</span></div></div>
+    <div class="tot"><div><span>Items</span><span>${money(t.sub)}</span></div>${t.tip ? `<div><span>Tip</span><span>${money(t.tip)}</span></div>` : ''}<div style="font-weight:800;font-size:18px"><span>Total</span><span>${money(t.charge)}</span></div><div class="muted" style="font-size:13px"><span>Prices include sales tax</span><span>${money(t.tax)}</span></div>${gift ? (() => { const sp = giftSplit(t.charge, gift.balance); return `<div><span>Gift card ${esc(gift.last4)}</span><span>−${money(sp.gift)}</span></div><div style="font-weight:800"><span>${sp.rest ? 'Pay by card' : 'Left to pay'}</span><span>${money(sp.rest)}</span></div>`; })() : ''}</div>
+    <div class="giftbox">${gift ? `<span>Gift card ${esc(gift.last4)} · ${money(gift.balance)} balance</span><button class="link" id="giftRm">Remove</button>`
+      : giftOpen ? `<div style="display:flex;gap:8px;width:100%"><input id="fGift" inputmode="numeric" autocomplete="off" placeholder="Gift card number"><button class="primary" id="giftApply">Use</button></div><div class="err" id="gErr"></div>`
+      : `<button class="link" id="giftOpen">Use a gift card</button>`}</div>
     ${pickup.type === 'date' ? `<label class="confirm"><input type="checkbox" id="fConfirm" ${confirmed ? 'checked' : ''}><span>I'm picking this up on <b>${esc(longDay(pickup.date))}</b> at <b>${esc(R.timeLabel(pickup.time))}</b>, ${esc(howFar(pickup.date))}.</span></label>` : ''}
     <div id="payBox"></div><div class="err" id="cErr">${esc(err)}</div></div>
     <div class="ft"><span class="sp"></span><button class="primary" id="checkout" ${cart.length && !issues.some(Boolean) ? '' : 'disabled'} style="font-size:18px;padding:14px 22px">Continue to payment</button></div></div></div>`;
@@ -384,6 +390,16 @@ function renderCart(err = '', field = ''){
   if (field){ const el = $('#' + field); if (el){ const box = el.closest('label.confirm') || el.closest('.tips') || el.parentElement; box.classList.add('missing'); box.insertAdjacentHTML('beforeend', `<div class="fielderr">${esc(err)}</div>`); box.scrollIntoView({block: 'center', behavior: 'smooth'}); if (el.tagName === 'INPUT' && el.type !== 'checkbox') setTimeout(() => el.focus({preventScroll: true}), 300); } }
 }
 let confirmed = false, allergy = {separate: false, note: ''}, smsOk = false;
+let gift = null, giftOpen = false; // gift card being used: {number, last4, balance}
+// Same rule as the server: the card part is $0 or at least $0.50.
+function giftSplit(charge, bal){ let g = Math.round(Math.min(bal, charge) * 100) / 100; const rest = Math.round((charge - g) * 100) / 100; if (rest > 0 && rest < 0.5) g = Math.max(0, Math.round((charge - 0.5) * 100) / 100); return {gift: g, rest: Math.round((charge - g) * 100) / 100}; }
+async function applyGift(){
+  const v = ($('#fGift').value || '').replace(/\D/g, ''); const b = $('#giftApply');
+  if (v.length < 8){ $('#gErr').textContent = 'Please type the whole number on the card.'; return; }
+  b.disabled = true; b.textContent = '…';
+  try { const r = await api('gift', {number: v}); if (!(r.balance > 0)){ $('#gErr').textContent = `Gift card ${r.last4} has no balance left.`; b.disabled = false; b.textContent = 'Use'; return; } gift = {number: v, last4: r.last4, balance: r.balance}; giftOpen = false; current = null; renderCart(); }
+  catch (e){ $('#gErr').textContent = e.message; b.disabled = false; b.textContent = 'Use'; }
+}
 let stripeJs = null, elements = null, current = null;
 async function checkout(){
   me = {name: $('#fName').value.trim(), email: $('#fEmail').value.trim(), phone: $('#fPhone').value.trim()}; save('fs.me', me);
@@ -397,30 +413,31 @@ async function checkout(){
   if (tipPct === null) return renderCart('Please pick a tip option (No tip is fine).', 'tipsRow');
   const btn = $('#checkout'); btn.disabled = true; btn.textContent = 'One moment…';
   try {
-    current = await api('start', {cart: cart.map(({itemId, versionIdx, mods}) => ({itemId, versionIdx, mods})), pickup, tipPct, customer: {...me, allergySeparate: allergy.separate, allergyNote: allergy.note, smsOptIn: smsOk}});
-    if (current.demo){ $('#payBox').innerHTML = `<div class="note warn">Demo: no card is charged.</div>`; btn.textContent = 'Pay ' + money(current.totals.charge); btn.disabled = false; btn.id = 'payNow'; return; }
+    current = await api('start', {giftCard: gift ? gift.number : null, cart: cart.map(({itemId, versionIdx, mods}) => ({itemId, versionIdx, mods})), pickup, tipPct, customer: {...me, allergySeparate: allergy.separate, allergyNote: allergy.note, smsOptIn: smsOk}});
+    if (current.giftOnly){ $('#payBox').innerHTML = `<div class="note">Your gift card covers this order.</div>`; btn.textContent = 'Place order'; btn.disabled = false; btn.id = 'payNow'; return; }
+    if (current.demo){ $('#payBox').innerHTML = `<div class="note warn">Demo: no card is charged.</div>`; btn.textContent = 'Pay ' + money(current.due ?? current.totals.charge); btn.disabled = false; btn.id = 'payNow'; return; }
     if (!current.publishableKey) throw new Error('Online payments are not set up yet.');
     if (!window.Stripe) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://js.stripe.com/v3/'; s.onload = res; s.onerror = () => rej(new Error('Could not load the payment form.')); document.head.appendChild(s); });
     stripeJs = stripeJs || window.Stripe(current.publishableKey);
     elements = stripeJs.elements({clientSecret: current.clientSecret, appearance: {theme: 'stripe', variables: {colorPrimary: '#1F5C55', borderRadius: '12px'}}});
     $('#payBox').innerHTML = '<div id="payEl"></div>'; elements.create('payment').mount('#payEl');
-    btn.textContent = 'Pay ' + money(current.totals.charge); btn.disabled = false; btn.id = 'payNow';
-  } catch (e){ renderCart(e.message); }
+    btn.textContent = 'Pay ' + money(current.due ?? current.totals.charge); btn.disabled = false; btn.id = 'payNow';
+  } catch (e){ if (/gift card/i.test(e.message)) gift = null; renderCart(e.message); }
 }
 async function payNow(){
   const btn = $('#payNow'); btn.disabled = true; btn.textContent = 'Paying…'; $('#cErr').textContent = '';
   try {
-    if (!current.demo){
+    if (!current.demo && !current.giftOnly){
       const r = await stripeJs.confirmPayment({elements, redirect: 'if_required', confirmParams: {return_url: location.href.split('?')[0] + '?paid=' + current.paymentIntent}});
-      if (r.error){ $('#cErr').textContent = r.error.message; btn.disabled = false; btn.textContent = 'Pay ' + money(current.totals.charge); return; }
+      if (r.error){ $('#cErr').textContent = r.error.message; btn.disabled = false; btn.textContent = 'Pay ' + money(current.due ?? current.totals.charge); return; }
     }
     await finishOrder(current.paymentIntent);
-  } catch (e){ $('#cErr').textContent = e.message; btn.disabled = false; btn.textContent = 'Try again'; }
+  } catch (e){ if (/gift card only has/.test(e.message)){ gift = null; current = null; renderCart(e.message); return; } $('#cErr').textContent = e.message; btn.disabled = false; btn.textContent = 'Try again'; }
 }
 async function finishOrder(pi){
   let r; for (let i = 0; i < 6; i++){ r = await api('finish', {paymentIntent: pi}); if (r.paid) break; await new Promise(x => setTimeout(x, 1500)); }
   if (!r || !r.paid) throw new Error("Your payment is still processing. We'll start your order as soon as it goes through.");
-  cart = []; save(cartKey(), cart); $('#sheetRoot').innerHTML = ''; $('#bar').classList.add('hidden');
+  cart = []; gift = null; save(cartKey(), cart); $('#sheetRoot').innerHTML = ''; $('#bar').classList.add('hidden');
   const when = r.pickup && r.pickup.type === 'date' ? `Pick up ${longDay(r.pickup.date)}${r.pickup.time ? ' at ' + R.timeLabel(r.pickup.time) : ''}` : r.readyAt ? `Ready about ${new Date(r.readyAt).toLocaleTimeString('en-US', {timeZone: R.TZ, hour: 'numeric', minute: '2-digit'})}` : 'We’re on it';
   $('#app').innerHTML = `<div class="done"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1F5C55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
     <h1>Thank you${me.name ? ', ' + esc(me.name.split(' ')[0]) : ''}!</h1><div class="num">Order #${esc(r.num)}</div><p style="font-size:20px;margin:0">${esc(when)}</p><p class="muted" style="margin:0">Your receipt is on its way to ${esc(me.email)}. Give your name at the counter.</p>
@@ -451,6 +468,9 @@ document.addEventListener('click', e => {
   if (t.dataset.rmall !== undefined){ const drop = new Set(t.dataset.rmall.split(',').map(Number)); cart = cart.filter((x, i) => !drop.has(i)); save(cartKey(), cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
   if (t.dataset.rm !== undefined){ cart.splice(Number(t.dataset.rm), 1); save(cartKey(), cart); renderBar(); if (cart.length) renderCart(); else $('#sheetRoot').innerHTML = ''; return; }
   if (t.dataset.tip !== undefined){ confirmed = $('#fConfirm') ? $('#fConfirm').checked : confirmed; tipPct = Number(t.dataset.tip); const err = $('#cErr') ? $('#cErr').textContent : ''; renderCart(err.includes('tip') ? '' : err); return; }
+  if (t.id === 'giftOpen'){ giftOpen = true; renderCart(); setTimeout(() => $('#fGift') && $('#fGift').focus(), 50); return; }
+  if (t.id === 'giftApply'){ applyGift(); return; }
+  if (t.id === 'giftRm'){ gift = null; current = null; renderCart(); return; }
   if (t.id === 'checkout'){ checkout(); return; }
   if (t.id === 'payNow'){ payNow(); return; }
   if (t.id === 'again'){ location.hash = ''; render(); return; }

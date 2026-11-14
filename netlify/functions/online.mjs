@@ -8,6 +8,7 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { buildLine, availability, asapState, sandwichLimitAt, sandwichesWaiting, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows, lineBagels } from '../../shared/online.mjs';
 import { orderConfirmation } from '../../shared/notify.mjs';
+import { cardNum, last4, r2 } from '../../shared/giftcards.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
 const db = getFirestore(app);
@@ -33,6 +34,31 @@ async function soldOn(date){
   const snap = await getDocs(query(collection(db, 'orders'), where('pickupDate', '==', date)));
   const n = {}; for (const d of snap.docs){ const o = d.data(); if (o.status === 'void') continue; for (const l of Object.values(o.lines || {})) if (!l.removed) n[l.itemId] = (n[l.itemId] || 0) + 1; }
   return n;
+}
+
+// Gift cards online: the whole card number is the key, so guessing is slowed down to 10 tries an hour per connection.
+async function giftLimiter(ip){
+  const ref = doc(db, 'giftLookups', String(ip || 'unknown').replace(/[^0-9a-fA-F.:]/g, '').replace(/[.:]/g, '-').slice(0, 60) || 'unknown');
+  const now = Date.now();
+  await runTransaction(db, async tx => {
+    const s = await tx.get(ref); const d = s.exists() ? s.data() : {n: 0, since: now};
+    const fresh = now - d.since > 3600000; const n = fresh ? 0 : d.n;
+    if (n >= 10) throw new Error('Too many gift card tries. Please try again in an hour, or ask us at the counter.');
+    tx.set(ref, {n: n + 1, since: fresh ? now : d.since});
+  });
+}
+async function giftLookup(number, ip){
+  const num = cardNum(number); if (num.length < 8) throw new Error('Please type the whole gift card number.');
+  await giftLimiter(ip);
+  const snap = await getDoc(doc(db, 'giftCards', num));
+  if (!snap.exists()) throw new Error("We couldn't find a gift card with that number.");
+  return {number: num, last4: last4(num), balance: r2(Number(snap.data().balance || 0))};
+}
+// How much of the total a gift card pays. The card part has to be $0 or at least $0.50 (Stripe's smallest charge).
+function giftSplit(charge, balance){
+  let gift = r2(Math.min(balance, charge)); const rest = r2(charge - gift);
+  if (rest > 0 && rest < 0.5) gift = r2(Math.max(0, charge - 0.5));
+  return {gift, rest: r2(charge - gift)};
 }
 
 async function start(b){
@@ -81,16 +107,25 @@ async function start(b){
   const tipPct = Math.max(0, Math.min(0.5, Number(b.tipPct) || 0));
   const t = cartTotals(lines, M.settings, tipPct);
   if (t.charge < 0.5) throw new Error('Online orders must be at least $0.50.');
-  const pi = await stripe('POST', 'payment_intents', {amount: Math.round(t.charge * 100), currency: 'usd', automatic_payment_methods: {enabled: true}, receipt_email: email,
-    description: `Online order for ${name}${pickup.type === 'date' ? ' · pick up ' + dayLabel(pickup.date) + ' at ' + timeLabel(pickup.time) : ''}`, metadata: {source: 'online', pickup: pickup.type === 'date' ? pickup.date + ' ' + pickup.time : 'asap'}});
-  await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct, allergySeparate, allergyNote, smsOptIn, smsOptInAt: smsOptIn ? now : null});
-  return {clientSecret: pi.client_secret, paymentIntent: pi.id, totals: t, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY};
+  let gc = null, split = {gift: 0, rest: t.charge};
+  if (b.giftCard){ gc = await giftLookup(b.giftCard, b._ip); if (gc.balance <= 0) throw new Error(`Gift card ${gc.last4} has no balance left.`); split = giftSplit(t.charge, gc.balance); }
+  const giftInfo = gc && split.gift > 0 ? {giftCard: gc.number, giftAmt: split.gift} : {};
+  if (gc && split.rest === 0){ // the gift card covers everything: no card payment
+    const id = 'gc_' + now.toString(36) + Math.random().toString(36).slice(2, 10);
+    await setDoc(doc(db, 'onlineCheckouts', id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct, allergySeparate, allergyNote, smsOptIn, smsOptInAt: smsOptIn ? now : null, ...giftInfo});
+    return {giftOnly: true, paymentIntent: id, totals: t, gift: {last4: gc.last4, amount: split.gift}, due: 0};
+  }
+  const pi = await stripe('POST', 'payment_intents', {amount: Math.round(split.rest * 100), currency: 'usd', automatic_payment_methods: {enabled: true}, receipt_email: email,
+    description: `Online order for ${name}${pickup.type === 'date' ? ' · pick up ' + dayLabel(pickup.date) + ' at ' + timeLabel(pickup.time) : ''}`, metadata: {source: 'online', pickup: pickup.type === 'date' ? pickup.date + ' ' + pickup.time : 'asap', ...(giftInfo.giftAmt ? {gift_card: last4(gc.number), gift_amount: String(split.gift)} : {})}});
+  await setDoc(doc(db, 'onlineCheckouts', pi.id), {createdAt: now, status: 'pending', pickup, name, email, phone, lines, totals: t, tipPct, allergySeparate, allergyNote, smsOptIn, smsOptInAt: smsOptIn ? now : null, ...giftInfo});
+  return {clientSecret: pi.client_secret, paymentIntent: pi.id, totals: t, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY, ...(giftInfo.giftAmt ? {gift: {last4: gc.last4, amount: split.gift}} : {}), due: split.rest};
 }
 
 // Creates the order once Stripe says it's paid. Safe to call more than once (the order id is the payment id).
 export async function finish(paymentIntent){
   await signIn();
-  const pi = await stripe('GET', `payment_intents/${paymentIntent}?expand[]=latest_charge`);
+  const giftOnly = /^gc_[a-z0-9]+$/.test(paymentIntent);
+  const pi = giftOnly ? {id: paymentIntent, amount: 0, status: 'succeeded'} : await stripe('GET', `payment_intents/${paymentIntent}?expand[]=latest_charge`);
   if (pi.status !== 'succeeded') return {paid: false, status: pi.status};
   const coRef = doc(db, 'onlineCheckouts', pi.id), orderRef = doc(db, 'orders', 'web_' + pi.id);
   const M = await loadMenu(); const os = onlineSettings(M.settings);
@@ -102,20 +137,32 @@ export async function finish(paymentIntent){
     const pre = c.pickup.type === 'date' && c.pickup.date !== nyDate(now);
     // Pre-orders get their own running numbers (1001, 1002…) so they never clash with the day's shop numbers.
     const counter = doc(db, 'counters', pre ? 'preorders' : 'orders-' + nyDate(now)); const cs = await tx.get(counter); const num = cs.exists() ? cs.data().next : (pre ? 1001 : 101);
+    // Gift card part: spent inside this same transaction, so the balance can't be used twice.
+    const gAmt = Number(c.giftAmt || 0), gRef = gAmt ? doc(db, 'giftCards', c.giftCard) : null;
+    const gSnap = gRef ? await tx.get(gRef) : null, gBal = gSnap && gSnap.exists() ? Number(gSnap.data().balance || 0) : 0;
+    if (gAmt && gBal + 0.004 < gAmt) return {giftShort: true, balance: gBal};
     const at = pre && c.pickup.time ? nyMs(c.pickup.date, c.pickup.time) : null;
     const fireAtMs = pre ? (at ? at - os.fireLead * 60000 : nyMs(c.pickup.date, '06:00')) : now;
     const readyAt = pre ? at : now + os.prepMinutes * 60000;
     const card = pi.latest_charge?.payment_method_details?.card || {};
-    const pay = {method: 'card', label: `${card.brand ? card.brand[0].toUpperCase() + card.brand.slice(1) : 'Card'} ${card.funding || ''} ••${card.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: c.totals.sub, tip: c.totals.tip, surcharge: 0, charged: pi.amount / 100, funding: card.funding || null, paymentIntent: pi.id, at: now, staff: 'Online'};
+    const gPay = gAmt ? {method: 'gift', label: 'Gift card ' + last4(c.giftCard), amount: r2(Math.min(gAmt, c.totals.sub)), tip: r2(Math.max(0, gAmt - c.totals.sub)), card: c.giftCard, at: now, staff: 'Online'} : null;
+    const pay = giftOnly ? null : {method: 'card', label: `${card.brand ? card.brand[0].toUpperCase() + card.brand.slice(1) : 'Card'} ${card.funding || ''} ••${card.last4 || ''}`.replace(/\s+/g, ' ').trim(), amount: r2(c.totals.sub - (gPay ? gPay.amount : 0)), tip: r2(c.totals.tip - (gPay ? gPay.tip : 0)), surcharge: 0, charged: pi.amount / 100, funding: card.funding || null, paymentIntent: pi.id, at: now, staff: 'Online'};
     tx.set(counter, {next: num + 1});
     tx.set(orderRef, {num, name: c.name, email: c.email, phone: c.phone || null, source: 'online', status: 'paid', staff: 'Online', rush: false, cleared: false, clearedAt: 0,
       scheduled: pre, createdAtMs: now, fireAtMs, readyAt, pickup: c.pickup, pickupDate: c.pickup.type === 'date' ? c.pickup.date : nyDate(now), pickupTime: c.pickup.time || null,
-      lines: Object.fromEntries(c.lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: [pay], totals: c.totals, paidAt: now, taxExempt: false, discount: null,
+      lines: Object.fromEntries(c.lines.map((l, i) => [l.lid, {...l, pos: i}])), payments: [gPay, pay].filter(Boolean), totals: c.totals, paidAt: now, taxExempt: false, discount: null,
       special: pre, smsOptIn: !!c.smsOptIn, smsOptInAt: c.smsOptInAt || null, allergySeparate: !!c.allergySeparate, allergyNote: c.allergyNote || '', packed: {}, pickedUp: false, reminderSent: false,
       ...(c.phone ? {customerPhone: c.phone, customerName: c.name, pointsEarned: Math.floor(c.totals.total), pointsUsed: 0} : {})});
+    if (gAmt){ const next = r2(gBal - gAmt); tx.update(gRef, {balance: next, lastUsedAt: now}); tx.set(doc(collection(db, 'giftCardTx')), {card: c.giftCard, delta: -gAmt, balance: next, at: now, kind: 'redeem', orderId: orderRef.id, staff: 'Online'}); }
     tx.update(coRef, {status: 'done', orderId: orderRef.id});
     return {num, readyAt, pickup: c.pickup, lines: c.lines, phone: c.phone, name: c.name, email: c.email, totals: c.totals, total: c.totals.total, pre, allergySeparate: c.allergySeparate, allergyNote: c.allergyNote, smsOptIn: !!c.smsOptIn};
   });
+  if (result.giftShort){
+    // Someone spent the card between checkout and payment. Give the card payment back and ask them to try again.
+    if (!giftOnly) await stripe('POST', 'refunds', {payment_intent: pi.id}).catch(e => console.error('refund failed', e.message));
+    await updateDoc(coRef, {status: 'gift_short'}).catch(() => {});
+    throw new Error(`Your gift card only has $${result.balance.toFixed(2)} left now, so we didn't place the order${giftOnly ? '' : ' and your card payment was refunded'}. Please try again.`);
+  }
   if (!result.already){
     // Same-day orders count down stock; rewards points for customers who gave a phone number.
     if (!result.pre) for (const l of result.lines){ const it = M.items.find(i => i.id === l.itemId); if (it && typeof it.stockCount === 'number') await updateDoc(doc(db, 'menu', 'main', 'items', it.id), {stockCount: increment(-1), ...(it.stockCount - 1 <= 0 ? {eightySixed: true} : {})}).catch(() => {}); }
@@ -160,7 +207,9 @@ export default async (req) => {
   let b; try { b = await req.json(); } catch { return json(400, {error: 'Bad request'}); }
   try {
     if (b.action === 'config') return json(200, {publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null, ready: !!(process.env.STRIPE_PUBLISHABLE_KEY && process.env.ORDER_BOT_EMAIL)});
-    if (b.action === 'start') return json(200, await start(b));
+    const ip = req.headers.get('x-nf-client-connection-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+    if (b.action === 'gift'){ await signIn(); const g = await giftLookup(b.number, ip); return json(200, {last4: g.last4, balance: g.balance}); }
+    if (b.action === 'start') return json(200, await start({...b, _ip: ip}));
     if (b.action === 'counts'){ // how many are left of each limited item for a pickup day (no customer details)
       await signIn(); const date = String(b.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json(400, {error: 'Bad date'});
       const [M, sold] = [await loadMenu(), await soldOn(date)]; const left = {};
