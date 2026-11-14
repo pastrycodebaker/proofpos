@@ -25,6 +25,13 @@ export const dayLabel = date => { const [y, m, d] = date.split('-').map(Number);
 export const timeLabel = t => { const [h, m] = t.split(':').map(Number); return new Date(Date.UTC(2000, 0, 1, h, m)).toLocaleTimeString('en-US', {timeZone: 'UTC', hour: 'numeric', minute: m ? '2-digit' : undefined}); };
 
 // ---------- Settings (menu editor → Settings → Online ordering) ----------
+export const DEFAULT_FAQ = [
+  {q: 'What can I pre-order?', a: 'Pastries, breads, bagels by the dozen and specials. Sandwiches and coffee drinks are same-day only.'},
+  {q: 'When do pre-orders close?', a: '{deadline}'},
+  {q: 'Where do I pick up?', a: 'At the counter at 37 Lebanon Street, Hamilton. Give the name on your order.'},
+  {q: 'Can I pay with a gift card?', a: 'Yes. At checkout, tap "Use a gift card" and type the number on your card. If it doesn\'t cover everything, pay the rest by card.'},
+  {q: 'What about allergies?', a: 'At checkout, check "Pack my items separately for allergies" and tell us what to keep apart.'},
+];
 export function onlineSettings(settings = {}){
   const o = settings.online || {};
   return {
@@ -41,6 +48,8 @@ export function onlineSettings(settings = {}){
     reminderDay: o.reminderDay ?? 0, reminderTime: o.reminderTime || '18:00', // weekly pre-order reminder text       // most pre-orders per 15-minute pickup time (0 = no limit)
     closedDates: o.closedDates || [],
     pickupNote: o.pickupNote || '',
+    headerImage: o.headerImage || '',           // wide photo across the top of online ordering
+    faq: Array.isArray(o.faq) ? o.faq : DEFAULT_FAQ, // [{q, a}] shown at the bottom; {deadline} in an answer becomes the pre-order deadline
     tips: settings.tipPercents || [0.18, 0.20, 0.22],
   };
 }

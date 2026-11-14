@@ -160,7 +160,7 @@
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
 import { GRIDDLE_ROLES, groupRole, optionRole, itemRole } from '../shared/griddle.mjs';
-import { onlineWhen, packAs, CHANNELS, optOn, bagelsIntoBread, ASSORTED_DOZEN } from '../shared/online.mjs';
+import { onlineWhen, packAs, CHANNELS, optOn, bagelsIntoBread, ASSORTED_DOZEN, DEFAULT_FAQ } from '../shared/online.mjs';
 
 const DEMO = new URLSearchParams(location.search).has('demo');
 let authRef = null;
@@ -302,8 +302,8 @@ function photoBox(it){
     ${src ? '<button id="f_photoRm" style="margin-left:6px">Remove</button>' : ''}<div class="muted" id="photoStatus" style="margin-top:6px;font-size:13px">Shows on online ordering and the kiosk. Square-ish photos look best.</div></div>`;
 }
 // Shrink to at most 1000px on the long side and save as WebP, so photos load fast on phones.
-async function shrinkPhoto(file){
-  const bmp = await createImageBitmap(file); const k = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
+async function shrinkPhoto(file, max = 1000){
+  const bmp = await createImageBitmap(file); const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   return await new Promise(res => c.toBlob(res, 'image/webp', 0.82));
@@ -635,6 +635,12 @@ async function renderSettings(){
       <div><label>Most pre-orders per 15-minute pickup time (0 = no limit)</label><input id="o_slot" type="number" min="0" value="${esc(os.slotLimit || 0)}"></div></div>
     <label>Closed dates, no pickups (holidays)</label><input id="o_closed" placeholder="2026-11-26, 2026-12-25" value="${esc((os.closedDates || []).join(', '))}">
     <label>Pickup note shown on pre-orders</label><input id="o_note" placeholder="Pick up any time after 8am at the Maple Ave counter." value="${esc(os.pickupNote || '')}">
+    <label style="margin-top:14px">Header photo</label>
+    <div id="hdrBox">${hdrBox(os.headerImage || '')}</div>
+    <label style="margin-top:14px">Questions (FAQ) at the bottom of online ordering</label>
+    <p class="muted" style="margin:0 0 6px">Type {deadline} in an answer and it fills in your pre-order deadline. Leave the list empty to show no questions.</p>
+    <div id="faqRows">${(Array.isArray(os.faq) ? os.faq : DEFAULT_FAQ).map(faqRow).join('')}</div>
+    <button id="faqAdd" type="button">+ Add a question</button>
     <div class="toggles" style="margin-top:8px"><label class="${os.asap === true ? 'on' : ''}"><input type="checkbox" id="o_asap" ${os.asap === true ? 'checked' : ''}>Take same-day ASAP orders (leave off while same-day orders are on Toast)</label></div>
     <div class="bar"><button class="primary" id="saveOnline">Save online ordering</button><span class="status" id="onlStatus"></span></div>
     <h3 id="set-bake-days">Bake days</h3>
@@ -660,6 +666,12 @@ document.addEventListener('change', async e => {
   { const t = e.target;
   if (t.id === 'g_qty'){ $('#g_qtybox').classList.toggle('hidden', !t.checked); $('#g_rule').disabled = t.checked; return; }
   if (t.dataset && t.dataset.bref !== undefined){ const n = t.closest('.boxrow').querySelector('[data-bname]'); n.style.display = t.value ? 'none' : ''; if (!t.value) n.focus(); return; }
+  if (t.id === 'o_hdr' && t.files[0]){
+    $('#hdrStatus').textContent = 'Uploading…';
+    try { pendingHeader = await uploadPhoto(await shrinkPhoto(t.files[0], 1800)); $('#hdrBox').innerHTML = hdrBox(pendingHeader); $('#hdrStatus').textContent = 'Uploaded. Tap Save online ordering to keep it.'; }
+    catch (err){ $('#hdrStatus').textContent = 'Could not upload: ' + err.message; }
+    return;
+  }
   if (t.id === 'f_photo' && t.files[0]){
     const box = t.closest('.photorow'); $('#photoStatus').textContent = 'Uploading…';
     try { const blob = await shrinkPhoto(t.files[0]); pendingImage = await uploadPhoto(blob); pendingFor = selId; box.innerHTML = photoBox(S.items.find(i => i.id === selId)); $('#photoStatus').textContent = 'Uploaded. Tap Save to keep it.'; }
@@ -786,13 +798,19 @@ document.addEventListener('click', async e => {
         taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
     }
+    if (t.id === 'faqAdd'){ $('#faqRows').insertAdjacentHTML('beforeend', faqRow()); return; }
+    if (t.matches && t.matches('[data-faqrm]')){ t.closest('.faqrow').remove(); return; }
+    if (t.id === 'o_hdrRm'){ pendingHeader = ''; $('#hdrBox').innerHTML = hdrBox(''); $('#hdrStatus').textContent = 'Removed. Tap Save online ordering to keep it.'; return; }
     if (t.id === 'saveOnline'){
       const hours = {}; document.querySelectorAll('[data-oh]').forEach(i => { if (!i.value) return; (hours[i.dataset.oh] ||= {})[i.dataset.k] = i.value; });
       for (const [d, h] of Object.entries(hours)) if (!h.open || !h.close || h.open >= h.close){ status('#onlStatus', 'Each open day needs an opening time before its closing time.', 'err'); return; }
       const n = (id, d) => { const v = $(id).value; return v === '' ? d : Math.max(0, Math.floor(Number(v))); }; const os0 = S.settings.online || {};
       const online = {asap: $('#o_asap').checked, hours, prepMinutes: n('#o_prep', 15), lastOrderMinutes: n('#o_last', 15), asapPer15: n('#o_cap', 0), daysAhead: n('#o_ahead', 21),
         deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireLead: n('#o_lead', 30), slotLimit: n('#o_slot', 0),
-        closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim()};
+        closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim(),
+        headerImage: pendingHeader !== undefined ? pendingHeader : (os0.headerImage || ''),
+        faq: [...document.querySelectorAll('#faqRows .faqrow')].map(r => ({q: r.querySelector('[data-fq]').value.trim(), a: r.querySelector('[data-fa]').value.trim()})).filter(f => f.q)};
+      pendingHeader = undefined;
       await store.saveSettings({...S.settings, online}); await reload(); setTimeout(() => status('#onlStatus', 'Saved', 'ok'), 300);
     }
     if (t.id === 'cupDefaults'){
@@ -1041,6 +1059,10 @@ $('#sheetPane').addEventListener('click', async e => {
 });
 
 // ---------- Layout (sections, order, days, season) ----------
+let pendingHeader; // header photo picked but not saved yet ('' = removed)
+const hdrBox = src => `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="width:240px;height:90px;border-radius:12px;overflow:hidden;background:#EFE7DA;display:flex;align-items:center;justify-content:center">${src ? `<img src="${esc(src)}" alt="" style="width:100%;height:100%;object-fit:cover">` : '<span class="muted">No photo</span>'}</div>
+  <div><label class="btn" style="display:inline-block;margin:0;cursor:pointer">${src ? 'Change photo' : 'Add a photo'}<input type="file" id="o_hdr" accept="image/*" style="display:none"></label>${src ? ' <button id="o_hdrRm" type="button">Remove</button>' : ''}<div class="muted" id="hdrStatus" style="font-size:13px;margin-top:6px">A wide photo works best (about 3 times as wide as tall).</div></div></div>`;
+const faqRow = (f = {q: '', a: ''}) => `<div class="faqrow" style="display:grid;gap:6px;margin:0 0 10px;padding:10px;border:1px solid #E3D9CA;border-radius:12px"><input data-fq value="${esc(f.q)}" placeholder="Question"><textarea data-fa rows="2" placeholder="Answer">${esc(f.a)}</textarea><div><button type="button" data-faqrm>Remove</button></div></div>`;
 const DAYS = [['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0],['Mon',1],['Tue',2]];
 const openDays = () => S.settings.openDays || [3,4,5,6,0];
 function daysLabel(days){

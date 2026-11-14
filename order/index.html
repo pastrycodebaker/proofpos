@@ -126,6 +126,47 @@
   .sheet .hero{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;max-height:280px}
   .pickupban{box-shadow:0 8px 24px -18px rgba(43,38,34,.5)}
   footer.foot{text-align:center;color:var(--quiet);font-size:13px;margin-top:40px;padding-top:16px;border-top:1px solid var(--line)}
+  /* ---- Simple storefront ---- */
+  body{background:var(--bg)}
+  .wrap{max-width:920px}
+  header.hero{margin:0 0 18px}
+  header.hero .banner{margin:-16px -16px 0;height:190px;overflow:hidden;background:var(--soft)}
+  @media(min-width:700px){header.hero .banner{margin:0;border-radius:0 0 22px 22px;height:260px}}
+  header.hero .banner img{width:100%;height:100%;object-fit:cover;display:block}
+  header.hero .id{display:flex;align-items:center;gap:12px;padding:16px 0 4px}
+  header.hero.has .id{margin-top:-34px}
+  header.hero .logo{width:68px;height:68px;border-radius:50%;border:4px solid var(--bg);background:#fff;flex:none;object-fit:cover}
+  header.hero.has .id > div{padding-top:30px}
+  header.hero .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:28px;color:inherit;text-decoration:none;line-height:1}
+  header.hero .sub{color:var(--quiet);font-size:14px;margin-top:3px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .choice{flex-direction:column;align-items:flex-start;gap:4px;padding:22px 18px;box-shadow:0 8px 24px -18px rgba(43,38,34,.4)}
+  .choice .ct{font-size:24px}
+  .back{color:var(--quiet);font-weight:600;text-decoration:none}
+  h1.pg{font-size:28px;margin:8px 0 14px} h2.pg2{font-size:20px;margin:22px 0 10px}
+  .wk{margin:0 0 14px}
+  .wk .by{font-size:13px;font-weight:700;color:#8A5A00;margin:0 0 6px}
+  .dates{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+  @media(min-width:700px){.dates{grid-template-columns:repeat(7,1fr)}}
+  .date{display:flex;flex-direction:column;align-items:center;gap:0;padding:10px 4px;border:2px solid var(--line);line-height:1.15}
+  .date small{font-size:12px;color:var(--quiet);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .date b{font-family:"Bricolage Grotesque",sans-serif;font-size:26px}
+  .date.on{border-color:var(--accent);background:var(--accent)} .date.on small,.date.on b{color:#fff}
+  .times{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+  .time{border:2px solid var(--line);font-weight:600;padding:12px 6px}
+  .time.on{border-color:var(--accent);background:var(--accent-bg)}
+  .small{font-size:14px;margin-top:14px}
+  .pick{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin:0 0 6px;font-weight:700}
+  .pick small{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--quiet);margin-right:6px}
+  .pick a{color:var(--accent);font-weight:700}
+  .faq{margin-top:36px} .faq h2{font-size:22px;margin:0 0 8px}
+  .faq details{background:#fff;border:1px solid var(--line);border-radius:12px;margin:0 0 8px;padding:0 16px}
+  .faq summary{cursor:pointer;font-weight:600;padding:14px 0;list-style:none;display:flex;justify-content:space-between;gap:10px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:'+';color:var(--quiet);font-weight:700}
+  .faq details[open] summary::after{content:'–'}
+  .faq details p{margin:0 0 14px;color:var(--quiet);white-space:pre-line}
+  footer.foot{margin-top:28px} footer.foot a{color:var(--accent);font-weight:600}
 </style>
 </head>
 <body>
@@ -168,7 +209,7 @@ async function start(){
     const s = await (await fetch('../data/seed-menu.json')).json();
     const demoHours = {3:{open:'07:00',close:'14:00'},4:{open:'07:00',close:'14:00'},5:{open:'07:00',close:'14:00'},6:{open:'08:00',close:'14:00'},0:{open:'08:00',close:'14:00'}};
     const items = s.items.concat([{id:'pumpkin-pie', name:'Pumpkin Pie', category:'Pre-orders', description:'Whole 9" pie. Pick up the day before Thanksgiving.', versions:[{temp:'', size:'', price:34}], modifierGroupIds:[], preorderOnly:true, dates:[R.addDays(R.nyDate(), 15), R.addDays(R.nyDate(), 16)], deadline:{daysBefore:3, time:'17:00'}, dateLimit:40, visible:{register:true, kiosk:false, online:true}, station:'none'}]);
-    M = {items, groups: s.modifierGroups, settings: {...s.settings, online: {hours: demoHours, prepMinutes: 15}, categories: [...s.settings.categories, 'Pre-orders']}, status: {}, kds: {}};
+    M = {items, groups: s.modifierGroups, settings: {...s.settings, online: {hours: demoHours, prepMinutes: 15, headerImage: new URLSearchParams(location.search).get('hdr') || ''}, categories: [...s.settings.categories, 'Pre-orders']}, status: {}, kds: {}};
     render(); return;
   }
   const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
@@ -193,7 +234,11 @@ function demoApi(action, b){
 }
 
 // ---------- Pages: start (#), today ASAP (#asap), pre-order (#later) ----------
-const TOP = `<header class="top"><a href="#" class="brand" style="color:inherit;text-decoration:none">Flour &amp; Salt</a><span class="sub">Bakery &amp; Cafe · Hamilton, NY</span><span class="slogan">Come for the bagel, stay for the line</span></header>`;
+const TOP = '';  // the header is built by top() so it can show the header photo
+function top_(){
+  const img = R.onlineSettings(S()).headerImage;
+  return `<header class="hero ${img ? 'has' : ''}">${img ? `<div class="banner"><img src="${esc(img)}" alt=""></div>` : ''}<div class="id"><img class="logo" src="/icons/icon-192.png" alt=""><div><a href="#" class="brand">Flour &amp; Salt</a><div class="sub">Bakery &amp; Cafe · 37 Lebanon St, Hamilton</div></div></div></header>`;
+}
 const mode = () => location.hash === '#asap' ? 'asap' : location.hash === '#later' ? 'later' : 'start';
 const cartKey = () => 'fs.cart.' + mode();
 let later = load('fs.later', {date: '', time: ''});
@@ -213,7 +258,7 @@ function setPickupForMode(){
 function render(){
   if (!M.items.length){ $('#app').innerHTML = '<p class="muted">Loading the menu…</p>'; return; }
   setPickupForMode();
-  const top = TOP;
+  const top = top_();
   if (mode() === 'start' && !R.onlineSettings(S()).asap){ history.replaceState(null, '', '#later'); return render(); }
   if (mode() === 'start') return renderStart(top);
   if (mode() === 'later' && !(later.date && later.time && R.preorderDays(S()).open.some(x => x.date === later.date) && R.pickupSlots(S(), later.date).includes(later.time))) return renderDayPick(top);
@@ -222,24 +267,34 @@ function render(){
   renderMenu(top);
 }
 function renderStart(top){
-  const a = R.asapState(S(), M.status); const os = R.onlineSettings(S()); const pd = R.preorderDays(S()); const next = pd.open[0];
+  const a = R.asapState(S(), M.status); const os = R.onlineSettings(S()); const next = R.preorderDays(S()).open[0];
   $('#bar').classList.add('hidden');
-  $('#app').innerHTML = `${top}<h1 style="font-size:30px;margin:6px 0 14px">When do you want your order?</h1>
-    <div style="display:grid;gap:12px">
-      <a class="choice ${a.ok ? '' : 'off'}" href="${a.ok ? '#asap' : '#'}"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1F5C55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v3M10 2v3M14 2v3"/></svg></span><span class="tx"><span class="ct">Today, ASAP</span><span>${a.ok ? `Ready in about ${os.prepMinutes} minutes. Sandwiches, coffee and pastries.` : esc(a.reason)}</span></span><span class="go" aria-hidden="true">→</span></a>
-      <a class="choice pre ${next ? '' : 'off'}" href="${next ? '#later' : '#'}"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="tx"><span class="ct">Pre-order for a future day</span><span>Pastries, breads, bagels by the dozen and specials. No sandwiches or drinks.</span>${next ? `<span class="dl">Next pickup: ${esc(R.dayLabel(next.date))} · order by ${esc(deadlineText(next.deadline))}</span>` : '<span>No pre-order days open right now.</span>'}</span><span class="go" aria-hidden="true">→</span></a>
-    </div>`;
+  $('#app').innerHTML = `${top}<div class="two">
+      <a class="choice ${a.ok ? '' : 'off'}" href="${a.ok ? '#asap' : '#'}"><span class="ct">Today</span><span class="muted">${a.ok ? `Ready in about ${os.prepMinutes} min` : esc(a.reason)}</span></a>
+      <a class="choice pre ${next ? '' : 'off'}" href="${next ? '#later' : '#'}"><span class="ct">Pre-order</span><span class="muted">${next ? 'Next pickup ' + esc(shortDay(next.date)) : 'No days open right now'}</span></a>
+    </div>${faqHtml()}${foot()}`;
 }
+const shortDay = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', {timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric'});
+const part = (d, o) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', {timeZone: 'UTC', ...o});
 function renderDayPick(top){
   $('#bar').classList.add('hidden');
   const pd = R.preorderDays(S()); const slots = later.date ? R.pickupSlots(S(), later.date) : [];
-  const closedNote = pd.closed.length ? `<p class="muted" style="margin:10px 0 0">Pre-orders for ${esc(R.dayLabel(pd.closed[0].date))}${pd.closed.length > 1 ? ' – ' + esc(R.dayLabel(pd.closed[pd.closed.length - 1].date)) : ''} are closed. That deadline was ${esc(deadlineText(pd.closed[0].deadline))}.</p>` : '';
-  $('#app').innerHTML = `${top}${R.onlineSettings(S()).asap ? '<a href="#" class="muted" style="font-weight:600">← Back</a>' : ''}<h1 style="font-size:30px;margin:8px 0 10px">Pre-order for a future day</h1>${preNotice()}${!R.onlineSettings(S()).asap ? `<p class="muted" style="margin:8px 0 0">Ordering for today? Use our <a href="${esc(S().online?.sameDayUrl || 'https://www.toasttab.com/flourandsalt')}" style="color:var(--accent);font-weight:700">same-day ordering</a>.</p>` : ''}
-    <h2 class="cat">1. Pick your pickup day</h2>${closedNote}
-    <div style="display:grid;gap:8px;margin-top:10px">${pd.open.map(x => `<button class="day ${later.date === x.date ? 'on' : ''}" data-day="${x.date}"><span class="ct">${esc(longDay(x.date))}</span><span class="muted">${esc(howFar(x.date))}</span><span class="dl">Order by ${esc(deadlineText(x.deadline))}</span></button>`).join('') || '<p class="muted">No pre-order days are open right now.</p>'}</div>
-    ${later.date ? `<h2 class="cat">2. Pick your pickup time</h2><select id="pTime" style="font:inherit;font-size:18px;padding:14px;border:2px solid var(--accent);border-radius:12px;width:100%;background:#fff"><option value="">Pick a time on ${esc(longDay(later.date))}</option>${slots.map(t => `<option value="${t}" ${later.time === t ? 'selected' : ''}>${esc(R.timeLabel(t))}</option>`).join('')}</select>` : ''}`;
-  if (later.date) $('#pTime').scrollIntoView({block: 'center', behavior: 'smooth'});
+  // Days grouped by their order-by deadline, so the deadline is said once per group.
+  const groups = []; for (const x of pd.open){ const g = groups[groups.length - 1]; if (g && g.deadline === x.deadline) g.days.push(x); else groups.push({deadline: x.deadline, days: [x]}); }
+  $('#app').innerHTML = `${top}${R.onlineSettings(S()).asap ? '<a href="#" class="back">← Back</a>' : ''}
+    <h1 class="pg">Pick a pickup day</h1>
+    ${groups.map(g => `<div class="wk"><div class="by">Order by ${esc(deadlineText(g.deadline))}</div><div class="dates">${g.days.map(x => `<button class="date ${later.date === x.date ? 'on' : ''}" data-day="${x.date}"><small>${esc(part(x.date, {weekday: 'short'}))}</small><b>${esc(part(x.date, {day: 'numeric'}))}</b><small>${esc(part(x.date, {month: 'short'}))}</small></button>`).join('')}</div></div>`).join('') || '<p class="muted">No pre-order days are open right now.</p>'}
+    ${later.date ? `<h2 class="pg2" id="timeHead">Pickup time on ${esc(shortDay(later.date))}</h2><div class="times">${slots.map(t => `<button class="time ${later.time === t ? 'on' : ''}" data-time="${t}">${esc(R.timeLabel(t))}</button>`).join('')}</div>` : ''}
+    ${!R.onlineSettings(S()).asap ? '<p class="muted small">Ordering for today? Order at the counter.</p>' : ''}${faqHtml()}${foot()}`;
+  if (later.date) $('#timeHead').scrollIntoView({block: 'start', behavior: 'smooth'});
 }
+// FAQ: tap a question to open it.
+function faqHtml(){
+  const os = R.onlineSettings(S()); const list = (os.faq || []).filter(f => f && f.q);
+  if (!list.length) return '';
+  return `<section class="faq"><h2>Questions</h2>${list.map(f => `<details><summary>${esc(f.q)}</summary><p>${esc(String(f.a || '').replace('{deadline}', deadlineRule()))}</p></details>`).join('')}</section>`;
+}
+const foot = () => `<footer class="foot"><a href="/texts/?list=weekly">Get a text before each pre-order deadline</a><br>Prices include sales tax</footer>`;
 function renderMenu(top){
   const os = R.onlineSettings(S()); const pre = mode() === 'later';
   const items = onlineItems().filter(i => { const w = R.onlineWhen(i); return pre ? w !== 'asap' : w !== 'preorder'; });
@@ -248,14 +303,14 @@ function renderMenu(top){
   const special = pre ? items.filter(i => (i.dates || []).length && avail(i).ok) : [];
   if (!cat || !cats.includes(cat)) cat = cats[0];
   const tile = i => { const a = avail(i); return `<button class="tile" data-item="${esc(i.id)}" ${a.ok ? '' : 'disabled'}><div class="ph">${i.image ? `<img src="${esc(i.image)}" alt="" loading="lazy">` : `<span class="ini">${esc((i.name || '?')[0])}</span>`}</div><div class="tb"><span class="t">${esc(i.name)}</span>${i.description ? `<span class="d">${esc(i.description)}</span>` : ''}
-    ${a.ok ? `<span class="p">${(i.versions || []).length > 1 ? 'From ' : ''}${money(fromPrice(i))}</span>${a.deadline && (ownDeadline(i) || a.left !== null) ? `<span class="dl">Order by ${esc(deadlineText(a.deadline))}${a.left !== null && a.left <= 10 ? ` · ${a.left} left` : ''}</span>` : ''}` : `<span class="why">${esc(a.reason)}</span>`}</div></button>`; };
-  const banner = pre ? `<div class="pickupban"><div><div class="lbl">PRE-ORDER · PICKUP</div><div class="big">${esc(longDay(later.date))} at ${esc(R.timeLabel(later.time))}</div><div>${esc(howFar(later.date))}</div></div><a href="#later" data-change="1">Change</a></div><p class="muted" style="margin:0 0 6px">Sandwiches and coffee drinks can only be ordered for today.${os.pickupNote ? ' ' + esc(os.pickupNote) : ''}</p>`
-    : `<div class="pickupban asap"><div><div class="lbl">TODAY · ASAP</div><div class="big">Ready in about ${os.prepMinutes} minutes</div></div><a href="#">Change</a></div>`;
+    ${a.ok ? `${fromPrice(i) > 0 ? `<span class="p">${(i.versions || []).length > 1 ? 'From ' : ''}${money(fromPrice(i))}</span>` : ''}${a.deadline && (ownDeadline(i) || a.left !== null) ? `<span class="dl">Order by ${esc(deadlineText(a.deadline))}${a.left !== null && a.left <= 10 ? ` · ${a.left} left` : ''}</span>` : ''}` : `<span class="why">${esc(a.reason)}</span>`}</div></button>`; };
+  const banner = pre ? `<div class="pick"><span><small>Pickup</small> ${esc(shortDay(later.date))} · ${esc(R.timeLabel(later.time))}</span><a href="#later" data-change="1">Change</a></div>`${os.pickupNote ? `<p class="muted small" style="margin:0 0 6px">${esc(os.pickupNote)}</p>` : ''}
+    : `<div class="pick"><span><small>Today</small> ready in about ${os.prepMinutes} min</span><a href="#">Change</a></div>`;
   $('#app').innerHTML = `${top}${banner}
     ${special.length ? `<h2 class="cat">Specials for ${esc(R.dayLabel(later.date))}</h2><div class="grid">${special.sort(order).map(tile).join('')}</div>` : ''}
     <div class="cats">${cats.map(c => `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <h2 class="cat">${esc(cat)}</h2><div class="grid">${items.filter(i => (i.category || 'Other') === cat).sort((a, b) => (avail(b).ok - avail(a).ok) || order(a, b)).map(tile).join('')}</div>
-    <footer class="foot"><a href="/texts/?list=weekly" style="color:var(--accent);font-weight:600">Get a text reminder before each Monday deadline</a><br>Prices include sales tax · 37 Lebanon Street, Hamilton, NY</footer>`;
+    ${faqHtml()}${foot()}`;
   renderBar();
 }
 function renderBar(){
@@ -376,7 +431,7 @@ async function finishOrder(pi){
 document.addEventListener('click', e => {
   const t = e.target.closest('button') || e.target;
   if (t.dataset.close && (e.target === t || e.target.closest('button'))){ draft = null; $('#sheetRoot').innerHTML = ''; return; }
-  if (t.dataset.day){ later = {date: t.dataset.day, time: later.date === t.dataset.day ? later.time : ''}; save('fs.later', later); renderDayPick(TOP); return; }
+  if (t.dataset.day){ later = {date: t.dataset.day, time: later.date === t.dataset.day ? later.time : ''}; save('fs.later', later); renderDayPick(top_()); return; }
   if (t.dataset.change){ e.preventDefault(); later = {...later, time: ''}; save('fs.later', later); render(); return; }
   if (t.dataset.cat){ cat = t.dataset.cat; render(); return; }
   if (t.dataset.item){ openItem(t.dataset.item); return; }
@@ -401,7 +456,7 @@ document.addEventListener('click', e => {
   if (t.id === 'again'){ location.hash = ''; render(); return; }
 });
 document.addEventListener('input', e => { if (e.target.id === 'fAllergyNote') allergy.note = e.target.value; });
-document.addEventListener('change', e => { if (e.target.id === 'pTime'){ later = {...later, time: e.target.value}; save('fs.later', later); if (later.time){ window.scrollTo(0, 0); render(); } } });
+document.addEventListener('click', e => { const b = e.target.closest('[data-time]'); if (!b) return; later = {...later, time: b.dataset.time}; save('fs.later', later); window.scrollTo(0, 0); render(); });
 window.addEventListener('hashchange', () => { draft = null; $('#sheetRoot').innerHTML = ''; cat = null; tipPct = null; window.scrollTo(0, 0); render(); });
 // Back from a bank redirect (some payment methods leave the page): finish the order.
 const paid = new URLSearchParams(location.search).get('paid');
