@@ -103,6 +103,7 @@ function demoStore(){
     async customers(){ return [{phone: '3155551234', name: 'Maya', points: 212, visits: 14, lastVisit: Date.now() - 86400000}, {phone: '3155559876', name: 'Theo', points: 40, visits: 3, lastVisit: Date.now() - 6 * 86400000}, {phone: '3155554321', name: '', points: 155, visits: 9, lastVisit: Date.now() - 2 * 86400000}]; },
     async customerOrders(phone){ return phone === '3155551234' ? [{id: 'd1', num: 104, createdAtMs: Date.now() - 86400000, status: 'paid', totals: {total: 12.4}, pointsEarned: 12, lines: {}}] : []; },
     async adjustPoints(){},
+    async loyaltyImport(rows, progress){ progress && progress(rows.length); },
   };
 }
 async function firebaseStore(app){
@@ -124,6 +125,12 @@ async function firebaseStore(app){
     async customerOrders(phone){ const [a, b] = await Promise.all([F.getDocs(F.query(F.collection(db, 'orders'), F.where('customerPhone', '==', phone))), F.getDocs(F.query(F.collection(db, 'orders'), F.where('phone', '==', phone)))]);
       const m = new Map(); for (const d of [...a.docs, ...b.docs]) m.set(d.id, {id: d.id, ...d.data()}); return [...m.values()].filter(o => !o.importedFrom); },
     async adjustPoints(phone, delta){ await F.setDoc(F.doc(db, 'customers', phone), {phone, points: F.increment(delta)}, {merge: true}); },
+    // Toast loyalty: adds each person's Toast points once (toastImportedAt marks it), keeping any points already earned here.
+    async loyaltyImport(rows, progress){
+      for (let i = 0; i < rows.length; i += 400){ const b = F.writeBatch(db);
+        for (const r of rows.slice(i, i + 400)) b.set(F.doc(db, 'customers', r.phone), {phone: r.phone, points: F.increment(r.points), toastPoints: r.points, toastImportedAt: Date.now(), ...(r.name ? {name: r.name} : {}), ...(r.email ? {email: r.email} : {}), ...(r.visits ? {visits: F.increment(r.visits)} : {})}, {merge: true});
+        await b.commit(); progress && progress(Math.min(rows.length, i + 400)); } },
+    async allCustomers(){ const s = await F.getDocs(F.collection(db, 'customers')); return s.docs.map(d => ({phone: d.id, ...d.data()})); },
   };
 }
 
@@ -321,7 +328,9 @@ async function renderRewards(){
       <span class="sp"></span><button id="rcsv">Download CSV</button></div>
     <div class="kpis">${kpi('Accounts', CUST.length, 'by phone number')}${kpi('Points out there', total.toLocaleString(), money(Math.floor(total / 150) * 3) + ' if all used')}${kpi('Can use $3 off', ready, '150+ points')}</div>
     <div class="card" style="padding:0"><table><thead><tr><th>Name</th><th>Phone</th><th class="n">Points</th><th class="n">Visits</th><th>Last visit</th></tr></thead><tbody>
-    ${list.map(c => `<tr class="click" data-cust="${esc(c.phone)}"><td><b>${esc(c.name || '—')}</b></td><td>${esc(fmtPhone(c.phone))}</td><td class="n">${c.points || 0}</td><td class="n">${c.visits || 0}</td><td class="muted">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No rewards accounts yet.</td></tr>'}</tbody></table></div><div id="custBox"></div>`;
+    ${list.map(c => `<tr class="click" data-cust="${esc(c.phone)}"><td><b>${esc(c.name || '—')}</b></td><td>${esc(fmtPhone(c.phone))}</td><td class="n">${c.points || 0}</td><td class="n">${c.visits || 0}</td><td class="muted">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No rewards accounts yet.</td></tr>'}</tbody></table></div><div id="custBox"></div><div class="card"><h2 style="margin-top:0">Bring over Toast loyalty points</h2><p class="muted" style="margin:0 0 8px">Export your loyalty members from Toast as a CSV (phone and points balance; name, email and visits too if Toast includes them) and choose it here. Each person's Toast points are added once to their account here; anyone already brought over is skipped, so running it twice won't double anyone.</p>
+      <div class="bar" style="margin:0 0 8px"><input type="file" id="lFile" accept=".csv,text/csv" style="max-width:340px"><label class="muted" style="display:flex;gap:6px;align-items:center">Toast points × <input id="lRate" type="number" step="0.01" value="1" style="width:80px"></label></div>
+      <p class="muted" style="margin:0 0 8px;font-size:13px">Leave it at 1 if Toast also gave 1 point per dollar. If Toast's reward took a different number of points, change it so a reward costs the same here (150 points = $3 off).</p><div id="lInfo"></div></div>`;
   if (rsel) showCustomer(rsel);
 }
 async function showCustomer(phone){
@@ -352,6 +361,39 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('input', e => { if (e.target.id === 'rq'){ rq = e.target.value; clearTimeout(window._rqT); window._rqT = setTimeout(async () => { await renderRewards(); const el = $('#rq'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }, 250); } });
 document.addEventListener('change', e => { if (e.target.id === 'rsort'){ rsort = e.target.value; renderRewards(); } });
+
+// ---------- Toast loyalty import ----------
+let LIMPORT = null;
+function readToastLoyalty(text, rate){
+  const rows = text.split(/\r?\n/).filter(x => x.trim()).map(line => { const out = []; let cur = '', q = false; for (let i = 0; i < line.length; i++){ const ch = line[i]; if (q){ if (ch === '"' && line[i + 1] === '"'){ cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"') q = true; else if (ch === ','){ out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; });
+  const H = rows[0].map(h => h.trim().toLowerCase()); const find = re => H.findIndex(h => re.test(h));
+  const iPh = find(/phone/), iPts = find(/point|balance/), iFirst = find(/^first/), iLast = find(/^last/), iName = find(/^(name|customer|guest)( name)?$/), iEm = find(/e-?mail/), iVis = find(/visit/);
+  if (iPh < 0 || iPts < 0) throw new Error('Could not find the phone and points columns. Send me the column names and I will match them.');
+  const have = new Set(CUST_ALL.filter(c => c.toastImportedAt).map(c => c.phone)); const seen = new Set(); const out = []; let skipped = 0, already = 0;
+  for (const r of rows.slice(1)){
+    const d = String(r[iPh] || '').replace(/\D/g, ''); const phone = d.length === 11 && d[0] === '1' ? d.slice(1) : d.length === 10 ? d : '';
+    const pts = Math.round(Number(String(r[iPts] || '').replace(/[^0-9.-]/g, '')) * rate);
+    if (!phone || !(pts > 0)){ skipped++; continue; } if (seen.has(phone)) continue; seen.add(phone);
+    if (have.has(phone)){ already++; continue; }
+    const name = (iName >= 0 ? r[iName] : [iFirst >= 0 ? r[iFirst] : '', iLast >= 0 ? r[iLast] : ''].join(' ')).trim();
+    const em = iEm >= 0 ? String(r[iEm] || '').trim().toLowerCase() : '';
+    out.push({phone, points: pts, name, email: /@/.test(em) ? em : '', visits: iVis >= 0 ? Math.max(0, Math.round(Number(r[iVis]) || 0)) : 0});
+  }
+  return {rows: out, skipped, already, total: out.reduce((s, r) => s + r.points, 0)};
+}
+let CUST_ALL = [];
+document.addEventListener('change', async e => {
+  if (e.target.id === 'lFile' && e.target.files[0]){
+    try { CUST_ALL = store.allCustomers ? await store.allCustomers() : []; LIMPORT = readToastLoyalty(await e.target.files[0].text(), Number($('#lRate').value) || 1);
+      $('#lInfo').innerHTML = `<p style="margin:0 0 8px"><b>${LIMPORT.rows.length}</b> members with points, <b>${LIMPORT.total.toLocaleString()}</b> points in all${LIMPORT.already ? `; ${LIMPORT.already} already brought over (skipped)` : ''}${LIMPORT.skipped ? `; ${LIMPORT.skipped} rows with no phone or no points skipped` : ''}.</p><button class="primary" id="lGo">Bring them in</button> <span id="lMsg" class="muted"></span>`; }
+    catch (err){ $('#lInfo').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+  }
+});
+document.addEventListener('click', async e => {
+  if (e.target.id === 'lGo' && LIMPORT){ e.target.disabled = true;
+    try { await store.loyaltyImport(LIMPORT.rows, n => { $('#lMsg').textContent = `${n} of ${LIMPORT.rows.length}…`; }); await store.logEvent({type: 'loyalty_import', count: LIMPORT.rows.length, points: LIMPORT.total, staff: 'Orders and reports'}); LIMPORT = null; await renderRewards(); }
+    catch (err){ $('#lMsg').innerHTML = `<span class="err">${/permission/i.test(err.message) ? 'You do not have permission to change points.' : esc(err.message)}</span>`; e.target.disabled = false; } }
+});
 
 // ---------- Gift cards ----------
 let gq = '', gsel = null, GIFTS = [], GIMPORT = null;
