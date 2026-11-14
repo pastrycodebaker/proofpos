@@ -635,6 +635,8 @@ async function renderSettings(){
       <div><label>Most pre-orders per 15-minute pickup time (0 = no limit)</label><input id="o_slot" type="number" min="0" value="${esc(os.slotLimit || 0)}"></div></div>
     <label>Closed dates, no pickups (holidays)</label><input id="o_closed" placeholder="2026-11-26, 2026-12-25" value="${esc((os.closedDates || []).join(', '))}">
     <label>Pickup note shown on pre-orders</label><input id="o_note" placeholder="Pick up any time after 8am at the Maple Ave counter." value="${esc(os.pickupNote || '')}">
+    <div class="row"><div><label>Email me about new online orders</label><select id="o_notify"><option value="all" ${(os.notifyMode || 'all') === 'all' ? 'selected' : ''}>Every online order</option><option value="pre" ${os.notifyMode === 'pre' ? 'selected' : ''}>Pre-orders only</option><option value="off" ${os.notifyMode === 'off' ? 'selected' : ''}>Off</option></select></div>
+      <div><label>Send them to</label><input id="o_notifyTo" type="email" value="${esc(os.notifyEmail || 'hello@flourandsalt.com')}"></div></div>
     <label style="margin-top:14px">Header photo</label>
     <div id="hdrBox">${hdrBox(os.headerImage || '')}</div>
     <label style="margin-top:14px">Questions (FAQ) at the bottom of online ordering</label>
@@ -809,6 +811,7 @@ document.addEventListener('click', async e => {
         deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireLead: n('#o_lead', 30), slotLimit: n('#o_slot', 0),
         closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim(),
         headerImage: pendingHeader !== undefined ? pendingHeader : (os0.headerImage || ''),
+        notifyMode: $('#o_notify').value, notifyEmail: $('#o_notifyTo').value.trim() || 'hello@flourandsalt.com',
         faq: [...document.querySelectorAll('#faqRows .faqrow')].map(r => ({q: r.querySelector('[data-fq]').value.trim(), a: r.querySelector('[data-fa]').value.trim()})).filter(f => f.q)};
       pendingHeader = undefined;
       await store.saveSettings({...S.settings, online}); await reload(); setTimeout(() => status('#onlStatus', 'Saved', 'ok'), 300);

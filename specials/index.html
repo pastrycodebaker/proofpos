@@ -70,6 +70,7 @@
   .login{max-width:360px;margin:60px auto;display:flex;flex-direction:column;gap:10px}
   .legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;margin-bottom:12px}
   @media print{header,.acts,.noprint{display:none !important} body{background:#fff} .ord{break-inside:avoid;border:1px solid #999} main{padding:0}}
+  h3.dayhead{margin:22px 0 10px;font-size:20px} h3.dayhead .muted{font-size:14px;font-weight:600}
 </style>
 </head>
 <body>
@@ -112,6 +113,7 @@ const live = o => isSpecial(o) && o.status !== 'void' && !o.cancelled;
 
 let store, PAY, MENU = {items: [], groups: [], settings: {}, limits: {}}, ORDERS = [], unsub = null;
 let tab = localStorage.getItem('proof.sp.tab') || 'pickup', day = today(), sortBy = 'time', packCat = 'bagels', range = {kind: 'week'}, query = '';
+let pRange = {on: false, from: '', to: ''}; // Pickup tab: a range of dates instead of one day
 const itemOf = id => MENU.items.find(i => i.id === id) || {};
 // Labels saved on the line when ordered; fall back to the item's current settings for older orders.
 const labels = l => l.packAs ? l : {...l, ...R.lineLabels(itemOf(l.itemId), l)};
@@ -140,6 +142,7 @@ function demoStore(){
     async saveLimits(l){ MENU.limits = l; },
     async log(e){ events.push(e); },
     async notifyOwner(subject, text){ console.log('Owner email:', subject, text); },
+    async emailPickup(b){ console.log('Customer email:', b); },
     async importOrders(docs){ let made = 0, updated = 0; for (const d of docs){ const o = orders.find(x => x.id === d.id); if (o){ Object.assign(o, d.doc, {packed: o.packed, pickedUp: o.pickedUp}); updated++; } else { orders.push({id: d.id, ...d.doc, packed: {}, pickedUp: false}); made++; } } this._cb && this._cb(); return {made, updated}; },
   };
 }
@@ -158,12 +161,14 @@ async function firestoreStore(app, auth){
       for (let i = 0; i < docs.length; i += 25) await Promise.all(docs.slice(i, i + 25).map(async d => { const ref = F.doc(db, 'orders', d.id); const ex = await F.getDoc(ref);
         if (ex.exists()){ await F.updateDoc(ref, d.doc); updated++; } else { await F.setDoc(ref, {...d.doc, packed: {}, pickedUp: false, createdAtMs: Date.now(), createdAt: Date.now()}); made++; } }));
       return {made, updated}; },
+    async emailPickup(b){ const t = await auth.currentUser.getIdToken(); const r = await fetch('/.netlify/functions/notify', {method: 'POST', headers: {authorization: 'Bearer ' + t, 'content-type': 'application/json'}, body: JSON.stringify({kind: 'pickup_change', ...b})}); const j = await r.json().catch(() => ({})); if (!r.ok || !j.ok) throw new Error('email failed'); },
     async notifyOwner(subject, text){ const t = await auth.currentUser.getIdToken(); await fetch('/.netlify/functions/notify', {method: 'POST', headers: {authorization: 'Bearer ' + t, 'content-type': 'application/json'}, body: JSON.stringify({subject, text})}); },
   };
 }
 
 // The date range each view needs; pickup and packing look at one day, prep at a range, counts at the coming weeks.
 function rangeDates(){
+  if (tab === 'pickup' && pRange.on) return [pRange.from || today(), pRange.to && pRange.to >= (pRange.from || today()) ? pRange.to : (pRange.from || today())];
   if (tab === 'pickup' || tab === 'pack') return [day, day];
   if (tab === 'counts') return [today(), R.addDays(today(), 28)];
   const t = today();
@@ -209,8 +214,11 @@ function dateBar(){
       ${range.kind === 'custom' ? `<input type="date" id="rFrom" value="${f}"> to <input type="date" id="rTo" value="${t}">` : `<span class="muted">${esc(dl(f))}${f !== t ? ' – ' + esc(dl(t)) : ''}</span>`}<button id="printBtn" class="noprint">Print</button>`;
     return;
   }
+  if (tab === 'pickup' && pRange.on){ const [f, t] = rangeDates();
+    $('#dateBar').innerHTML = `<button id="rangeOff">One day</button><input type="date" id="pFrom" value="${f}" style="width:auto"> to <input type="date" id="pTo" value="${t}" style="width:auto">
+      <span style="margin-left:auto"></span><input id="q" placeholder="Search name or phone" value="${esc(query)}" style="width:200px"><button data-sort="time" class="${sortBy === 'time' ? 'on' : ''}">By time</button><button data-sort="name" class="${sortBy === 'name' ? 'on' : ''}">By name</button>`; return; }
   $('#dateBar').innerHTML = `<button data-day="-1" aria-label="Previous day">‹</button><span class="day">${day === today() ? 'Today · ' : ''}${esc(longDay(day))}</span><button data-day="1" aria-label="Next day">›</button>
-    ${day !== today() ? '<button data-day="0">Today</button>' : ''}<input type="date" id="pickDay" value="${day}" style="width:auto">
+    ${day !== today() ? '<button data-day="0">Today</button>' : ''}<input type="date" id="pickDay" value="${day}" style="width:auto">${tab === 'pickup' ? '<button id="rangeOn">Date range</button>' : ''}
     ${tab === 'pickup' ? `<span style="margin-left:auto"></span><input id="q" placeholder="Search name or phone" value="${esc(query)}" style="width:200px"><button data-sort="time" class="${sortBy === 'time' ? 'on' : ''}">By time</button><button data-sort="name" class="${sortBy === 'name' ? 'on' : ''}">By name</button>` : '<span style="margin-left:auto"></span><button id="printBtn">Print</button>'}`;
 }
 
@@ -222,7 +230,10 @@ function renderPickup(){
   const act = os.filter(o => !o.cancelled); const picked = act.filter(o => o.pickedUp).length;
   return `<div class="kpis"><div class="kpi"><b>${act.length}</b>orders</div><div class="kpi"><b>${picked}</b>picked up</div><div class="kpi"><b>${act.filter(o => packProgress(o).all).length}</b>fully packed</div>${act.some(missed) ? `<div class="kpi" style="border-color:var(--crit)"><b class="err">${act.filter(missed).length}</b>not picked up</div>` : ''}</div>
     <div class="legend"><span class="b yellow">Sliced</span><span class="b blue">From the cafe</span><span class="b pink">Separate for allergies</span><span class="b fridgeb">Fridge</span><span class="muted">grab from the fridge at pickup</span></div>
-    <div class="grid">${os.map(o => { const p = packProgress(o); const ms = missed(o);
+    ${pRange.on ? [...new Set(os.map(o => o.pickupDate))].sort().map(d => { const ds = os.filter(o => o.pickupDate === d); return `<h3 class="dayhead">${esc(longDay(d))} <span class="muted">${(n => n + (n === 1 ? ' order' : ' orders'))(ds.filter(o => !o.cancelled).length)}</span></h3><div class="grid">${ds.map(card).join('')}</div>`; }).join('') || '<p class="muted">No special orders in these dates.</p>'
+      : `<div class="grid">${os.map(card).join('') || '<p class="muted">No special orders for this day.</p>'}</div>`}`;
+}
+function card(o){ { const p = packProgress(o); const ms = missed(o);
       return `<div class="ord ${o.pickedUp ? 'done' : ''} ${o.cancelled ? 'cancelled' : ''} ${ms ? 'missed' : ''}">
         <div class="top"><div><div class="nm">${esc(o.name)}</div><div class="muted">#${esc(o.num)} · ${o.phone ? `<a class="ph" href="tel:${esc(o.phone)}">${esc(fmtPhone(o.phone))}</a>` : 'no phone'}</div></div><div class="tm">${esc(tl(o.pickupTime))}</div></div>
         <div class="badges">${o.importedFrom ? '<span class="b gray">Hot Plate</span>' : ''}${o.cancelled ? '<span class="b red">Cancelled</span>' : ''}${ms ? '<span class="b red">Not picked up</span>' : ''}${p.all ? '<span class="b green">Packed</span>' : `<span class="b gray">${p.n} of ${p.of} packed</span>`}${orderBadges(o)}</div>
@@ -230,9 +241,8 @@ function renderPickup(){
         ${fridgeAlert(o)}
         <ul class="items">${groupLines(linesOf(o)).map(g => `<li><div>${qty(g)}<b>${esc(lineName(g.l))}</b>${modText(g.l) ? `<div class="mods">${esc(modText(g.l))}</div>` : ''}</div></li>`).join('')}</ul>
         ${o.cancelled ? '' : `<label class="bigchk"><input type="checkbox" data-picked="${esc(o.id)}" ${o.pickedUp ? 'checked' : ''}>${o.pickedUp ? 'Picked up' + (o.pickedUpAt ? ' at ' + new Date(o.pickedUpAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '') : 'Picked up'}</label>
-        ${o.importedFrom ? '<div class="muted" style="font-size:13px">Changes and refunds for this order happen in Hot Plate.</div>' : `<div class="acts"><button data-change="${esc(o.id)}">Remove an item</button><button class="danger" data-cancel="${esc(o.id)}">Cancel and refund</button></div>`}`}
-      </div>`; }).join('') || '<p class="muted">No special orders for this day.</p>'}</div>`;
-}
+        ${o.importedFrom ? '<div class="muted" style="font-size:13px">Changes and refunds for this order happen in Hot Plate.</div>' : `<div class="acts">${o.pickedUp ? '' : `<button data-move="${esc(o.id)}">Change pickup</button>`}<button data-change="${esc(o.id)}">Remove an item</button><button class="danger" data-cancel="${esc(o.id)}">Cancel and refund</button></div>`}`}
+      </div>`; } }
 const fmtPhone = p => { const d = String(p).replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
 
 // ---------- Packing ----------
@@ -310,6 +320,33 @@ function cancelSheet(o){
   modal(`<h2>Cancel ${esc(o.name)}'s order?</h2><p class="muted" style="margin:0">#${esc(o.num)} · ${esc(longDay(o.pickupDate))} at ${esc(tl(o.pickupTime))}. Refunds ${money(paid)} to their card. The owner gets an email about it.</p>
     <input id="cReason" placeholder="Reason (required)"><div class="bar" style="margin:0"><button data-close="1">Keep the order</button><button class="primary" style="background:var(--crit);border-color:var(--crit)" id="doCancel" data-id="${esc(o.id)}" data-amt="${paid}">Cancel and refund</button></div><div id="mMsg"></div>`);
 }
+// Change pickup day and time. The kitchen screens, packing lists and counts all follow the order's new date.
+function cpTimes(date, cur){
+  const slots = date ? R.pickupSlots(MENU.settings, date) : [];
+  return slots.length ? `<select id="cpTime">${slots.map(t => `<option value="${t}" ${t === cur ? 'selected' : ''}>${esc(R.timeLabel(t))}</option>`).join('')}</select>`
+    : `<input type="time" id="cpTime" value="${esc(cur || '09:00')}"><div class="muted" style="font-size:13px">Not a regular pickup day. Any time works.</div>`;
+}
+function moveSheet(o){
+  modal(`<h2>Change pickup</h2><p class="muted" style="margin:0">${esc(o.name)} · #${esc(o.num)} · now ${esc(longDay(o.pickupDate))} at ${esc(tl(o.pickupTime))}</p>
+    <label>New day</label><input type="date" id="cpDate" min="${today()}" value="${esc(o.pickupDate)}">
+    <label>New time</label><div id="cpTimes">${cpTimes(o.pickupDate, o.pickupTime)}</div>
+    <label class="bigchk" style="margin-top:10px"><input type="checkbox" id="cpEmail" ${o.email ? 'checked' : 'disabled'}>${o.email ? 'Email ' + esc(o.email) + ' the new time' : 'No email on this order'}</label>
+    <div class="bar" style="margin:0"><button data-close="1">Never mind</button><button class="primary" id="doMove" data-id="${esc(o.id)}">Save new pickup</button></div><div id="mMsg"></div>`);
+}
+async function doMove(o){
+  const date = $('#cpDate').value, time = $('#cpTime').value;
+  if (!date || !time){ $('#mMsg').textContent = 'Pick a day and a time.'; return; }
+  if (date === o.pickupDate && time === o.pickupTime){ $('#modal').innerHTML = ''; return; }
+  const staff = await staffName(); if (!staff){ $('#mMsg').textContent = 'Add your name first.'; return; }
+  const at = R.nyMs(date, time), lead = R.onlineSettings(MENU.settings).fireLead ?? 30;
+  const hist = {from: `${o.pickupDate} ${o.pickupTime || ''}`.trim(), to: `${date} ${time}`, by: staff, at: Date.now()};
+  try {
+    await store.update(o.id, {pickup: {...(o.pickup || {}), type: 'date', date, time}, pickupDate: date, pickupTime: time, readyAt: at, fireAtMs: at - lead * 60000, reminderSent: false, pickupHistory: [...(o.pickupHistory || []), hist]});
+    await store.log({type: 'pickup_change', orderId: o.id, num: o.num, ...hist, staff});
+    const msg = $('#cpEmail') && $('#cpEmail').checked && o.email ? await store.emailPickup({to: o.email, name: o.name, num: o.num, date, time}).then(() => ' and emailed ' + o.email).catch(() => ', but the email to the customer did not send') : '';
+    $('#modal').innerHTML = ''; alertBox(`Moved #${o.num} to ${dl(date)} at ${tl(time)}${msg}.`);
+  } catch (e){ $('#mMsg').textContent = e.message; }
+}
 function changeSheet(o){
   modal(`<h2>Remove an item</h2><p class="muted" style="margin:0">${esc(o.name)} · #${esc(o.num)}. The item's price is refunded to their card, and the owner gets an email about it.</p>
     <ul class="items">${linesOf(o).map(l => `<li><label style="display:flex;gap:10px;align-items:center;width:100%"><input type="radio" name="rmLine" value="${esc(l.lid)}" class="chk"><span><b>${esc(lineName(l))}</b>${modText(l) ? `<span class="mods"> ${esc(modText(l))}</span>` : ''}</span><span style="margin-left:auto">${money(l.price)}</span></label></li>`).join('')}</ul>
@@ -321,6 +358,10 @@ document.addEventListener('click', async e => {
   if (t.dataset?.tab){ tab = t.dataset.tab; localStorage.setItem('proof.sp.tab', tab); listen(); return; }
   if (t.dataset?.day !== undefined && t.tagName === 'BUTTON'){ const n = Number(t.dataset.day); day = n === 0 ? today() : R.addDays(day, n); listen(); return; }
   if (t.dataset?.sort){ sortBy = t.dataset.sort; render(); return; }
+  if (t.id === 'rangeOn'){ pRange = {on: true, from: day, to: R.addDays(day, 6)}; listen(); return; }
+  if (t.id === 'rangeOff'){ pRange = {...pRange, on: false}; day = pRange.from || today(); listen(); return; }
+  if (t.dataset?.move){ moveSheet(ORDERS.find(o => o.id === t.dataset.move)); return; }
+  if (t.id === 'doMove'){ await doMove(ORDERS.find(o => o.id === t.dataset.id)); return; }
   if (t.dataset?.pack){ packCat = t.dataset.pack; render(); return; }
   if (t.dataset?.range){ range = {kind: t.dataset.range, from: range.from, to: range.to}; listen(); return; }
   if (t.id === 'printBtn'){ window.print(); return; }
@@ -365,6 +406,8 @@ document.addEventListener('change', async e => {
   if (t.dataset.picked){ const id = t.dataset.picked; await store.update(id, t.checked ? {pickedUp: true, pickedUpAt: Date.now()} : {pickedUp: false, pickedUpAt: null}); return; }
   if (t.dataset.pk){ const [id, lids] = t.dataset.pk.split('|'); await store.update(id, Object.fromEntries(lids.split(',').map(lid => [`packed.${lid}`, t.checked]))); return; }
   if (t.id === 'pickDay' && t.value){ day = t.value; listen(); return; }
+  if ((t.id === 'pFrom' || t.id === 'pTo') && t.value){ pRange = {on: true, from: $('#pFrom').value, to: $('#pTo').value}; if (pRange.to < pRange.from) pRange.to = pRange.from; listen(); return; }
+  if (t.id === 'cpDate'){ $('#cpTimes').innerHTML = cpTimes(t.value, ''); return; }
   if (t.id === 'rFrom' || t.id === 'rTo'){ range = {kind: 'custom', from: $('#rFrom').value, to: $('#rTo').value || $('#rFrom').value}; listen(); return; }
 });
 document.addEventListener('input', e => { if (e.target.id === 'q'){ query = e.target.value.trim(); const pos = e.target.selectionStart; $('#main').innerHTML = renderPickup(); } });

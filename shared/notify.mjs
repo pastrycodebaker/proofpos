@@ -51,3 +51,21 @@ export async function orderConfirmation(o){
 }
 export const pickupReminder = o => !o.smsOptIn ? null : sendText(o.phone, `Flour & Salt: your order #${o.num} is ready for pickup at ${timeLabel(o.pickup?.time || '')} today at 37 Lebanon Street. See you soon!`);
 export const ownerNotice = (subject, text) => sendEmail(process.env.OWNER_EMAIL || 'hello@flourandsalt.com', subject, `<pre style="font:15px Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(text)}</pre>`, text);
+
+// Email to whoever should hear about new online orders (Menu editor → Settings → Online ordering).
+export function newOrderNotice(o, to){
+  const lines = Object.values(o.lines || {}).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
+  const grouped = []; for (const l of lines){ const g = grouped.find(x => lineText(x.l) === lineText(l)); if (g) g.n++; else grouped.push({l, n: 1}); }
+  const pre = o.pickup?.type === 'date';
+  const subject = `New ${pre ? 'pre-order' : 'online order'} #${o.num}: ${o.name} · ${pre ? whenText(o) : 'today'} · ${money(o.total ?? o.totals?.total ?? 0)}`;
+  const text = [`${o.name}${o.phone ? ' · ' + o.phone : ''}${o.email ? ' · ' + o.email : ''}`, `Pickup: ${whenText(o)}`, '', ...grouped.map(({l, n}) => `${n > 1 ? n + '× ' : ''}${lineText(l)}`), '', o.allergySeparate ? `Pack separately for allergies${o.allergyNote ? ': ' + o.allergyNote : ''}` : '', `Total ${money(o.total ?? o.totals?.total ?? 0)}${o.totals?.tip ? ' + ' + money(o.totals.tip) + ' tip' : ''}`].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
+  return sendEmail(to, subject, `<pre style="font:15px Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(text)}</pre>`, text);
+}
+// Email to the customer when staff move their pickup.
+export function pickupChangedEmail(o){
+  const first = (o.name || '').split(' ')[0];
+  const when = `${dayLabel(o.date)} at ${timeLabel(o.time)}`;
+  const text = `Hi ${first},\n\nYour Flour & Salt order #${o.num} is now set for pickup ${when} at 37 Lebanon Street, Hamilton.\n\nIf that doesn't work, just reply to this email.\n\nFlour & Salt Bakery and Cafe`;
+  const html = `<div style="font-family:Helvetica,Arial,sans-serif;max-width:520px;margin:auto;color:#2B2622;font-size:16px;line-height:1.5"><p>Hi ${esc(first)},</p><p>Your order <b>#${esc(o.num)}</b> is now set for pickup <b>${esc(when)}</b> at 37 Lebanon Street, Hamilton.</p><p>If that doesn't work, just reply to this email.</p><p>Flour &amp; Salt Bakery and Cafe</p></div>`;
+  return sendEmail(o.to, `New pickup time for order #${o.num}`, html, text);
+}

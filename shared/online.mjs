@@ -48,7 +48,9 @@ export function onlineSettings(settings = {}){
     reminderDay: o.reminderDay ?? 0, reminderTime: o.reminderTime || '18:00', // weekly pre-order reminder text       // most pre-orders per 15-minute pickup time (0 = no limit)
     closedDates: o.closedDates || [],
     pickupNote: o.pickupNote || '',
-    headerImage: o.headerImage || '',           // wide photo across the top of online ordering
+    headerImage: o.headerImage || '',
+    notifyMode: o.notifyMode || 'all',          // email about new online orders: 'all', 'pre' (pre-orders only) or 'off'
+    notifyEmail: o.notifyEmail || 'hello@flourandsalt.com',           // wide photo across the top of online ordering
     faq: Array.isArray(o.faq) ? o.faq : DEFAULT_FAQ, // [{q, a}] shown at the bottom; {deadline} in an answer becomes the pre-order deadline
     tips: settings.tipPercents || [0.18, 0.20, 0.22],
   };

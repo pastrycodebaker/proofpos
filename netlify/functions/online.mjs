@@ -7,7 +7,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { buildLine, availability, asapState, sandwichLimitAt, sandwichesWaiting, cartTotals, onlineSettings, nyMs, nyDate, pickupDates, pickupSlots, preorderDays, dayLabel, timeLabel, lineLabels, limitFor, packRows, lineBagels } from '../../shared/online.mjs';
-import { orderConfirmation } from '../../shared/notify.mjs';
+import { orderConfirmation, newOrderNotice } from '../../shared/notify.mjs';
 import { cardNum, last4, r2 } from '../../shared/giftcards.mjs';
 
 const app = initializeApp({apiKey: 'AIzaSyAoAZWaLAYw0rKmgpzvYj8TMAN37YSH2UY', authDomain: 'proofpos-90500.firebaseapp.com', projectId: 'proofpos-90500'}, 'online-orders');
@@ -166,7 +166,10 @@ export async function finish(paymentIntent){
   if (!result.already){
     // Same-day orders count down stock; rewards points for customers who gave a phone number.
     if (!result.pre) for (const l of result.lines){ const it = M.items.find(i => i.id === l.itemId); if (it && typeof it.stockCount === 'number') await updateDoc(doc(db, 'menu', 'main', 'items', it.id), {stockCount: increment(-1), ...(it.stockCount - 1 <= 0 ? {eightySixed: true} : {})}).catch(() => {}); }
-    await orderConfirmation({...result, lines: Object.fromEntries(result.lines.map((l, i) => [l.lid, {...l, pos: i}]))}).catch(e => console.error(e));
+    const full = {...result, lines: Object.fromEntries(result.lines.map((l, i) => [l.lid, {...l, pos: i}]))};
+    await orderConfirmation(full).catch(e => console.error(e));
+    const nos = onlineSettings(M.settings); // a heads-up email for the shop about every new online order
+    if (nos.notifyMode === 'all' || (nos.notifyMode === 'pre' && result.pre)) await newOrderNotice(full, nos.notifyEmail).catch(e => console.error('owner email', e.message));
     if (result.phone) await setDoc(doc(db, 'customers', result.phone), {phone: result.phone, name: result.name, points: increment(Math.floor(result.total)), visits: increment(1), lastVisit: Date.now()}, {merge: true}).catch(() => {});
   }
   return {paid: true, num: result.num, readyAt: result.readyAt, pickup: result.pickup};
