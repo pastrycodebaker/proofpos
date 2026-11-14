@@ -144,6 +144,13 @@
   .login input{width:100%;margin-bottom:10px}
   .hidden{display:none !important}
   .err{color:#ffb3a8}
+  .more{position:relative}
+  .more .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:50;display:flex;flex-direction:column;gap:8px;min-width:250px;padding:10px;border-radius:12px;background:var(--panel,#1d1b19);border:1px solid rgba(128,128,128,.35);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  body.light .more .menu{background:#fff}
+  .more .menu.hidden{display:none}
+  .more .menu > *{width:100%;justify-content:flex-start;text-align:left;font-size:17px;padding:12px 14px;box-sizing:border-box}
+  .more .menu .btnlink{border:1px solid rgba(128,128,128,.35);opacity:1}
+  #btnMore.alert{border-color:#e0a030;color:#e0a030}
   .btnlink{display:inline-flex;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid currentColor;color:inherit;text-decoration:none;opacity:.85}
 
   /* Light mode (toggle in the top bar; remembered on this screen) */
@@ -174,20 +181,24 @@
   <nav id="stations"></nav>
   <div class="tools">
     <span class="net" id="net">Online</span>
-    <label class="sw"><input type="checkbox" id="reroute"> Weekend reroute</label>
     <button id="btnDone">Show done</button>
     <button id="btn86">86</button>
-    <button id="btnOnline">Online ordering: on</button>
-    <button id="btnKiosk">Kiosk drinks: on</button>
-    <button id="btnUpcoming">Upcoming</button>
-    <button class="primary" id="btnRegister">Test register</button>
     <button id="btnRecall">Recall</button>
-    <button id="btnTiming">Timing</button>
-    <button id="btnFull">Full screen</button>
-    <button id="btnTheme" title="Switch between dark and light">Light mode</button><a class="btnlink" id="btnSwitch" href="../?pick">Switch screen</a>
+    <div class="more"><button id="btnMore" aria-expanded="false">More ▾</button>
+      <div class="menu hidden" id="moreMenu">
+        <button id="btnOnline">Online ordering: on</button>
+        <button id="btnKiosk">Kiosk drinks: on</button>
+        <label class="sw"><input type="checkbox" id="reroute"> Weekend reroute</label>
+        <button id="btnUpcoming">Upcoming</button>
+        <button id="btnTiming">Timing</button>
+        <button id="btnFull">Full screen</button>
+        <button id="btnTheme" title="Switch between dark and light">Light mode</button>
+        <a class="btnlink" id="btnSwitch" href="../?pick">Switch screen</a>
+        <button class="primary" id="btnRegister">Test register</button>
+      </div></div>
   </div>
 </header>
-<div class="banner off hidden" id="onlineBanner">Online ordering is OFF. Tap "Online ordering" to turn it back on.</div>
+<div class="banner off hidden" id="onlineBanner">Online ordering is OFF. Tap More, then Online ordering, to turn it back on.</div>
 <div class="banner hidden" id="rerouteBanner"></div>
 <section id="counts"></section>
 <main id="board"></main>
@@ -442,9 +453,9 @@ function ticketHtml(o, v, past){
   const allDone = o.lines.filter(live).every(l => l.done);
   const foot = past ? `<div class="tfoot"><button data-act="bringback" data-o="${o.id}">Bring back</button></div>` : v.id === 'runner'
     ? `<div class="tfoot"><button data-act="rush" data-o="${o.id}">${o.rush ? 'Un-rush' : 'Rush'}</button><button data-act="edit" data-o="${o.id}">Edit</button><button class="clear ${allDone ? 'ready' : ''}" data-act="clear" data-o="${o.id}">Clear</button></div>`
-    : v.pass ? `<div class="tfoot"><button data-act="print" data-o="${o.id}">Print</button><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`
-    : v.claim ? `<div class="tfoot"><button class="claimbtn ${o.claimBy === v.id ? 'on' : ''}" data-act="claim" data-o="${o.id}">${o.claimBy === v.id ? 'Started ✓' : o.claimBy ? 'Take over' : 'Start'}</button><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`
-    : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Bump all</button></div>`;
+    : v.pass ? `<div class="tfoot"><button data-act="print" data-o="${o.id}">Print</button><button data-act="bumpall" data-o="${o.id}">Mark done</button></div>`
+    : v.claim ? `<div class="tfoot"><button class="claimbtn ${o.claimBy === v.id ? 'on' : ''}" data-act="claim" data-o="${o.id}">${o.claimBy === v.id ? 'Started ✓' : o.claimBy ? 'Take over' : 'Start'}</button><button data-act="bumpall" data-o="${o.id}">Mark done</button></div>`
+    : `<div class="tfoot"><button data-act="bumpall" data-o="${o.id}">Mark done</button></div>`;
   const claimBy = !past && o.claimBy && (v.claim || v.pass || v.id === 'runner') ? (VIEWS.find(x => x.id === o.claimBy) || {}).label || o.claimBy : '';
   const claimCls = claimBy ? (o.claimBy === v.id ? 'mine' : 'theirs') : '';
   const claimBar = claimBy ? `<div class="claimbar">${o.claimBy === v.id ? 'You started' : esc(claimBy) + ' started'} ${fmt(now - (o.claimAt || now))} ago</div>` : '';
@@ -752,9 +763,11 @@ function renderStatus(){
   $('#btnOnline').textContent = 'Online ordering: ' + pauseLabel(status);
   $('#btnOnline').classList.toggle('onlineoff', off);
   $('#onlineBanner').classList.toggle('hidden', !off);
+  if (off) $('#onlineBanner').textContent = status.onlineAutoPaused ? 'Online ordering is paused: kitchen busy. It turns back on when you catch up.' : `Online ordering is ${pauseLabel(status).replace('OFF · ', 'paused · ')}. Tap More, then Online ordering, to turn it back on.`;
   const until = Number(status.kioskDrinksPausedUntil || 0), left = until - Date.now();
   $('#btnKiosk').textContent = left > 0 ? `Kiosk drinks: ${status.kioskAutoPaused ? 'auto-' : ''}paused · ${status.kioskAutoPaused ? 'until the bar catches up' : 'back on in ' + Math.ceil(left / 60000) + ' min'}` : 'Kiosk drinks: on';
   $('#btnKiosk').classList.toggle('onlineoff', left > 0);
+  moreBadge();
 }
 // Pausing kiosk drinks lasts 10 minutes, then turns itself back on. Tap while paused to turn drinks back on now.
 $('#btnKiosk').addEventListener('click', () => { const paused = Number(status.kioskDrinksPausedUntil || 0) > Date.now(); const v = paused ? 0 : Date.now() + 10 * 60000; status = {...status, kioskDrinksPausedUntil: v, kioskAutoPaused: false}; renderStatus(); act(store.setStatus({kioskDrinksPausedUntil: v, kioskAutoPaused: false, kioskChangedAt: Date.now()})); });
@@ -779,6 +792,12 @@ setInterval(autoPause, 20000);
 setInterval(autoPauseOnline, 20000);
 setInterval(() => renderStatus(), 15000);
 if (DEMO) $('#btnSwitch').href = '../?pick&demo';
+// More menu: tap to open; tapping an item (other than the reroute switch) or anywhere else closes it.
+const moreOpen = v => { $('#moreMenu').classList.toggle('hidden', !v); $('#btnMore').setAttribute('aria-expanded', v ? 'true' : 'false'); };
+$('#btnMore').addEventListener('click', e => { e.stopPropagation(); moreOpen($('#moreMenu').classList.contains('hidden')); });
+document.addEventListener('click', e => { if ($('#moreMenu').classList.contains('hidden')) return; if (e.target.closest('#moreMenu .sw')) return; if (e.target.closest('#moreMenu') || !e.target.closest('.more')) setTimeout(() => moreOpen(false), 0); });
+// Show on the More button when something inside it is paused, so it isn't hidden.
+function moreBadge(){ const on = onlinePausedNow(status), k = Number(status.kioskDrinksPausedUntil || 0) > Date.now(); const t = [on && 'online OFF', k && 'drinks paused'].filter(Boolean).join(' · '); $('#btnMore').textContent = t ? `More · ${t} ▾` : 'More ▾'; $('#btnMore').classList.toggle('alert', !!t); }
 $('#btnOnline').addEventListener('click', async () => { const ch = await choosePause(status, 'KDS'); if (!ch) return; status = {...status, ...ch}; renderStatus(); act(store.setStatus(ch)); });
 
 $('#btnFull').addEventListener('click', () => document.documentElement.requestFullscreen?.().catch(() => {}));
