@@ -184,6 +184,7 @@
 <script type="module">
 import { firebaseConfig } from '../firebase-config.js';
 import { onChannel, optOn, groupProblem, groupRuleText, ruleGroup } from '../shared/online.mjs';
+import * as GC from '../shared/giftcards.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -210,7 +211,7 @@ function demoStore(){
     watchOrders(cb){ subs.orders.push(cb); cb(structuredClone(orders)); },
     async createOrder(o){ const id = uid(); orders.push({...o, id, num: next++}); emit('orders', orders); return id; },
     async addPrintJob(){},
-    async updateOrder(id, fields, newLines){ const o = orders.find(x => x.id === id); for (const [k, v] of Object.entries(fields)){ if (k.startsWith('lines.')){ const i = o.lines.findIndex(l => l.lid === k.slice(6)); if (i >= 0) o.lines[i] = v; } else o[k] = v; } if (newLines) o.lines.push(...newLines); emit('orders', orders); },
+    async updateOrder(id, fields, newLines){ const o = orders.find(x => x.id === id); for (const [k, v] of Object.entries(fields)){ if (k.startsWith('lines.')){ const [, lid, sub] = k.split('.'); const i = o.lines.findIndex(l => l.lid === lid); if (i >= 0){ if (sub) o.lines[i] = {...o.lines[i], [sub]: v}; else o.lines[i] = v; } } else o[k] = v; } if (newLines) o.lines.push(...newLines); emit('orders', orders); },
     async adjustItem(id, d){ const it = menu.items.find(i => i.id === id); if (it && typeof it.stockCount === 'number'){ it.stockCount += d; if (it.stockCount <= 0 && d < 0) it.eightySixed = true; emit('menu', menu); } },
     async adjustMod(key, d){ if (typeof modStock[key] === 'number'){ modStock[key] += d; emit('stock', modStock); } },
     async setStatus(x){ status = {...status, ...x}; emit('status', status); },
@@ -218,6 +219,7 @@ function demoStore(){
     async setModStock(key, n){ if (n === null) delete modStock[key]; else modStock[key] = n; emit('stock', modStock); },
     async logEvent(){},
     async getCustomer(phone){ return customers[phone] ? {...customers[phone]} : null; },
+    gift: GC.demoGiftStore(),
     async addPoints(phone, delta, name){ const c = customers[phone] || {phone, points: 0, visits: 0}; c.points += delta; c.visits++; if (name) c.name = name; customers[phone] = c; },
   };
 }
@@ -261,6 +263,7 @@ async function firebaseStore(app){
     logEvent: e => F.setDoc(F.doc(F.collection(db,'events')), {...e, at: Date.now()}),
     // Rewards: one document per phone number; works offline because it only adds to the count.
     async getCustomer(phone){ const s = await F.getDoc(F.doc(db,'customers',phone)); return s.exists() ? s.data() : null; },
+    gift: GC.makeGiftStore(F, db),
     addPoints: (phone, delta, name) => F.setDoc(F.doc(db,'customers',phone), {phone, points: F.increment(delta), visits: F.increment(1), lastVisit: Date.now(), ...(name ? {name} : {})}, {merge: true}),
   };
 }
@@ -328,10 +331,11 @@ function totals(){
   const live = check.lines.filter(l => !l.removed);
   const q = l => l.price * (l.qtyPending || 1);
   const sub = r2(live.reduce((s, l) => s + q(l), 0));
+  const gift = r2(live.filter(l => l.giftCard).reduce((s, l) => s + q(l), 0)), food = r2(sub - gift); // discounts and rewards never apply to gift card sales
   let disc = 0; const d = check.discount;
-  if (d) disc = r2(d.type === 'percent' ? sub * d.value / 100 : Math.min(sub, d.value));
-  const reward = check.reward ? r2(Math.min(check.reward.amount, sub - disc)) : 0; disc = r2(disc + reward);
-  const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + q(l), 0) * (sub ? (sub - disc) / sub : 0));
+  if (d) disc = r2(d.type === 'percent' ? food * d.value / 100 : Math.min(food, d.value));
+  const reward = check.reward ? r2(Math.min(check.reward.amount, food - disc)) : 0; disc = r2(disc + reward);
+  const taxable = r2(live.filter(l => l.taxable).reduce((s, l) => s + q(l), 0) * (food ? (food - disc) / food : 0));
   // Prices are tax-inclusive: tax is the part of taxable prices that is tax. Tax exempt takes that part off.
   const rate = Number(settings().taxRate || 0);
   const inTax = r2(taxable * rate / (1 + rate));
@@ -363,7 +367,7 @@ function renderCheck(){
   $('#cLines').innerHTML = lines.length ? groups.map(({l, idxs}) => {
     const idx = idxs[0], n = idxs.length, last = idxs[idxs.length - 1];
     const editing = draft && draft.editIdx === idx;
-    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.allergy ? `<span class="m allergy">ALLERGY: ${esc(allergyText(l.allergy))}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent && !check.editing ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button><button class="x" data-dup="${last}" aria-label="One more">+</button>`}</span>`}</div>`;
+    return `<div class="cl ${l.sent ? 'sent' : ''} ${editing ? 'editing' : ''}" data-idx="${idx}"><span class="n">${l.qtyPending ? l.qtyPending + '× ' : n > 1 ? `<b class="qn">${n}×</b> ` : ''}${l.version ? esc(l.version) + ' ' : ''}${esc(l.name)}${l.incomplete ? ' <em class="inc">needs choices</em>' : ''}</span><span class="p">${money(l.price * (l.qtyPending || n))}</span>${l.countNote ? `<span class="m"><b>${esc(l.countNote)}</b></span>` : ''}${shownMods(l).length ? `<span class="m">${shownMods(l).map(m => esc(modText(m))).join(' · ')}</span>` : ''}${l.allergy ? `<span class="m allergy">ALLERGY: ${esc(allergyText(l.allergy))}</span>` : ''}${l.countHint && draft && draft.editIdx === idx ? `<span class="m hint">${esc(l.countHint)}</span>` : ''}${l.sent && !check.editing ? `<span class="s">${n > 1 ? n + ' sent' : 'Sent'}</span>` : `<span class="qbtns">${editing ? '' : `<button class="x" data-del="${last}" aria-label="One less">${n > 1 ? '−' : 'Remove'}</button>${l.giftCard ? '' : `<button class="x" data-dup="${last}" aria-label="One more">+</button>`}`}</span>`}</div>`;
   }).join('') : '<div class="cempty">Tap an item to start an order.</div>';
   const t = totals();
   $('#cTot').innerHTML = `<div><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.disc - t.reward > 0.004 ? `<div><span>${esc(check.discount.name)}</span><span>${money(-(t.disc - t.reward))}</span></div>` : ''}${t.reward ? `<div><span>Reward (${check.reward.points} pts)</span><span>${money(-t.reward)}</span></div>` : ''}${check.taxExempt ? `<div><span>Tax exempt (tax removed)</span><span>${money(-t.inTax)}</span></div>` : `<div class="muted"><span>Includes tax</span><span>${money(t.tax)}</span></div>`}${t.paid ? `<div><span>Paid</span><span>${money(-t.paid)}</span></div>` : ''}<div class="t"><span>${t.paid ? 'Balance due' : 'Total'}</span><span>${money(t.paid ? t.due : t.total)}</span></div>`;
@@ -508,7 +512,7 @@ function renderPay(){
     <div class="keypad">${[1,2,3].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[0] ?? ''}">${qc[0] !== undefined ? '$' + qc[0] : ''}</button>${[4,5,6].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[1] ?? ''}">${qc[1] !== undefined ? '$' + qc[1] : ''}</button>${[7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="q" data-q="${qc[2] ?? ''}">${qc[2] !== undefined ? '$' + qc[2] : ''}</button><button data-k="C">C</button><button data-k="0">0</button><button data-k="00">00</button><button data-k="B">⌫</button></div>
     ${check.payments.length ? `<div class="paid">${check.payments.map(p => `<div><span>${esc(p.label)}</span><span>${money(p.amount)}${p.surcharge ? ' + ' + money(p.surcharge) + ' surcharge' : ''}</span></div>`).join('')}</div>` : ''}
     <div class="row" style="margin-top:10px;display:flex;gap:8px"><button id="payBack" style="flex:1;min-height:50px">Back to order</button></div></div>
-    <div class="methods"><button class="card" data-pay="card">Card${rate && surchargeHere() ? ` · credit adds up to ${(rate * 100).toFixed(1)}%` : ''}<br><small style="font-weight:400">Customer taps or inserts on the reader</small></button>${METHODS.map(([k, l]) => `<button data-pay="${k}" ${k === 'gift' ? 'disabled title="Gift cards are not built yet"' : ''}>${l}${k === 'gift' ? ' (soon)' : ''}</button>`).join('')}</div></div>`;
+    <div class="methods"><button class="card" data-pay="card">Card${rate && surchargeHere() ? ` · credit adds up to ${(rate * 100).toFixed(1)}%` : ''}<br><small style="font-weight:400">Customer taps or inserts on the reader</small></button>${METHODS.map(([k, l]) => `<button data-pay="${k}">${l}</button>`).join('')}</div></div>`;
 }
 function renderDone(change){
   const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null;
@@ -524,6 +528,54 @@ function render(){
   if (view === 'done') renderDone(lastChange);
 }
 let lastChange = 0, editMsg = '';
+
+// ---------- Gift cards ----------
+const giftKeypad = (val = '') => `<input id="gcNum" inputmode="numeric" autocomplete="off" placeholder="Card number" value="${esc(val)}" style="font-size:22px;letter-spacing:1px">`;
+// Sell a new card or reload one: adds a line to the check; the money goes on the card once the order is paid.
+function giftSheet(num = '', info = null){
+  const amounts = [10, 25, 50, 100];
+  sheet(`<h3 style="margin:0 0 8px">Gift cards</h3>${giftKeypad(num)}<div class="row" style="margin-top:8px"><button id="gcCheck">Check balance</button></div>
+    <div id="gcInfo" style="margin:10px 0">${info ? info : '<span class="muted">Type or scan the number on the back of the card.</span>'}</div>
+    <div id="gcSell" class="${num ? '' : 'hidden'}"><div class="muted" style="margin-bottom:6px">Add to the order</div><div class="row" style="flex-wrap:wrap">${amounts.map(a => `<button data-gcamt="${a}">$${a}</button>`).join('')}<input id="gcOther" inputmode="decimal" placeholder="Other $" style="max-width:110px"><button class="primary" id="gcOtherGo">Add</button></div></div>
+    <div class="row" style="margin-top:12px"><button data-close>Close</button></div>`);
+  const look = async () => { const n = GC.cardNum($('#gcNum').value); if (n.length < 4) return; const c = await store.gift.get(n).catch(() => null);
+    giftSheet(n, c ? `<b>${GC.last4(n)}</b> has <b style="font-size:20px">${money(c.balance)}</b>. Adding money reloads it.` : `<b>${GC.last4(n)}</b> is a new card. Adding money activates it once the order is paid.`); };
+  $('#gcCheck').onclick = look; $('#gcNum').addEventListener('keydown', e => { if (e.key === 'Enter') look(); });
+  onSheet(async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const amt = b.dataset.gcamt ? Number(b.dataset.gcamt) : b.id === 'gcOtherGo' ? r2(Number($('#gcOther').value || 0)) : 0; if (!(amt > 0)) return;
+    const n = GC.cardNum($('#gcNum').value); if (n.length < 4) return;
+    const c = await store.gift.get(n).catch(() => null);
+    check.lines.push({lid: uid(), itemId: '_gift', name: `Gift card ${GC.last4(n)} · ${c ? 'reload' : 'new'}`, price: amt, station: 'none', mods: [], noMods: [], taxable: false, giftCard: {number: n, kind: c ? 'reload' : 'sale'}});
+    closeSheet(); render();
+  });
+}
+// Pay with a gift card: spends from the balance right away (like cash), up to what's due.
+function takeGift(due){
+  return new Promise(resolve => {
+    let card = null;
+    const draw = () => sheet(`<h3 style="margin:0 0 8px">Pay with a gift card · ${money(due)} due</h3>${giftKeypad(card ? card.number : '')}<div class="row" style="margin-top:8px"><button id="gcCheck">Look up</button></div>
+      <div style="margin:10px 0">${card ? `<b>${GC.last4(card.number)}</b> has <b style="font-size:20px">${money(card.balance)}</b>.${card.balance < due ? ` The other ${money(r2(due - card.balance))} goes on another payment.` : ''}` : '<span class="muted">Type or scan the number on the back of the card.</span>'}</div>
+      <div class="row"><button data-close>Cancel</button>${card && card.balance > 0 ? `<button class="primary" id="gcUse">Use ${money(Math.min(card.balance, due))}</button>` : ''}</div><div class="err" id="gcErr"></div>`);
+    const look = async () => { const n = GC.cardNum($('#gcNum').value); if (n.length < 4) return; const c = await store.gift.get(n).catch(() => null); if (!c){ $('#gcErr').textContent = `No gift card ${GC.last4(n)} found.`; return; } card = c; draw(); hook(); };
+    const hook = () => {
+      $('#gcCheck').onclick = look; $('#gcNum').addEventListener('keydown', e => { if (e.key === 'Enter') look(); });
+      const use = $('#gcUse'); if (use) use.onclick = async () => { use.disabled = true; const amt = r2(Math.min(card.balance, due));
+        try { await store.gift.apply(card.number, -amt, {kind: 'redeem', orderId: check.orderId || null, staff: user ? user.name : ''}); closeSheet(); resolve({method: 'gift', label: 'Gift card ' + GC.last4(card.number), amount: amt, card: card.number, at: Date.now(), staff: user ? user.name : ''}); }
+        catch (e){ $('#gcErr').textContent = e.message; use.disabled = false; } };
+      $('#sheetRoot').querySelector('[data-close]').addEventListener('click', () => resolve(null), {once: true});
+    };
+    draw(); hook();
+  });
+}
+// After the order is paid: put the money on every gift card sold or reloaded in it.
+async function activateGiftCards(){
+  const oid = check.orderId;
+  for (const l of check.lines) if (l.giftCard && !l.removed && !l.giftCard.activated){
+    try { await store.gift.apply(l.giftCard.number, l.price, {kind: l.giftCard.kind, orderId: oid, staff: user ? user.name : ''}); l.giftCard.activated = true; await store.updateOrder(oid, {['lines.' + l.lid + '.giftCard']: {...l.giftCard, activated: true}}).catch(() => {}); }
+    catch (e){ alertSheet(`Gift card ${GC.last4(l.giftCard.number)} was paid for but not loaded: ${e.message} Load it from Orders and reports → Gift cards.`); }
+  }
+}
 
 // ---------- Past orders: open, then edit or keep ringing ----------
 $('#cOrders').addEventListener('click', () => ordersSheet());
@@ -685,6 +737,7 @@ async function takePayment(method){
     const label = (METHODS.find(m => m[0] === method) || [, method])[1];
     let p = {method, label, amount: r2(amt), at: Date.now(), staff: user ? user.name : ''};
     if (method === 'card'){ p = await takeCard(amt); if (!p) return; }
+    if (method === 'gift'){ p = await takeGift(amt); if (!p) return; }
     if (change) p.tendered = r2(amt + change);
     if (method === 'cash') openDrawer('cash sale');
     check.payments.push(p);
@@ -693,11 +746,13 @@ async function takePayment(method){
   if (after.due <= 0.004){
     try {
       await sendUnsent();
-      const earned = check.customer ? Math.floor(after.total) : 0, used = check.reward ? check.reward.points : 0;
+      const giftSold = check.lines.filter(l => l.giftCard && !l.removed).reduce((s, l) => s + l.price, 0);
+      const earned = check.customer ? Math.floor(Math.max(0, after.total - giftSold)) : 0, used = check.reward ? check.reward.points : 0;
       const sm = check.discount && check.discount.staffMember;
       await store.updateOrder(check.orderId, {status:'paid', payments: check.payments, cardHold: check.payments.some(p => p.held), totals: after, taxExempt: check.taxExempt, discount: check.discount, staff: user ? user.name : '', paidAt: Date.now(), ...(sm ? {rush: true, staffMeal: sm} : {}),
         ...(check.customer ? {customerPhone: check.customer.phone, customerName: check.customer.name || '', pointsEarned: earned, pointsUsed: used} : {})});
       if (check.customer && !check.editing) store.addPoints(check.customer.phone, earned - used, check.customer.name).catch(console.error);
+      await activateGiftCards();
       // Nothing for the kitchen or bar (a pastry, a bag of bagels): take the money now. Otherwise the KDS does it when the order is bumped.
       const oid = check.orderId, ord = {payments: check.payments, lines: check.lines};
       if (HOLDS.readyToCapture(ord)) HOLDS.captureHolds(ord, PAY, f => store.updateOrder(oid, f)).catch(console.error);
@@ -806,6 +861,7 @@ $('#cMore').addEventListener('click', () => {
     <button data-a="exempt" class="${check.taxExempt ? 'on' : ''}">Tax exempt (Colgate)</button>
     <button data-a="schedule">Schedule</button>
     <button data-a="open">Open item</button>
+    <button data-a="giftcards">Gift cards</button>
     <button data-a="nosale">No sale</button>
     <button data-a="past">Past orders</button>
     <button data-a="void">Void order</button>
@@ -825,6 +881,7 @@ $('#cMore').addEventListener('click', () => {
     if (a === 'rewards'){ rewardsSheet(); return; }
     if (a === 'nosale'){ noSale(); return; }
     if (a === 'past'){ ordersSheet(); return; }
+    if (a === 'giftcards'){ giftSheet(); return; }
     if (a === 'void') voidOrder();
     if (a === 'schedule') scheduleSheet();
     if (a === 'open') openItemSheet();

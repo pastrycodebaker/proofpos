@@ -394,7 +394,7 @@ function sortedMods(l){
   return shown.sort((a, b) => (gi(a.g) - gi(b.g)) || (oi(a) - oi(b)));
 }
 // Pre-orders (special orders) only bring their cafe-made items (coffee boxes, sandwich packs) to the KDS; the rest are packed from the special orders page.
-const linesFor = (o, v) => { if (o.importedFrom) return []; const ls = o.special ? o.lines.filter(l => l.fromCafe || !l.packAs) : o.lines; return v.shows === 'all' ? ls : v.shows === 'griddle' ? ls.filter(l => partsOf(l)) : ls.filter(l => l.station === v.shows); };
+const linesFor = (o, v) => { if (o.importedFrom) return []; const ls = (o.special ? o.lines.filter(l => l.fromCafe || !l.packAs) : o.lines).filter(l => !l.giftCard); return v.shows === 'all' ? ls : v.shows === 'griddle' ? ls.filter(l => partsOf(l)) : ls.filter(l => l.station === v.shows); };
 const partsOf = l => l.removed ? null : griddleParts(l, itemById(l.itemId), groupById);
 
 // ---------- Rendering ----------

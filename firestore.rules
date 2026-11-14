@@ -43,6 +43,9 @@ service cloud.firestore {
     match /customers/{phone} { allow read, write: if signedIn(); }
     // Online checkouts waiting for payment (written by the online ordering function's sign-in).
     match /onlineCheckouts/{id} { allow read, write: if signedIn(); }
+    // Gift cards: balances change only in transactions from the register and Orders and reports; every change is logged.
+    match /giftCards/{num} { allow read, write: if signedIn(); }
+    match /giftCardTx/{id} { allow read, create: if signedIn(); }
     // Texts and emails to send, and their settings. (Sign-ups live on the customer record.)
     match /textBlasts/{id} { allow read, write: if signedIn(); }
     match /settings/texts { allow read, write: if signedIn(); }
