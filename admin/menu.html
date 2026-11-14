@@ -624,6 +624,10 @@ async function renderSettings(){
     <div class="row"><div><label>Minutes to make an ASAP order</label><input id="o_prep" type="number" min="0" value="${esc(os.prepMinutes ?? 15)}"></div>
       <div><label>Stop ASAP this many minutes before close</label><input id="o_last" type="number" min="0" value="${esc(os.lastOrderMinutes ?? 15)}"></div>
       <div><label>Most ASAP orders per 15 minutes (0 = no limit)</label><input id="o_cap" type="number" min="0" value="${esc(os.asapPer15 || 0)}"></div></div>
+    <label>Different limits for busy days and times</label>
+    <p class="muted" style="margin:0 0 6px">Set a lower (or higher) number for certain days and hours, like the weekend morning rush. The first matching row is used; any other time uses the number above. 0 means no limit for that stretch.</p>
+    <div id="limRows">${(os.asapLimits || []).map(limRow).join('')}</div>
+    <button id="limAdd" type="button">+ Add a busy time</button>
     <div class="row"><div><label>How many days ahead people can pre-order</label><input id="o_ahead" type="number" min="0" value="${esc(os.daysAhead ?? 21)}"></div>
       <div><label>Pre-order deadline</label><select id="o_dlMode"><option value="weekly" ${!os.deadline || os.deadline.weekly ? 'selected' : ''}>Once a week, for that week</option><option value="days" ${os.deadline && !os.deadline.weekly ? 'selected' : ''}>Days before each pickup</option></select></div>
       <div><label>Weekly: cutoff day</label><select id="o_dlWd">${DAYS.map(([l, n]) => `<option value="${n}" ${Number((os.deadline || {}).weekday ?? 1) === n ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
@@ -785,11 +789,15 @@ document.addEventListener('click', async e => {
         taxRate: Math.max(0, Number($('#s_tax').value || 0)) / 100, preMods: $('#s_pre').value.split(',').map(x => x.trim()).filter(Boolean), discounts: disc, categoryColors: colors};
       await store.saveSettings(s); await reload(); status('#setStatus', 'Saved', 'ok');
     }
+    if (t.id === 'limAdd'){ $('#limRows').insertAdjacentHTML('beforeend', limRow()); return; }
+    if (t.matches && t.matches('[data-limrm]')){ t.closest('.lim').remove(); return; }
     if (t.id === 'saveOnline'){
       const hours = {}; document.querySelectorAll('[data-oh]').forEach(i => { if (!i.value) return; (hours[i.dataset.oh] ||= {})[i.dataset.k] = i.value; });
       for (const [d, h] of Object.entries(hours)) if (!h.open || !h.close || h.open >= h.close){ status('#onlStatus', 'Each open day needs an opening time before its closing time.', 'err'); return; }
       const n = (id, d) => { const v = $(id).value; return v === '' ? d : Math.max(0, Math.floor(Number(v))); }; const os0 = S.settings.online || {};
-      const online = {asap: $('#o_asap').checked, hours, prepMinutes: n('#o_prep', 15), lastOrderMinutes: n('#o_last', 15), asapPer15: n('#o_cap', 0), daysAhead: n('#o_ahead', 21),
+      const asapLimits = [...document.querySelectorAll('#limRows .lim')].map(r => ({days: [...r.querySelectorAll('[data-ld]:checked')].map(x => Number(x.dataset.ld)), from: r.querySelector('[data-lf]').value, to: r.querySelector('[data-lt]').value, per15: Math.max(0, Math.floor(Number(r.querySelector('[data-ln]').value) || 0))})).filter(r => r.days.length);
+      if (asapLimits.some(r => r.from && r.to && r.from >= r.to)){ status('#onlStatus', 'Each busy time needs a start before its end.', 'err'); return; }
+      const online = {asap: $('#o_asap').checked, hours, prepMinutes: n('#o_prep', 15), lastOrderMinutes: n('#o_last', 15), asapPer15: n('#o_cap', 0), asapLimits, daysAhead: n('#o_ahead', 21),
         deadline: $('#o_dlMode').value === 'weekly' ? {weekly: true, weekday: Number($('#o_dlWd').value), time: $('#o_dlTime').value || '13:00'} : {daysBefore: n('#o_dlDays', 1), time: $('#o_dlTime').value || '17:00'}, fireLead: n('#o_lead', 30), slotLimit: n('#o_slot', 0),
         closedDates: $('#o_closed').value.split(/[\s,]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(), pickupNote: $('#o_note').value.trim()};
       await store.saveSettings({...S.settings, online}); await reload(); setTimeout(() => status('#onlStatus', 'Saved', 'ok'), 300);
@@ -1040,6 +1048,9 @@ $('#sheetPane').addEventListener('click', async e => {
 });
 
 // ---------- Layout (sections, order, days, season) ----------
+const LIM_DAYS = [[3, 'We'], [4, 'Th'], [5, 'Fr'], [6, 'Sa'], [0, 'Su'], [1, 'Mo'], [2, 'Tu']];
+const limRow = (r = {days: [6, 0], from: '07:00', to: '10:00', per15: 2}) => `<div class="row lim" style="align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 6px">${LIM_DAYS.map(([n, l]) => `<label style="display:flex;gap:3px;align-items:center;margin:0"><input type="checkbox" data-ld="${n}" ${(r.days || []).includes(n) ? 'checked' : ''}>${l}</label>`).join('')}
+  <span class="muted">from</span><input type="time" data-lf value="${esc(r.from || '')}" style="width:auto"><span class="muted">to</span><input type="time" data-lt value="${esc(r.to || '')}" style="width:auto"><span class="muted">at most</span><input type="number" min="0" data-ln value="${esc(r.per15 ?? 0)}" style="width:70px"><span class="muted">per 15 min</span><button type="button" data-limrm style="width:auto;flex:0 0 auto">Remove</button></div>`;
 const DAYS = [['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0],['Mon',1],['Tue',2]];
 const openDays = () => S.settings.openDays || [3,4,5,6,0];
 function daysLabel(days){

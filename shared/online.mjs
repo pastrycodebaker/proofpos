@@ -32,6 +32,7 @@ export function onlineSettings(settings = {}){
     hours: o.hours || {},                     // {3: {open:'07:00', close:'14:00'}, ...} by weekday; missing = closed
     prepMinutes: Number(o.prepMinutes ?? 15),
     asapPer15: Number(o.asapPer15 || 0),       // most ASAP online orders per 15 minutes (0 = no limit)
+    asapLimits: Array.isArray(o.asapLimits) ? o.asapLimits : [], // [{days:[3,4], from:'07:00', to:'09:00', per15: 3}] — first match wins, else asapPer15
     lastOrderMinutes: Number(o.lastOrderMinutes ?? 15), // stop ASAP this long before closing
     daysAhead: Number(o.daysAhead ?? 21),
     deadline: o.deadline || {weekly: true, weekday: 1, time: '13:00'}, // default pre-order deadline: Monday 1pm for that week's pickups (or {daysBefore, time})
@@ -51,11 +52,19 @@ export function isOpenDay(date, os, settings = {}){
   // No hours entered yet: fall back to the shop's open days.
   return !Object.keys(os.hours).length && (settings.openDays || [3, 4, 5, 6, 0]).includes(weekday(date));
 }
+// Online ordering paused by staff: either until turned back on, or until a time (onlinePausedUntil).
+export const onlinePausedNow = (status = {}, now = Date.now()) => !!status.onlinePaused && !(Number(status.onlinePausedUntil || 0) && Number(status.onlinePausedUntil) <= now);
+// Most ASAP online orders per 15 minutes right now: the first day-and-time rule that matches, otherwise the everyday number. 0 = no limit.
+export function asapLimitAt(os, now = Date.now()){
+  const day = weekday(nyDate(now)), t = nyTime(now);
+  const r = (os.asapLimits || []).find(r => (r.days || []).includes(day) && (!r.from || t >= r.from) && (!r.to || t < r.to));
+  return r ? Number(r.per15 || 0) : os.asapPer15;
+}
 // Is ASAP ordering open right now? Returns {ok, reason, readyAt}
 export function asapState(settings, status = {}, now = Date.now()){
   const os = onlineSettings(settings); const today = nyDate(now);
   if (!os.asap) return {ok: false, reason: 'Ordering ahead for today is off. You can still pre-order.'};
-  if (status.onlinePaused) return {ok: false, reason: "We're not taking online orders for today right now. Please order at the counter."};
+  if (onlinePausedNow(status, now)) return {ok: false, reason: "We're not taking online orders for today right now. Please order at the counter."};
   if (!isOpenDay(today, os, settings)) return {ok: false, reason: "We're closed today."};
   const h = os.hours[weekday(today)];
   if (!h) return {ok: false, reason: 'Online ordering hours are not set up yet.'};

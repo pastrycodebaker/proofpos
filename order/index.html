@@ -179,7 +179,7 @@ async function start(){
   F.onSnapshot(F.collection(db, 'menu', 'main', 'items'), s => { M.items = s.docs.map(d => d.data()); got.i = true; fire(); });
   F.onSnapshot(F.collection(db, 'menu', 'main', 'modifierGroups'), s => { M.groups = s.docs.map(d => d.data()); got.g = true; fire(); });
   F.onSnapshot(F.doc(db, 'menu', 'main'), s => { M.settings = s.exists() ? s.data() : {}; got.s = true; fire(); });
-  F.onSnapshot(F.doc(db, 'menu', 'status'), s => { M.status = s.exists() ? s.data() : {}; fire(); });
+  F.onSnapshot(F.doc(db, 'menu', 'status'), s => { M.status = s.exists() ? s.data() : {}; fire(); const u = Number(M.status.onlinePausedUntil || 0) - Date.now(); if (M.status.onlinePaused && u > 0 && u < 864e5) setTimeout(fire, u + 2000); }); // a timed pause ends by itself
 }
 async function api(action, body = {}){
   if (DEMO) return demoApi(action, body);

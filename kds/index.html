@@ -253,6 +253,7 @@ document.addEventListener('click', e => { if (e.target.id !== 'btnTheme') return
 
 import { firebaseConfig } from '../firebase-config.js';
 import { griddleParts } from '../shared/griddle.mjs';
+import { choosePause, pauseLabel, onlinePausedNow } from '../shared/pause.mjs';
 import { readyToCapture, captureHolds } from '../shared/holds.mjs';
 import { createPayments } from '../payments.js';
 const DEMO = new URLSearchParams(location.search).has('demo');
@@ -731,8 +732,8 @@ $('#upcomingList').addEventListener('click', e => {
 // ---------- Online ordering switch ----------
 let status = {onlinePaused:false};
 function renderStatus(){
-  const off = !!status.onlinePaused;
-  $('#btnOnline').textContent = 'Online ordering: ' + (off ? 'OFF' : 'on');
+  const off = onlinePausedNow(status);
+  $('#btnOnline').textContent = 'Online ordering: ' + pauseLabel(status);
   $('#btnOnline').classList.toggle('onlineoff', off);
   $('#onlineBanner').classList.toggle('hidden', !off);
   const until = Number(status.kioskDrinksPausedUntil || 0), left = until - Date.now();
@@ -753,7 +754,7 @@ function autoPause(){
 setInterval(autoPause, 20000);
 setInterval(() => renderStatus(), 15000);
 if (DEMO) $('#btnSwitch').href = '../?pick&demo';
-$('#btnOnline').addEventListener('click', () => { status = {...status, onlinePaused: !status.onlinePaused}; renderStatus(); act(store.setStatus({onlinePaused: status.onlinePaused, changedAt: Date.now()})); });
+$('#btnOnline').addEventListener('click', async () => { const ch = await choosePause(status, 'KDS'); if (!ch) return; status = {...status, ...ch}; renderStatus(); act(store.setStatus(ch)); });
 
 $('#btnFull').addEventListener('click', () => document.documentElement.requestFullscreen?.().catch(() => {}));
 document.addEventListener('fullscreenchange', () => $('#btnFull').classList.toggle('hidden', !!document.fullscreenElement));
