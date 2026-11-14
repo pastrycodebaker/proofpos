@@ -49,5 +49,8 @@ service cloud.firestore {
     // Texts and emails to send, and their settings. (Sign-ups live on the customer record.)
     match /textBlasts/{id} { allow read, write: if signedIn(); }
     match /settings/texts { allow read, write: if signedIn(); }
+    // Points expiration policy: owners change it; the daily job records its runs separately.
+    match /settings/rewards { allow read: if signedIn(); allow write: if isOwner(); }
+    match /settings/rewardsRun { allow read, write: if signedIn(); }
   }
 }

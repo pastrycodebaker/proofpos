@@ -185,6 +185,7 @@
 import { firebaseConfig } from '../firebase-config.js';
 import { onChannel, optOn, groupProblem, groupRuleText, ruleGroup } from '../shared/online.mjs';
 import * as GC from '../shared/giftcards.mjs';
+import * as RW from '../shared/rewards.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -218,7 +219,7 @@ function demoStore(){
     async setItemStock(id, x){ const it = menu.items.find(i => i.id === id); Object.assign(it, x); emit('menu', menu); },
     async setModStock(key, n){ if (n === null) delete modStock[key]; else modStock[key] = n; emit('stock', modStock); },
     async logEvent(){},
-    async getCustomer(phone){ return customers[phone] ? {...customers[phone]} : null; },
+    async getCustomer(phone){ return customers[phone] ? {...customers[phone], _exp: RW.expiresOn(customers[phone], {})} : null; },
     gift: GC.demoGiftStore(),
     async addPoints(phone, delta, name){ const c = customers[phone] || {phone, points: 0, visits: 0}; c.points += delta; c.visits++; if (name) c.name = name; customers[phone] = c; },
   };
@@ -262,7 +263,7 @@ async function firebaseStore(app){
     setModStock: (key, n) => F.setDoc(F.doc(db,'menu','modStock'), {counts: {[key]: n === null ? F.deleteField() : n}}, {merge:true}),
     logEvent: e => F.setDoc(F.doc(F.collection(db,'events')), {...e, at: Date.now()}),
     // Rewards: one document per phone number; works offline because it only adds to the count.
-    async getCustomer(phone){ const s = await F.getDoc(F.doc(db,'customers',phone)); return s.exists() ? s.data() : null; },
+    async getCustomer(phone){ const [s, r] = await Promise.all([F.getDoc(F.doc(db,'customers',phone)), rwSettings ||= F.getDoc(F.doc(db,'settings','rewards')).catch(() => null)]); if (!s.exists()) return null; const c = s.data(); return {...c, _exp: RW.expiresOn(c, r && r.data())}; },
     gift: GC.makeGiftStore(F, db),
     addPoints: (phone, delta, name) => F.setDoc(F.doc(db,'customers',phone), {phone, points: F.increment(delta), visits: F.increment(1), lastVisit: Date.now(), ...(name ? {name} : {})}, {merge: true}),
   };
@@ -275,6 +276,7 @@ let check = newCheck(), draft = null, tender = '';
 function newCheck(){ return {orderId:null, name:'', lines:[], taxExempt:false, discount:null, fireAtMs:null, payments:[], customer:null, reward:null}; }
 // Audit log: who did what, for voids, discounts, tax exempt, open items, no sale.
 function audit(type, detail = {}){ const o = check.orderId ? ORDERS.find(x => x.id === check.orderId) : null; store.logEvent({type, staff: user ? user.name : '', orderId: check.orderId || null, num: o ? o.num : null, ...detail}).catch(console.error); }
+let rwSettings = null; // points expiration policy, read once
 const REWARD = {points: 150, amount: 3}; // 150 points = $3 off; 1 point per $1
 const normPhone = p => String(p || '').replace(/\D/g, '').slice(-10);
 const itemById = id => onChannel(MENU.items.find(i => i.id === id), groupById, 'register');
@@ -936,7 +938,7 @@ function rewardsSheet(){
   const fmt = d => d.length > 6 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d.length > 3 ? `(${d.slice(0,3)}) ${d.slice(3)}` : d;
   const draw = () => sheet(`<h3 style="margin-top:0">Rewards</h3><div style="font-size:28px;font-weight:700;min-height:40px">${esc(fmt(digits)) || '<span class="muted">Phone number</span>'}</div>
     <div class="pad">${[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(k => `<button data-rk="${k}">${k}</button>`).join('')}</div>
-    ${found ? `<p><b>${esc(found.name || 'Rewards member')}</b> · ${found.points} points${found.points >= REWARD.points ? ` · can use ${REWARD.points} for ${money(REWARD.amount)} off` : ` · ${REWARD.points - found.points} more for ${money(REWARD.amount)} off`}</p>` : digits.length === 10 ? '<p class="muted">New member. They earn points on this order.</p><input id="rwName" placeholder="Name (optional)" style="width:100%">' : '<p class="muted">1 point per $1. 150 points = $3 off.</p>'}
+    ${found ? `<p><b>${esc(found.name || 'Rewards member')}</b> · ${found.points} points${found._exp ? ` (good until ${new Date(found._exp + 'T12:00:00Z').toLocaleDateString('en-US', {timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric'})})` : ''}${found.points >= REWARD.points ? ` · can use ${REWARD.points} for ${money(REWARD.amount)} off` : ` · ${REWARD.points - found.points} more for ${money(REWARD.amount)} off`}</p>` : digits.length === 10 ? '<p class="muted">New member. They earn points on this order.</p><input id="rwName" placeholder="Name (optional)" style="width:100%">' : '<p class="muted">1 point per $1. 150 points = $3 off.</p>'}
     ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
     <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="primary" id="rwAttach" ${digits.length === 10 ? '' : 'disabled'}>${check.customer ? 'Update' : 'Add to order'}</button>${found && found.points >= REWARD.points ? `<button id="rwUse">${check.reward ? 'Stop using points' : `Use ${REWARD.points} points (${money(REWARD.amount)} off)`}</button>` : ''}${check.customer ? '<button id="rwRemove">Remove from order</button>' : ''}<button data-close>Close</button></div>`);
   const look = async () => { if (digits.length !== 10){ found = null; draw(); return; } try { found = await store.getCustomer(digits); } catch (e){ msg = 'Could not look up the number (offline?). Points will still be added.'; found = null; } draw(); };

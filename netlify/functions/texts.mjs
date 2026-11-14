@@ -6,7 +6,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { sendText, canText } from '../../shared/notify.mjs';
+import { sendText, canText, sendEmail, canEmail } from '../../shared/notify.mjs';
+import { warningEmail } from '../../shared/rewards.mjs';
 import { LISTS, phone10, cleanEmail, emailId, subKey, CONSENT, finalText, listName, BRAND } from '../../shared/texts.mjs';
 
 const PROJECT = 'proofpos-90500';
@@ -62,6 +63,12 @@ export default async (req) => {
       if (!canText()) return json(400, {error: 'Texting is not set up yet (Twilio keys in Netlify).'});
       const r = await sendText(b.to, finalText(b.body));
       return r.ok ? json(200, {ok: true}) : json(400, {error: r.message || 'The text did not send.'});
+    }
+    if (b.action === 'points_test'){ // sends a sample points warning email to the address typed in
+      if (!canEmail()) return json(400, {error: 'Email is not set up yet (Resend keys in Netlify).'});
+      const e = warningEmail({name: b.name || 'Maya', points: 312}, b.date || '2027-07-08', b.months || 6);
+      const r = await sendEmail(b.to, '[Sample] ' + e.subject, e.html, e.text);
+      return r.ok ? json(200, {ok: true}) : json(400, {error: 'The email did not send.'});
     }
     return json(400, {error: 'Unknown action'});
   } catch (e){ return json(e.status || 500, {error: e.message}); }

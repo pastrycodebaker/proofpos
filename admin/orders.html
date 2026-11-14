@@ -65,6 +65,7 @@
 import { firebaseConfig } from '../firebase-config.js';
 import { createPayments } from '../payments.js';
 import * as GC from '../shared/giftcards.mjs';
+import * as RW from '../shared/rewards.mjs';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -103,12 +104,16 @@ function demoStore(){
     async customers(){ return [{phone: '3155551234', name: 'Maya', points: 212, visits: 14, lastVisit: Date.now() - 86400000}, {phone: '3155559876', name: 'Theo', points: 40, visits: 3, lastVisit: Date.now() - 6 * 86400000}, {phone: '3155554321', name: '', points: 155, visits: 9, lastVisit: Date.now() - 2 * 86400000}]; },
     async customerOrders(phone){ return phone === '3155551234' ? [{id: 'd1', num: 104, createdAtMs: Date.now() - 86400000, status: 'paid', totals: {total: 12.4}, pointsEarned: 12, lines: {}}] : []; },
     async adjustPoints(){},
+    async rewardsSettings(){ return {...(window._rw || {}), run: {date: '2026-11-13', warned: 0, expired: 0, points: 0, waiting: 0}}; },
+    async saveRewardsSettings(v){ window._rw = {...(window._rw || {}), ...v}; },
+    async pointsTest(){ return {ok: true}; },
     async loyaltyImport(rows, progress){ progress && progress(rows.length); },
   };
 }
 async function firebaseStore(app){
   const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
   const db = F.getFirestore(app);
+  const auth = (await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')).getAuth(app);
   const GIFT = GC.makeGiftStore(F, db);
   return {
     gift: GIFT,
@@ -130,6 +135,9 @@ async function firebaseStore(app){
     async customerOrders(phone){ const [a, b] = await Promise.all([F.getDocs(F.query(F.collection(db, 'orders'), F.where('customerPhone', '==', phone))), F.getDocs(F.query(F.collection(db, 'orders'), F.where('phone', '==', phone)))]);
       const m = new Map(); for (const d of [...a.docs, ...b.docs]) m.set(d.id, {id: d.id, ...d.data()}); return [...m.values()].filter(o => !o.importedFrom); },
     async adjustPoints(phone, delta){ await F.setDoc(F.doc(db, 'customers', phone), {phone, points: F.increment(delta)}, {merge: true}); },
+    async rewardsSettings(){ const [a, b] = await Promise.all([F.getDoc(F.doc(db, 'settings', 'rewards')), F.getDoc(F.doc(db, 'settings', 'rewardsRun'))]); return {...(a.data() || {}), run: b.data() || null}; },
+    async saveRewardsSettings(v){ await F.setDoc(F.doc(db, 'settings', 'rewards'), v, {merge: true}); },
+    async pointsTest(body){ const r = await fetch('/.netlify/functions/texts', {method: 'POST', headers: {'content-type': 'application/json', authorization: 'Bearer ' + await auth.currentUser.getIdToken()}, body: JSON.stringify({action: 'points_test', ...body})}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'That did not work.'); return j; },
     // Toast loyalty: adds each person's Toast points once (toastImportedAt marks it), keeping any points already earned here.
     async loyaltyImport(rows, progress){
       for (let i = 0; i < rows.length; i += 400){ const b = F.writeBatch(db);
@@ -324,31 +332,52 @@ let rq = '', rsort = 'recent', rsel = null, CUST = [];
 const fmtPhone = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
 async function renderRewards(){
   CUST = (await store.customers()).filter(c => c.phone && (c.points || c.visits)); // rewards members only (email-only newsletter contacts live in Texts and email)
+  RWS = await store.rewardsSettings().catch(() => ({})); const xs = RW.expirySettings(RWS), today = nyToday(), soon = addDaysISO(today, xs.warnDays);
+  for (const c of CUST) c._exp = RW.expiresOn(c, xs, today);
+  const expiring = CUST.filter(c => c._exp && c._exp <= soon), expPts = expiring.reduce((t, c) => t + (c.points || 0), 0);
   const q = rq.toLowerCase(), qd = rq.replace(/\D/g, '');
   const list = CUST.filter(c => !q || (c.name || '').toLowerCase().includes(q) || (qd && c.phone.includes(qd)))
-    .sort(rsort === 'points' ? (a, b) => (b.points || 0) - (a.points || 0) : rsort === 'visits' ? (a, b) => (b.visits || 0) - (a.visits || 0) : (a, b) => (b.lastVisit || 0) - (a.lastVisit || 0));
+    .sort(rsort === 'expiring' ? (a, b) => (a._exp || '9999').localeCompare(b._exp || '9999') : rsort === 'points' ? (a, b) => (b.points || 0) - (a.points || 0) : rsort === 'visits' ? (a, b) => (b.visits || 0) - (a.visits || 0) : (a, b) => (b.lastVisit || 0) - (a.lastVisit || 0));
   const total = CUST.reduce((s, c) => s + Math.max(0, c.points || 0), 0), ready = CUST.filter(c => (c.points || 0) >= 150).length;
   $('#app').innerHTML = `<div class="bar"><input id="rq" placeholder="Search name or phone" value="${esc(rq)}" style="max-width:260px">
-      <select id="rsort"><option value="recent" ${rsort === 'recent' ? 'selected' : ''}>Most recent</option><option value="points" ${rsort === 'points' ? 'selected' : ''}>Most points</option><option value="visits" ${rsort === 'visits' ? 'selected' : ''}>Most visits</option></select>
+      <select id="rsort"><option value="recent" ${rsort === 'recent' ? 'selected' : ''}>Most recent</option><option value="points" ${rsort === 'points' ? 'selected' : ''}>Most points</option><option value="visits" ${rsort === 'visits' ? 'selected' : ''}>Most visits</option><option value="expiring" ${rsort === 'expiring' ? 'selected' : ''}>Expiring soonest</option></select>
       <span class="sp"></span><button id="rcsv">Download CSV</button></div>
-    <div class="kpis">${kpi('Accounts', CUST.length, 'by phone number')}${kpi('Points out there', total.toLocaleString(), money(Math.floor(total / 150) * 3) + ' if all used')}${kpi('Can use $3 off', ready, '150+ points')}</div>
-    <div class="card" style="padding:0"><table><thead><tr><th>Name</th><th>Phone</th><th class="n">Points</th><th class="n">Visits</th><th>Last visit</th></tr></thead><tbody>
-    ${list.map(c => `<tr class="click" data-cust="${esc(c.phone)}"><td><b>${esc(c.name || '—')}</b></td><td>${esc(fmtPhone(c.phone))}</td><td class="n">${c.points || 0}</td><td class="n">${c.visits || 0}</td><td class="muted">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No rewards accounts yet.</td></tr>'}</tbody></table></div><div id="custBox"></div><div class="card"><h2 style="margin-top:0">Bring over Toast loyalty points</h2><p class="muted" style="margin:0 0 8px">Export your loyalty members from Toast as a CSV (phone and points balance; name, email and visits too if Toast includes them) and choose it here. Each person's Toast points are added once to their account here; anyone already brought over is skipped, so running it twice won't double anyone.</p>
+    <div class="kpis">${kpi('Accounts', CUST.length, 'by phone number')}${kpi('Points out there', total.toLocaleString(), money(Math.floor(total / 150) * 3) + ' if all used')}${kpi('Can use $3 off', ready, '150+ points')}${xs.on ? kpi(`Expiring in ${xs.warnDays} days`, expiring.length, expPts.toLocaleString() + ' points') : ''}</div>
+    <div class="card" style="padding:0"><table><thead><tr><th>Name</th><th>Phone</th><th class="n">Points</th><th class="n">Visits</th><th>Last visit</th>${xs.on ? '<th>Points expire</th>' : ''}</tr></thead><tbody>
+    ${list.map(c => `<tr class="click" data-cust="${esc(c.phone)}"><td><b>${esc(c.name || '—')}</b></td><td>${esc(fmtPhone(c.phone))}</td><td class="n">${c.points || 0}</td><td class="n">${c.visits || 0}</td><td class="muted">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''}</td>${xs.on ? `<td class="muted">${c._exp ? shortISO(c._exp) + (c.expiryWarnedFor && c.expiryWarnedFor === RW.ruleDate(c, xs) ? ' · emailed' : '') : ''}</td>` : ''}</tr>`).join('') || '<tr><td colspan="6" class="muted">No rewards accounts yet.</td></tr>'}</tbody></table></div><div id="custBox"></div>${expiryCard(xs, RWS.run)}<div class="card"><h2 style="margin-top:0">Bring over Toast loyalty points</h2><p class="muted" style="margin:0 0 8px">Export your loyalty members from Toast as a CSV (phone and points balance; name, email and visits too if Toast includes them) and choose it here. Each person's Toast points are added once to their account here; anyone already brought over is skipped, so running it twice won't double anyone.</p>
       <div class="bar" style="margin:0 0 8px"><input type="file" id="lFile" accept=".csv,text/csv" style="max-width:340px"><label class="muted" style="display:flex;gap:6px;align-items:center">Toast points × <input id="lRate" type="number" step="0.01" value="1" style="width:80px"></label></div>
       <p class="muted" style="margin:0 0 8px;font-size:13px">Leave it at 1 if Toast also gave 1 point per dollar. If Toast's reward took a different number of points, change it so a reward costs the same here (150 points = $3 off).</p><div id="lInfo"></div></div>`;
   if (rsel) showCustomer(rsel);
 }
+let RWS = {};
+const nyToday = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
+const addDaysISO = (d, n) => { const [y, m, dd] = d.split('-').map(Number); return new Date(Date.UTC(y, m - 1, dd + n)).toISOString().slice(0, 10); };
+const shortISO = d => { const [y, m, dd] = d.split('-').map(Number); return new Date(Date.UTC(y, m - 1, dd, 12)).toLocaleDateString('en-US', {timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric'}); };
+function expiryCard(xs, run){
+  const last = run && run.date ? `Last checked ${shortISO(run.date)}: ${run.warned || 0} warning emails sent, ${run.expired || 0} accounts expired (${(run.points || 0).toLocaleString()} points)${run.waiting ? `, ${run.waiting} warnings waiting for tomorrow (daily email limit)` : ''}.` : 'Checks once a day starting at 10am. Nothing has run yet.';
+  return `<div class="card"><h2 style="margin-top:0">Points expiration</h2>
+    <p class="muted" style="margin:0 0 10px">Points expire after a stretch with no visit; any purchase keeps all of them. Nobody's clock starts before the start date, so points brought over from Toast get a fresh start. Members with an email get a warning first, and never lose points until that warning has had its full notice. Members without an email expire on the date.</p>
+    <div class="bar" style="margin:0 0 8px;flex-wrap:wrap;gap:12px">
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="xOn" ${xs.on ? 'checked' : ''}> Points expire</label>
+      <label class="muted" style="display:flex;gap:6px;align-items:center">after <input id="xMonths" type="number" min="1" max="36" value="${xs.months}" style="width:64px"> months with no visit</label>
+      <label class="muted" style="display:flex;gap:6px;align-items:center">warning email <input id="xWarn" type="number" min="1" max="90" value="${xs.warnDays}" style="width:64px"> days before</label>
+      <label class="muted" style="display:flex;gap:6px;align-items:center">clocks start <input id="xLaunch" type="date" value="${esc(xs.launch)}"></label>
+      <label class="muted" style="display:flex;gap:6px;align-items:center">up to <input id="xDaily" type="number" min="1" max="1000" value="${xs.dailyEmails}" style="width:72px"> warning emails a day</label>
+      <button id="xSave">Save</button><span id="xMsg" class="muted"></span></div>
+    <p class="muted" style="margin:0 0 8px;font-size:13px">${esc(last)} Resend's free plan sends 100 emails a day in total, order emails included, so keep the daily number well under that.</p>
+    <div class="bar" style="margin:0"><input id="xTo" type="email" placeholder="Your email" style="max-width:260px"><button id="xTest">Send me a sample warning</button><span id="xTMsg" class="muted"></span></div></div>`;
+}
 async function showCustomer(phone){
   rsel = phone; const c = CUST.find(x => x.phone === phone) || {phone}; const os = (await store.customerOrders(phone)).sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
   const spent = os.filter(o => o.status === 'paid').reduce((s, o) => s + Number(o.totals?.total || 0), 0);
-  $('#custBox').innerHTML = `<div class="card"><div class="bar" style="margin:0 0 8px"><h2 style="margin:0">${esc(c.name || fmtPhone(phone))}</h2><span class="muted">${esc(fmtPhone(phone))} · ${c.points || 0} points · ${os.length} orders · ${money(spent)} spent</span><span class="sp"></span><button id="rclose">Close</button></div>
+  $('#custBox').innerHTML = `<div class="card"><div class="bar" style="margin:0 0 8px"><h2 style="margin:0">${esc(c.name || fmtPhone(phone))}</h2><span class="muted">${esc(fmtPhone(phone))} · ${c.points || 0} points${c._exp ? ` (good until ${shortISO(c._exp)})` : ''}${c.expiredPoints && c.pointsExpiredAt ? ` · ${c.expiredPoints} points expired ${new Date(c.pointsExpiredAt).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}` : ''} · ${os.length} orders · ${money(spent)} spent</span><span class="sp"></span><button id="rclose">Close</button></div>
     <div class="bar" style="margin:0 0 10px"><input id="radj" type="number" step="1" placeholder="+25 or -10" style="max-width:120px"><input id="rreason" placeholder="Reason (required)" style="max-width:280px"><button id="rsave">Adjust points</button><span id="rmsg"></span></div>
     <table><thead><tr><th>Date</th><th>Order</th><th class="n">Total</th><th class="n">Earned</th><th class="n">Used</th></tr></thead><tbody>
     ${os.map(o => `<tr><td>${new Date(o.createdAtMs || o.paidAt || 0).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</td><td>#${esc(o.num ?? '')}${o.status !== 'paid' ? ` <span class="muted">(${esc(o.status)})</span>` : ''}</td><td class="n">${money(o.totals?.total || 0)}</td><td class="n">${o.pointsEarned || ''}</td><td class="n">${o.pointsUsed || ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No orders found for this number.</td></tr>'}</tbody></table></div>`;
   $('#custBox').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 function rewardsCsv(){
-  const rows = [['Name', 'Phone', 'Points', 'Visits', 'Last visit'], ...CUST.map(c => [c.name || '', c.phone, c.points || 0, c.visits || 0, c.lastVisit ? new Date(c.lastVisit).toISOString().slice(0, 10) : ''])];
+  const rows = [['Name', 'Phone', 'Points', 'Visits', 'Last visit', 'Points expire'], ...CUST.map(c => [c.name || '', c.phone, c.points || 0, c.visits || 0, c.lastVisit ? new Date(c.lastVisit).toISOString().slice(0, 10) : '', c._exp || ''])];
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `rewards-${ymd(new Date())}.csv`; a.click();
 }
@@ -356,6 +385,18 @@ document.addEventListener('click', async e => {
   const row = e.target.closest('[data-cust]'); if (row){ showCustomer(row.dataset.cust); return; }
   if (e.target.id === 'rclose'){ rsel = null; $('#custBox').innerHTML = ''; return; }
   if (e.target.id === 'rcsv'){ rewardsCsv(); return; }
+  if (e.target.id === 'xSave'){
+    const v = {on: $('#xOn').checked, months: Math.max(1, parseInt($('#xMonths').value) || 6), warnDays: Math.max(1, parseInt($('#xWarn').value) || 30), launch: $('#xLaunch').value || RW.EXPIRY_DEFAULTS.launch, dailyEmails: Math.max(1, parseInt($('#xDaily').value) || 50)};
+    try { await store.saveRewardsSettings(v); await store.logEvent({type: 'points_expiry_settings', ...v, staff: 'Orders and reports'}); await renderRewards(); $('#xMsg').textContent = 'Saved.'; }
+    catch (err){ $('#xMsg').textContent = /permission/i.test(err.message) ? 'You do not have permission to change this.' : err.message; }
+    return;
+  }
+  if (e.target.id === 'xTest'){
+    const to = $('#xTo').value.trim(); if (!/@/.test(to)){ $('#xTMsg').textContent = 'Type an email first.'; return; }
+    const xs = RW.expirySettings(RWS); $('#xTMsg').textContent = 'Sending…';
+    try { await store.pointsTest({to, months: xs.months, date: RW.addMonths(xs.launch, xs.months)}); $('#xTMsg').textContent = 'Sent. Check your inbox.'; } catch (err){ $('#xTMsg').textContent = err.message; }
+    return;
+  }
   if (e.target.id === 'rsave'){
     const n = Math.round(Number($('#radj').value)), why = $('#rreason').value.trim();
     if (!n){ $('#rmsg').innerHTML = '<span class="err">Enter points to add, or a minus number to take away.</span>'; return; }
