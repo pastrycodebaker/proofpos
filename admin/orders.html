@@ -114,7 +114,12 @@ async function firebaseStore(app){
     gift: GIFT,
     async giftCards(){ const q = await F.getDocs(F.collection(db, 'giftCards')); return q.docs.map(d => d.data()); },
     // Toast balances: one transaction per card, skipping cards already brought over (so running it twice doesn't double them).
-    async giftImport(rows, progress){ let n = 0; for (const r of rows){ const have = await GIFT.get(r.number); if (!have) await GIFT.apply(r.number, r.balance, {kind: 'import', staff: 'Toast import'}); progress && progress(++n); } },
+    async giftImport(rows, progress){
+      const have = new Set((await F.getDocs(F.collection(db, 'giftCards'))).docs.map(d => d.id)); const todo = rows.filter(r => !have.has(r.number)); const now = Date.now();
+      for (let i = 0; i < todo.length; i += 200){ const b = F.writeBatch(db);
+        for (const r of todo.slice(i, i + 200)){ b.set(F.doc(db, 'giftCards', r.number), {number: r.number, balance: r.balance, createdAt: r.firstAt || now, lastUsedAt: r.lastAt || now, source: 'import'}); b.set(F.doc(F.collection(db, 'giftCardTx')), {card: r.number, delta: r.balance, balance: r.balance, at: now, kind: 'import', staff: 'Toast import'}); }
+        await b.commit(); progress && progress(Math.min(todo.length, i + 200)); }
+      return {added: todo.length, skipped: rows.length - todo.length}; },
     async settings(){ const s = await F.getDoc(F.doc(db, 'menu', 'main')); return s.exists() ? s.data() : {}; },
     async orders(from, to){ const snap = await F.getDocs(F.query(F.collection(db, 'orders'), F.where('createdAtMs', '>=', from), F.where('createdAtMs', '<', to))); return snap.docs.map(d => ({id: d.id, ...d.data()})).filter(o => !o.importedFrom); },  // Hot Plate imports are for pickup only, not sales
     async addRefund(id, r){ await F.updateDoc(F.doc(db, 'orders', id), {refunds: F.arrayUnion(r)}); },
@@ -367,14 +372,16 @@ let LIMPORT = null;
 function readToastLoyalty(text, rate){
   const rows = text.split(/\r?\n/).filter(x => x.trim()).map(line => { const out = []; let cur = '', q = false; for (let i = 0; i < line.length; i++){ const ch = line[i]; if (q){ if (ch === '"' && line[i + 1] === '"'){ cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"') q = true; else if (ch === ','){ out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; });
   const H = rows[0].map(h => h.trim().toLowerCase()); const find = re => H.findIndex(h => re.test(h));
-  const iPh = find(/phone/), iPts = find(/point|balance/), iFirst = find(/^first/), iLast = find(/^last/), iName = find(/^(name|customer|guest)( name)?$/), iEm = find(/e-?mail/), iVis = find(/visit/);
+  const iPh = find(/phone/), iPts = find(/point|balance/), iFirst = find(/^first/), iLast = find(/^last/), iName = find(/^(name|customer|guest)( name)?$/), iEm = find(/e-?mail/), iVis = find(/visit|accrue/);
   if (iPh < 0 || iPts < 0) throw new Error('Could not find the phone and points columns. Send me the column names and I will match them.');
   const have = new Set(CUST_ALL.filter(c => c.toastImportedAt).map(c => c.phone)); const seen = new Set(); const out = []; let skipped = 0, already = 0;
   for (const r of rows.slice(1)){
     const d = String(r[iPh] || '').replace(/\D/g, ''); const phone = d.length === 11 && d[0] === '1' ? d.slice(1) : d.length === 10 ? d : '';
     const pts = Math.round(Number(String(r[iPts] || '').replace(/[^0-9.-]/g, '')) * rate);
-    if (!phone || !(pts > 0)){ skipped++; continue; } if (seen.has(phone)) continue; seen.add(phone);
-    if (have.has(phone)){ already++; continue; }
+    if (!phone || !(pts > 0)){ skipped++; continue; }
+    if (have.has(phone)){ if (!seen.has(phone)) already++; seen.add(phone); continue; }
+    // Some people have more than one Toast rewards card on the same phone: add their points together.
+    const dup = out.find(x => x.phone === phone); if (dup){ dup.points += pts; dup.visits += iVis >= 0 ? Math.max(0, Math.round(Number(r[iVis]) || 0)) : 0; continue; } seen.add(phone);
     const name = (iName >= 0 ? r[iName] : [iFirst >= 0 ? r[iFirst] : '', iLast >= 0 ? r[iLast] : ''].join(' ')).trim();
     const em = iEm >= 0 ? String(r[iEm] || '').trim().toLowerCase() : '';
     out.push({phone, points: pts, name, email: /@/.test(em) ? em : '', visits: iVis >= 0 ? Math.max(0, Math.round(Number(r[iVis]) || 0)) : 0});
@@ -426,7 +433,8 @@ function readToastGift(text){
   const iBal = H.findIndex(h => /balance/.test(h) && !/initial|original|start/.test(h));
   if (iNum < 0 || iBal < 0) throw new Error('Could not find the card number and balance columns. Send me the column names and I will match them.');
   const out = []; let skipped = 0;
-  for (const r of rows.slice(1)){ const n = GC.cardNum(r[iNum]); const b = GC.r2(Number(String(r[iBal] || '').replace(/[$,]/g, ''))); if (n.length < 4 || !(b > 0)){ skipped++; continue; } out.push({number: n, balance: b}); }
+  const iFirst = H.findIndex(h => /first/.test(h)), iLastT = H.findIndex(h => /^last/.test(h)); const when = (r, i) => { const t = i >= 0 ? Date.parse(r[i]) : NaN; return isNaN(t) ? null : t; };
+  for (const r of rows.slice(1)){ const n = GC.cardNum(r[iNum]); const b = GC.r2(Number(String(r[iBal] || '').replace(/[$,]/g, ''))); if (n.length < 4 || !(b > 0)){ skipped++; continue; } out.push({number: n, balance: b, firstAt: when(r, iFirst), lastAt: when(r, iLastT)}); }
   return {rows: out, skipped, total: GC.r2(out.reduce((s, r) => s + r.balance, 0))};
 }
 document.addEventListener('click', async e => {
@@ -445,7 +453,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('change', async e => {
   if (e.target.id === 'gFile' && e.target.files[0]){
-    try { GIMPORT = readToastGift(await e.target.files[0].text()); $('#gInfo').innerHTML = `<p style="margin:0 0 8px"><b>${GIMPORT.rows.length}</b> cards with money on them, <b>${money(GIMPORT.total)}</b> in all${GIMPORT.skipped ? ` (${GIMPORT.skipped} with no balance skipped)` : ''}.</p><button class="primary" id="gGo">Bring them in</button> <span id="gGoMsg" class="muted"></span>`; }
+    try { GIMPORT = readToastGift(await e.target.files[0].text()); $('#gInfo').innerHTML = `<p style="margin:0 0 8px"><b>${GIMPORT.rows.length}</b> cards with money on them, <b>${money(GIMPORT.total)}</b> in all${GIMPORT.skipped ? ` (${GIMPORT.skipped.toLocaleString()} with no balance skipped)` : ''}.</p><button class="primary" id="gGo">Bring them in</button> <span id="gGoMsg" class="muted"></span>`; }
     catch (err){ $('#gInfo').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
   }
 });
